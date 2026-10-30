@@ -101,13 +101,13 @@ non terminal unidades_programa;
 non terminal String tipo;                   /* TS */
 
 /* Valores */
-non terminal valor_numerico;
-non terminal entero;
-non terminal flotante;
-non terminal bool;
-non terminal cadena_texto;
-non terminal caracter_literal;
-non terminal condicion_control;
+non terminal Atrib valor_numerico;
+non terminal Atrib entero;
+non terminal Atrib flotante;
+non terminal Atrib bool;
+non terminal Atrib cadena_texto;
+non terminal Atrib caracter_literal;
+non terminal Atrib condicion_control;
 
 /* Identificadores */
 non terminal String identificador;          /* TS */
@@ -239,7 +239,8 @@ start with programa;
                         VALORES
    ============================================================ */
 
-bool ::= TRUE | FALSE ;
+bool ::= TRUE   {: RESULT = new Atrib("bool", "true"); :}
+       | FALSE  {: RESULT = new Atrib("bool", "false"); :} ;
 
 tipo ::= INT     {: RESULT = "int";    :}
        | FLOAT   {: RESULT = "float";  :}
@@ -248,15 +249,19 @@ tipo ::= INT     {: RESULT = "int";    :}
        | STRING  {: RESULT = "string"; :}
        ;
 
-valor_numerico ::= entero | flotante ;
+valor_numerico ::= entero:e    {: RESULT = e; System.err.println("DEBUG: " + e.tipo + " " + e.lugar); :}
+                 | flotante:f  {: RESULT = f; System.err.println("DEBUG: " + f.tipo + " " + f.lugar); :} ;
+entero ::= LITERAL_INT:v  
+        {: RESULT = new Atrib("int", String.valueOf(v)); :} ;
 
-entero ::= LITERAL_INT ;
+flotante ::= LITERAL_FLOAT :v  
+        {: RESULT = new Atrib("float", String.valueOf(v)); :} ;
 
-flotante ::= LITERAL_FLOAT ;
+cadena_texto ::= LITERAL_STRING :v  
+        {: RESULT = new Atrib("string", String.valueOf(v)); :} ;
 
-cadena_texto ::= LITERAL_STRING ;
-
-caracter_literal ::= LITERAL_CHAR ;
+caracter_literal ::= LITERAL_CHAR :v  
+        {: RESULT = new Atrib("char", String.valueOf(v)); :} ;
 
 
 /* ============================================================
