@@ -1121,8 +1121,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
     public TablaSimbolos tabla = new TablaSimbolos();
 
-    /* TS: guardo los tokens leídos para recuperar el texto del
-       valor inicial y del tamaño de los arreglos */
+    /* TS: guardo los tokens leídos para recuperar el texto del valor inicial y del tamaño de los arreglos */
     private final ArrayList<Symbol> leidos = new ArrayList<Symbol>();
 
     @Override

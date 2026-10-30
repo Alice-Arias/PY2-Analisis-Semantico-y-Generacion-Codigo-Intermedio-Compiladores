@@ -302,6 +302,7 @@ javac ^
     -d "%BIN%" ^
     "%SRC%\Main.java" ^
     "%SRC%\TablaSimbolos.java" ^
+    "%SRC%\Atrib.java" ^
     "%BIN%\Lexer.java" ^
     "%BIN%\parser.java" ^
     "%BIN%\sym.java"
