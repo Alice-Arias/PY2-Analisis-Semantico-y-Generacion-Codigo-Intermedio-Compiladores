@@ -1,0 +1,186 @@
+| ============================================================
+| PRUEBA LEXICA DIFICIL
+| Objetivo: intentar romper el analizador lexico
+| ============================================================
+
+| ============================================================
+| VARIABLES VALIDAS DE REFERENCIA
+| ============================================================
+
+val int entero1 Ͱ 0»
+val int entero2 Ͱ 1»
+val int entero3 Ͱ 10»
+val int entero4 Ͱ 123456789»
+val float decimal1 Ͱ 0.5»
+val float decimal2 Ͱ 1.25»
+val float decimal3 Ͱ 123.456»
+val bool verdadero Ͱ true»
+val bool falso Ͱ false»
+val char letraA Ͱ 'A'»
+val char letraZ Ͱ 'z'»
+val string texto Ͱ "Hola mundo"»
+
+| ============================================================
+| NUMEROS Y FORMATOS INVALIDOS
+| ============================================================
+
+val float errorNumero1 Ͱ 10.25.5»
+val float errorNumero2 Ͱ 1.2.3.4»
+val float errorNumero3 Ͱ 123..456»
+val float errorNumero4 Ͱ .123»
+val float errorNumero5 Ͱ 123.»
+val float errorNumero6 Ͱ 10.0.0»
+val int errorNumero7 Ͱ 12.34.56»
+val int errorNumero8 Ͱ 999999999999999999999999999»
+val float errorNumero9 Ͱ 999999999.999999.999»
+val int errorNumero10 Ͱ 123abc»
+
+| ============================================================
+| IDENTIFICADORES INVALIDOS
+| ============================================================
+
+val int _variable1 Ͱ 10»
+val int _variable2 Ͱ 20»
+val int 2variable Ͱ 30»
+val int 123nombre Ͱ 40»
+val int nombre-con-guion Ͱ 50»
+val int nombre@variable Ͱ 60»
+val int nombre#variable Ͱ 70»
+val int nombre$variable Ͱ 80»
+val int nombre.variable Ͱ 90»
+
+| ============================================================
+| STRINGS INVALIDOS
+| ============================================================
+
+val string stringVacio Ͱ ""»
+val string stringNormal Ͱ "Texto valido"»
+val string stringSinCerrar Ͱ "Este string nunca termina
+val string stringCon@ Ͱ "Texto @ invalido»
+val string stringCon# Ͱ "Texto # invalido»
+val string stringCon$ Ͱ "Texto $ invalido»
+val string stringConSalto Ͱ "Texto
+que continua"
+
+| ============================================================
+| CARACTERES INVALIDOS
+| ============================================================
+
+val char charValido1 Ͱ 'A'»
+val char charValido2 Ͱ '9'»
+val char charVacio Ͱ ''»
+val char charDos Ͱ 'AB'»
+val char charTres Ͱ 'ABC'»
+val char charComilla Ͱ '''»
+val char charDobleComilla Ͱ '"'»
+
+| ============================================================
+| CARACTERES NO RECONOCIDOS
+| ============================================================
+
+val int simboloArroba Ͱ 10 @ 20»
+val int simboloNumeral Ͱ 10 # 20»
+val int simboloDolar Ͱ 10 $ 20»
+val int simboloPorcentaje Ͱ 10 % 20»
+val int simboloAmpersand Ͱ 10 & 20»
+val int simboloInterrogacion Ͱ 10 ? 20»
+val int simboloPuntoComa Ͱ 10 ; 20»
+val int simboloComillas Ͱ 10 " 20»
+val int simboloApostrofe Ͱ 10 ' 20»
+val int simboloBackslash Ͱ 10 \ 20»
+val int simboloExtra1 Ͱ 10 § 20»
+val int simboloExtra2 Ͱ 10 ñ 20»
+val int simboloExtra3 Ͱ 10 ¿ 20»
+
+| ============================================================
+| OPERADORES MALFORMADOS
+| ============================================================
+
+val int operador1 Ͱ 10 ++»
+val int operador2 Ͱ 10 --»
+val int operador3 Ͱ 10 ** 20»
+val int operador4 Ͱ 10 // 20»
+val int operador5 Ͱ 10 %% 20»
+val int operador6 Ͱ 10 == 20»
+val int operador7 Ͱ 10 != 20»
+val int operador8 Ͱ 10 <= 20»
+val int operador9 Ͱ 10 >= 20»
+
+| ============================================================
+| OPERADORES MEZCLADOS CON NUMEROS
+| ============================================================
+
+val int mezcla1 Ͱ 10@20»
+val int mezcla2 Ͱ 10#20»
+val int mezcla3 Ͱ 10$20»
+val int mezcla4 Ͱ 10§20»
+val int mezcla5 Ͱ 10.20.30»
+val int mezcla6 Ͱ 10abc20»
+val int mezcla7 Ͱ 123variable456»
+
+| ============================================================
+| EXPRESIONES MUY PROFUNDAS CON ERRORES LEXICOS
+| ============================================================
+
+val int profunda1 Ͱ є: 10 + 20 * є: 30 - 5 :э @ 100»
+val int profunda2 Ͱ є: є: 1 + 2 :э * є: 3 + 4 :э :э # 50»
+val int profunda3 Ͱ є: 2 pot є: 3 + 4 :э :э $ 10»
+val int profunda4 Ͱ є: є: є: 1 + 2 :э * 3 :э + 4 :э § 20»
+val int profunda5 Ͱ suma є: є: 1 + 2 :э, є: 3 * 4 :э :э @ 50»
+
+| ============================================================
+| LLAMADAS ANIDADAS CON ERRORES
+| ============================================================
+
+val int llamada1 Ͱ suma є: 1, suma є: 2, 3 :э :э»
+val int llamada2 Ͱ suma є: suma є: 1, 2 :э, suma є: 3, 4 :э :э»
+val int llamada3 Ͱ suma є: suma є: suma є: 1, 2 :э, 3 :э, 4 :э»
+val int llamada4 Ͱ suma є: 10@20, 30 :э»
+val int llamada5 Ͱ suma є: 10, 20#30 :э»
+
+| ============================================================
+| STRINGS CON SIMBOLOS EXTRAÑOS
+| ============================================================
+
+print є: "Texto valido λ θ Σ" :э
+print є: "Texto con @ # $ % &" :э
+print є: "Texto con § ñ" :э
+print є: "Texto sin cerrar :э
+print є: "Otro texto " sin cerrar :э
+
+| ============================================================
+| CARACTERES AL FINAL DE EXPRESIONES
+| ============================================================
+
+val int final1 Ͱ 10 + 20 @»
+val int final2 Ͱ 10 * 20 #»
+val int final3 Ͱ 10 pot 2 $»
+val int final4 Ͱ є: 1 + 2 :э §»
+val int final5 Ͱ suma є: 1, 2 :э @»
+
+| ============================================================
+| CARACTERES REPETIDOS
+| ============================================================
+
+@@
+
+###
+
+$$$$
+%%%
+&&&
+§§§
+@@@###$$$
+abc@@@def
+123###456
+10.20.30.40
+
+
+| ============================================================
+| FIN
+| ============================================================
+
+print є: "Fin de prueba lexica dificil" :э
+
+:? 
+$$$$
