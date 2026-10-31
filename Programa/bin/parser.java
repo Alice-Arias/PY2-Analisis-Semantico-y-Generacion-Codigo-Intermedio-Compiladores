@@ -1164,7 +1164,7 @@ public class parser extends java_cup.runtime.lr_parser {
        Entrada: los dos operandos (con su tipo), el operador y su posición.
        Salida:  un Atrib con el tipo del resultado, o de tipo "error".
        Restricción: int y float no se mezclan (tipado fuerte). */
-    public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
+        public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
 
         /* Regla 1: si alguno ya falló, no repetir el mensaje */
         if (a.tipo.equals("error") || b.tipo.equals("error")) {
@@ -1184,6 +1184,20 @@ public class parser extends java_cup.runtime.lr_parser {
         if (!a.tipo.equals(b.tipo)) {
             tabla.errorSemantico(linea, columna, "no se pueden mezclar '" + a.tipo + "' y '"
                     + b.tipo + "' con el operador '" + op + "' (tipado fuerte)");
+            return new Atrib("error", "?");
+        }
+
+        /* Regla 3b: "//" solo trabaja con enteros */
+        if (op.equals("//") && !a.tipo.equals("int")) {
+            tabla.errorSemantico(linea, columna, "el operador '//' requiere operandos int y recibió '"
+                    + a.tipo + "'");
+            return new Atrib("error", "?");
+        }
+
+        /* Regla 3c: "/" solo trabaja con float */
+        if (op.equals("/") && !a.tipo.equals("float")) {
+            tabla.errorSemantico(linea, columna, "el operador '/' requiere operandos float y recibió '"
+                    + a.tipo + "'");
             return new Atrib("error", "?");
         }
 
@@ -2185,8 +2199,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 86: // operador_multiplicacion ::= MULTIPLY 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "*";  
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operador_multiplicacion",52, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2194,8 +2208,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 87: // operador_multiplicacion ::= FLOATDIV 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "/";  
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operador_multiplicacion",52, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2203,8 +2217,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 88: // operador_multiplicacion ::= ENTIREDIV 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "//"; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operador_multiplicacion",52, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2228,10 +2242,13 @@ class CUP$parser$actions {
 		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
 		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
 		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int mleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int mright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object m = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = a; 
+		 RESULT = parser.aritmetica(a, "mod", b, mleft, mright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_mod",54, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2255,10 +2272,13 @@ class CUP$parser$actions {
 		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
 		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
 		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int opleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int opright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		String op = (String)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = a; 
+		 RESULT = parser.aritmetica(a, op, b, opleft, opright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_multiplicacion",56, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2348,10 +2368,13 @@ class CUP$parser$actions {
 		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
 		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
 		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int pleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int pright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object p = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = a; 
+		 RESULT = parser.aritmetica(a, "pot", b, pleft, pright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_potencia",58, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;

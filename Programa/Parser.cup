@@ -52,7 +52,7 @@ parser code {:
        Entrada: los dos operandos (con su tipo), el operador y su posición.
        Salida:  un Atrib con el tipo del resultado, o de tipo "error".
        Restricción: int y float no se mezclan (tipado fuerte). */
-    public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
+        public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
 
         /* Regla 1: si alguno ya falló, no repetir el mensaje */
         if (a.tipo.equals("error") || b.tipo.equals("error")) {
@@ -72,6 +72,20 @@ parser code {:
         if (!a.tipo.equals(b.tipo)) {
             tabla.errorSemantico(linea, columna, "no se pueden mezclar '" + a.tipo + "' y '"
                     + b.tipo + "' con el operador '" + op + "' (tipado fuerte)");
+            return new Atrib("error", "?");
+        }
+
+        /* Regla 3b: "//" solo trabaja con enteros */
+        if (op.equals("//") && !a.tipo.equals("int")) {
+            tabla.errorSemantico(linea, columna, "el operador '//' requiere operandos int y recibió '"
+                    + a.tipo + "'");
+            return new Atrib("error", "?");
+        }
+
+        /* Regla 3c: "/" solo trabaja con float */
+        if (op.equals("/") && !a.tipo.equals("float")) {
+            tabla.errorSemantico(linea, columna, "el operador '/' requiere operandos float y recibió '"
+                    + a.tipo + "'");
             return new Atrib("error", "?");
         }
 
@@ -194,7 +208,7 @@ non terminal modificacion_arreglo;
 
 /* Operaciones aritméticas */
 non terminal String operador_suma;
-non terminal operador_multiplicacion;
+non terminal String operador_multiplicacion;
 non terminal Atrib expresion_aritmetica;
 non terminal Atrib expresion_mod;
 non terminal Atrib expresion_suma;
@@ -473,15 +487,19 @@ modificacion_arreglo ::= acceso_arreglo asignacion expresion fin_sentencia ;
 operador_suma ::= PLUS   {: RESULT = "+"; :}
                 | MINUS  {: RESULT = "-"; :} ;
 
-operador_multiplicacion ::= MULTIPLY | FLOATDIV | ENTIREDIV ;
+operador_multiplicacion ::= MULTIPLY   {: RESULT = "*";  :}
+                          | FLOATDIV   {: RESULT = "/";  :}
+                          | ENTIREDIV  {: RESULT = "//"; :} ;
 
 expresion_aritmetica ::= expresion_mod:e  {: RESULT = e; :} ;
 
-expresion_mod ::= expresion_mod:a MOD expresion_multiplicacion:b  {: RESULT = a; :}
-                | expresion_multiplicacion:e                      {: RESULT = e; :} ;
+expresion_mod ::= expresion_mod:a MOD:m expresion_multiplicacion:b
+                  {: RESULT = parser.aritmetica(a, "mod", b, mleft, mright); :}
+                | expresion_multiplicacion:e  {: RESULT = e; :} ;
 
-expresion_multiplicacion ::= expresion_multiplicacion:a operador_multiplicacion expresion_suma:b  {: RESULT = a; :}
-                           | expresion_suma:e                                                      {: RESULT = e; :} ;
+expresion_multiplicacion ::= expresion_multiplicacion:a operador_multiplicacion:op expresion_suma:b
+                             {: RESULT = parser.aritmetica(a, op, b, opleft, opright); :}
+                           | expresion_suma:e  {: RESULT = e; :} ;
 
 expresion_suma ::= expresion_suma:a operador_suma:op expresion_unaria:b
                    {: RESULT = parser.aritmetica(a, op, b, opleft, opright); :}
@@ -490,8 +508,9 @@ expresion_suma ::= expresion_suma:a operador_suma:op expresion_unaria:b
 expresion_unaria ::= MINUS valor_numerico:v  {: RESULT = new Atrib(v.tipo, "-" + v.lugar); :}
                    | expresion_potencia:e    {: RESULT = e; :} ;
 
-expresion_potencia ::= valor_aritmetico:e                                   {: RESULT = e; :}
-                     | valor_aritmetico:a operadorPotencia exponente:b      {: RESULT = a; :} ;
+expresion_potencia ::= valor_aritmetico:e  {: RESULT = e; :}
+                     | valor_aritmetico:a operadorPotencia:p exponente:b
+                       {: RESULT = parser.aritmetica(a, "pot", b, pleft, pright); :} ;
 
 exponente ::= valor_aritmetico:e        {: RESULT = e; :}
             | MINUS valor_numerico:v    {: RESULT = new Atrib(v.tipo, "-" + v.lugar); :} ;
