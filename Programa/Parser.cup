@@ -276,16 +276,16 @@ non terminal lista_valores;
 non terminal valor_escritura;
 
 /* Arreglos */
-non terminal indice;
-non terminal acceso_arreglo;
-non terminal creacion_arreglo;
-non terminal arreglo_con_tamano;
-non terminal arreglo_con_tamano_valores;
-non terminal arreglo_sin_tamano_valores;
+non terminal Atrib indice;
+non terminal Atrib acceso_arreglo;
+non terminal Atrib creacion_arreglo;
+non terminal Atrib arreglo_con_tamano;
+non terminal Atrib arreglo_con_tamano_valores;
+non terminal Atrib arreglo_sin_tamano_valores;
 non terminal Integer lista_arreglo;                
 non terminal Integer inicio_lista_arreglo;
 non terminal Integer continuacion_lista_arreglo;
-non terminal modificacion_arreglo;
+non terminal Atrib modificacion_arreglo;
 
 /* Operaciones aritméticas */
 non terminal String operador_suma;

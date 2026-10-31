@@ -738,7 +738,7 @@ public class Main {
 
             seccion("TABLA DE SÍMBOLOS");
 
-            mostrarTablaSimbolos(tabla);
+            mostrarTablaSimbolosCompleta(tabla);
 
         } else {
 
@@ -1027,6 +1027,200 @@ public class Main {
         }
 
         System.out.println(sb);
+    }
+
+    /* ============================================================
+     * TABLA DE SÍMBOLOS COMPLETA (una sola tabla con todas las columnas)
+     * ============================================================ */
+
+    /* Nº, NOMBRE, CATEGORÍA, TIPO, ÁMBITO, BYTES, DIMENSIÓN, DIRECCIÓN, VALOR INICIAL, ACCESO, LÍNEA, COL */
+    private static final String[] TITULOS_TS = {
+        "Nº", "NOMBRE", "CATEGORÍA", "TIPO", "ÁMBITO", "BYTES",
+        "DIMENSIÓN", "DIRECCIÓN", "VALOR INICIAL", "ACCESO", "LÍNEA", "COL"};
+
+    private static final int[] ANCHOS_TS = {3, 14, 13, 7, 24, 5, 10, 11, 26, 8, 5, 3};
+
+    /*
+     * Descripcion:
+     * Imprimo la tabla de símbolos con todas sus columnas. Cada ámbito
+     * (global, cada función, cada if, while...) es un grupo de filas
+     * separado de los demás por una línea.
+     *
+     * Entrada:  la tabla de símbolos ya llena.
+     * Salida:   la tabla en la consola.
+     * Restricciones:
+     * Es ancha (unos 166 caracteres): conviene una terminal grande.
+     * Los textos largos pasan a la línea de abajo dentro de su celda.
+     */
+    private static void mostrarTablaSimbolosCompleta(TablaSimbolos tabla) {
+
+        /* ---- Árbol de ámbitos: muestra quién es hijo de quién ---- */
+
+        System.out.println(col("1", "  Árbol de ámbitos (cada ámbito es una tabla; los de abajo son sus hijos)"));
+        System.out.println();
+
+        for (String l : tabla.arbolDeAmbitos().split("\n")) {
+            System.out.println(col("36", l));
+        }
+
+        System.out.println();
+
+        /* ---- Leyenda ---- */
+
+        System.out.println("  " + col("1", "Categorías: ")
+                + col("32", "variable") + "  "
+                + col("33", "arreglo") + "  "
+                + col("35", "parámetro") + "  "
+                + col("34;1", "función") + "  "
+                + col("36;1", "procedimiento"));
+
+        System.out.println(col("90", "  Dirección: global+n = zona estática · pila+n = registro de activación"));
+        System.out.println(col("90", "  Acceso:    público = declarado en el ámbito global · privado = dentro de una función o bloque"));
+        System.out.println();
+
+        /* ---- La tabla ---- */
+
+        System.out.println(col("90", "  " + bordeTS('┌', '┬', '┐')));
+
+        String[] colTitulos = new String[TITULOS_TS.length];
+        java.util.Arrays.fill(colTitulos, "1;36");
+        filaTS(TITULOS_TS, colTitulos);
+
+        System.out.println(col("90", "  " + bordeTS('├', '┼', '┤')));
+
+        int numero = 1;
+        boolean primero = true;
+
+        for (Ambito a : tabla.getAmbitos()) {
+
+            /* Un ámbito sin símbolos no tiene filas: aparece solo en el árbol */
+            if (a.cantidad() == 0) {
+                continue;
+            }
+
+            /* Línea que separa un ámbito (una tabla) del siguiente */
+            if (!primero) {
+                System.out.println(col("90", "  " + bordeTS('├', '┼', '┤')));
+            }
+            primero = false;
+
+            String ambito = nombreAmbito(a);
+
+            for (Simbolo s : a.simbolos()) {
+
+                String[] celdas = {
+                    String.valueOf(numero++),
+                    s.nombre,
+                    s.categoria,
+                    s.tipo,
+                    ambito,
+                    s.esFuncion() ? "—" : (s.bytes > 0 ? String.valueOf(s.bytes) : "?"),
+                    s.esFuncion() ? "—" : s.textoDimensionCorta(),
+                    s.direccion(),
+                    s.esFuncion() || s.valorInicial == null ? "—" : s.valorInicial,
+                    s.acceso,
+                    String.valueOf(s.linea),
+                    String.valueOf(s.columna)
+                };
+
+                String[] colores = {
+                    "0", "1", colorCategoria(s.categoria), "0", "36", "0",
+                    "arreglo".equals(s.categoria) ? "33" : "90", "0", "0",
+                    "público".equals(s.acceso) ? "32" : "90", "0", "0"
+                };
+
+                filaTS(celdas, colores);
+            }
+        }
+
+        System.out.println(col("90", "  " + bordeTS('└', '┴', '┘')));
+        System.out.println();
+    }
+
+    /* "global › funcion func1 › if"  →  "función func1 › if" (el global se queda como "global") */
+    private static String nombreAmbito(Ambito a) {
+        String ruta = a.ruta();
+        if (a.nivel > 0 && ruta.startsWith("global › ")) {
+            ruta = ruta.substring("global › ".length());
+        }
+        return ruta.replace("funcion ", "función ");
+    }
+
+    /* Línea de borde de la tabla completa */
+    private static String bordeTS(char izq, char medio, char der) {
+
+        StringBuilder sb = new StringBuilder().append(izq);
+
+        for (int i = 0; i < ANCHOS_TS.length; i++) {
+            sb.append("─".repeat(ANCHOS_TS[i] + 2));
+            sb.append(i < ANCHOS_TS.length - 1 ? medio : der);
+        }
+        return sb.toString();
+    }
+
+    /* Una fila de la tabla completa; si una celda es larga, la fila ocupa varias líneas */
+    private static void filaTS(String[] celdas, String[] colores) {
+
+        List<List<String>> partes = new ArrayList<>();
+        int alto = 1;
+
+        for (int i = 0; i < ANCHOS_TS.length; i++) {
+            List<String> l = partirTexto(celdas[i], ANCHOS_TS[i]);
+            partes.add(l);
+            alto = Math.max(alto, l.size());
+        }
+
+        for (int r = 0; r < alto; r++) {
+
+            StringBuilder sb = new StringBuilder("  " + col("90", "│"));
+
+            for (int i = 0; i < ANCHOS_TS.length; i++) {
+
+                String t = r < partes.get(i).size() ? partes.get(i).get(r) : "";
+                String texto = String.format("%-" + ANCHOS_TS[i] + "s", t);
+
+                sb.append(" ")
+                  .append("0".equals(colores[i]) ? texto : col(colores[i], texto))
+                  .append(" ")
+                  .append(col("90", "│"));
+            }
+
+            System.out.println(sb);
+        }
+    }
+
+    /* Corta un texto en líneas de máximo "ancho" caracteres, sin partir palabras si se puede */
+    private static List<String> partirTexto(String texto, int ancho) {
+
+        List<String> lineas = new ArrayList<>();
+        StringBuilder actual = new StringBuilder();
+
+        for (String palabra : texto.split(" ")) {
+
+            while (palabra.length() > ancho) {
+                if (actual.length() > 0) {
+                    lineas.add(actual.toString());
+                    actual.setLength(0);
+                }
+                lineas.add(palabra.substring(0, ancho));
+                palabra = palabra.substring(ancho);
+            }
+
+            if (actual.length() > 0 && actual.length() + 1 + palabra.length() > ancho) {
+                lineas.add(actual.toString());
+                actual.setLength(0);
+            }
+
+            if (actual.length() > 0) {
+                actual.append(' ');
+            }
+            actual.append(palabra);
+        }
+
+        if (actual.length() > 0 || lineas.isEmpty()) {
+            lineas.add(actual.toString());
+        }
+        return lineas;
     }
 
     private static String colorCategoria(String categoria) {
