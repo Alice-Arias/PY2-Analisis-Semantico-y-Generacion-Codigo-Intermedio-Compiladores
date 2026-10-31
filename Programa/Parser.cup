@@ -109,6 +109,74 @@ parser code {:
                     + tipoVar + "' y se le da un valor de tipo '" + valor.tipo + "'");
         }
     }
+
+    /* SEM: comprueba los tipos de una comparación (<, >, <=, >=, ==, !=).
+       Entrada: los dos operandos, el operador y su posición.
+       Salida:  siempre un Atrib de tipo "bool" (una comparación da verdadero o falso).
+       Reglas:  ==  y  !=  : mismo tipo, o los dos numéricos.
+                <  >  <=  >= : mismo tipo numérico, o char con char. */
+    public Atrib relacional(Atrib a, String op, Atrib b, int linea, int columna) {
+
+        /* Regla 1: si alguno ya falló, no repetir el mensaje */
+        if (a.tipo.equals("error") || b.tipo.equals("error")) {
+            return new Atrib("bool", "?");
+        }
+
+        boolean aNumerico = a.tipo.equals("int") || a.tipo.equals("float");
+        boolean bNumerico = b.tipo.equals("int") || b.tipo.equals("float");
+        boolean valida;
+
+        if (op.equals("==") || op.equals("!=")) {
+            /* Regla 2: igualdad: mismo tipo, o los dos numéricos */
+            valida = a.tipo.equals(b.tipo) || (aNumerico && bNumerico);
+        } else {
+            /* Regla 3: orden: mismo tipo numérico, o char con char */
+            valida = (aNumerico && a.tipo.equals(b.tipo))
+                  || (a.tipo.equals("char") && b.tipo.equals("char"));
+        }
+
+        if (!valida) {
+            tabla.errorSemantico(linea, columna, "no se puede comparar '" + a.tipo
+                    + "' con '" + b.tipo + "' usando '" + op + "'");
+        }
+
+        /* Regla 4: una comparación siempre da bool, aunque haya fallado */
+        return new Atrib("bool", "?");
+    }
+
+    /* SEM: comprueba los tipos de una operación lógica (and, or).
+       Salida: siempre un Atrib de tipo "bool". */
+    public Atrib logica(Atrib a, String op, Atrib b, int linea, int columna) {
+
+        /* Regla 1: si alguno ya falló, no repetir el mensaje */
+        if (a.tipo.equals("error") || b.tipo.equals("error")) {
+            return new Atrib("bool", "?");
+        }
+
+        /* Regla 2: los dos operandos deben ser bool */
+        if (!a.tipo.equals("bool") || !b.tipo.equals("bool")) {
+            tabla.errorSemantico(linea, columna, "el operador lógico '" + op
+                    + "' requiere operandos bool y recibió '" + a.tipo + "' y '" + b.tipo + "'");
+        }
+
+        /* Regla 3: el resultado siempre es bool, aunque haya fallado */
+        return new Atrib("bool", "?");
+    }
+
+    /* SEM: comprueba el tipo de una negación (not). */
+    public Atrib negacion(Atrib e, int linea, int columna) {
+
+        if (e.tipo.equals("error")) {
+            return new Atrib("bool", "?");
+        }
+
+        if (!e.tipo.equals("bool")) {
+            tabla.errorSemantico(linea, columna, "el operador 'not' requiere un operando bool y recibió '"
+                    + e.tipo + "'");
+        }
+
+        return new Atrib("bool", "?");
+    }
 :};
 
 /* ============================================================
@@ -237,18 +305,18 @@ non terminal Atrib valor_aritmetico;
 non terminal operacion_incremento;
 
 /* Operaciones relacionales */
-non terminal operadorRelacional;
-non terminal operando_relacional;
-non terminal operacion_relacional;
+non terminal String operadorRelacional;
+non terminal Atrib operando_relacional;
+non terminal Atrib operacion_relacional;
 
 /* Expresiones lógicas */
-non terminal condicion_basica;
-non terminal operando_logico;
-non terminal condiciones_and;
-non terminal condiciones_or;
-non terminal condiciones_logicas;
-non terminal negacion;
-non terminal expresion_logica;
+non terminal Atrib condicion_basica;
+non terminal Atrib operando_logico;
+non terminal Atrib condiciones_and;
+non terminal Atrib condiciones_or;
+non terminal Atrib condiciones_logicas;
+non terminal Atrib negacion;
+non terminal Atrib expresion_logica;
 
 /* Expresiones y funciones */
 non terminal Atrib expresion;
@@ -562,46 +630,68 @@ operacion_incremento ::= identificador:id incremento  {: parser.tabla.usar(id, i
                 OPERACIONES RELACIONALES
    ============================================================ */
 
-operadorRelacional ::= LT | GT | LTE | GTE | EQUAL | NEQ ;
+operadorRelacional ::= LT     {: RESULT = "<";  :}
+                     | GT     {: RESULT = ">";  :}
+                     | LTE    {: RESULT = "<="; :}
+                     | GTE    {: RESULT = ">="; :}
+                     | EQUAL  {: RESULT = "=="; :}
+                     | NEQ    {: RESULT = "!="; :} ;
 
-operando_relacional ::= valor_aritmetico
-                      | bool
-                      | abrir_corcheteCuadrados expresion cerrar_corcheteCuadrados ;
+operando_relacional ::= valor_aritmetico:v  {: RESULT = v; :}
+                      | bool:b              {: RESULT = b; :}
+                      | abrir_corcheteCuadrados expresion:e cerrar_corcheteCuadrados  {: RESULT = e; :} ;
 
-operacion_relacional ::= operando_relacional operadorRelacional operando_relacional ;
+operacion_relacional ::= operando_relacional:a operadorRelacional:op operando_relacional:b
+                         {: RESULT = parser.relacional(a, op, b, opleft, opright); :} ;
 
 
 /* ============================================================
                  EXPRESIONES LÓGICAS
    ============================================================ */
 
-condicion_basica ::= PARENOP operacion_relacional PARENCL
-                   | PARENOP bool PARENCL
-                   | PARENOP condicion_basica PARENCL
-                   | condiciones_logicas
-                   | negacion ;
+condicion_basica ::= PARENOP operacion_relacional:e PARENCL  {: RESULT = e; :}
+                   | PARENOP bool:e PARENCL                  {: RESULT = e; :}
+                   | PARENOP condicion_basica:e PARENCL      {: RESULT = e; :}
+                   | condiciones_logicas:e                   {: RESULT = e; :}
+                   | negacion:e                              {: RESULT = e; :} ;
 
-operando_logico ::= condicion_basica
-                  | PARENOP expresion_aritmetica PARENCL ;
+operando_logico ::= condicion_basica:e                       {: RESULT = e; :}
+                  | PARENOP expresion_aritmetica:e PARENCL   {: RESULT = e; :} ;
 
-condiciones_and ::= operando_logico AND operando_logico
-                  | condiciones_and AND operando_logico ;
+condiciones_and ::= operando_logico:a AND:o operando_logico:b
+                    {: RESULT = parser.logica(a, "and", b, oleft, oright); :}
+                  | condiciones_and:a AND:o operando_logico:b
+                    {: RESULT = parser.logica(a, "and", b, oleft, oright); :} ;
 
-condiciones_or ::= operando_logico OR operando_logico
-                 | condiciones_and OR operando_logico
-                 | operando_logico OR condiciones_and
-                 | condiciones_and OR condiciones_and
-                 | condiciones_or OR operando_logico
-                 | condiciones_or OR condiciones_and ;
+condiciones_or ::= operando_logico:a OR:o operando_logico:b
+                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                 | condiciones_and:a OR:o operando_logico:b
+                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                 | operando_logico:a OR:o condiciones_and:b
+                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                 | condiciones_and:a OR:o condiciones_and:b
+                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                 | condiciones_or:a OR:o operando_logico:b
+                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                 | condiciones_or:a OR:o condiciones_and:b
+                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :} ;
 
-condiciones_logicas ::= PARENOP condiciones_and PARENCL | PARENOP condiciones_or PARENCL ;
+condiciones_logicas ::= PARENOP condiciones_and:e PARENCL  {: RESULT = e; :}
+                      | PARENOP condiciones_or:e PARENCL   {: RESULT = e; :} ;
 
-negacion ::= NOT condicion_basica ;
+negacion ::= NOT:n condicion_basica:e  {: RESULT = parser.negacion(e, nleft, nright); :} ;
 
-expresion_logica ::= condiciones_and | condiciones_or | negacion ;
+expresion_logica ::= condiciones_and:e  {: RESULT = e; :}
+                   | condiciones_or:e   {: RESULT = e; :}
+                   | negacion:e         {: RESULT = e; :} ;
 
-condicion_control ::= operacion_relacional | condiciones_and | condiciones_or | negacion | bool
-                    | PARENOP operacion_relacional PARENCL | PARENOP bool PARENCL ;
+condicion_control ::= operacion_relacional:e                   {: RESULT = e; :}
+                    | condiciones_and:e                        {: RESULT = e; :}
+                    | condiciones_or:e                         {: RESULT = e; :}
+                    | negacion:e                               {: RESULT = e; :}
+                    | bool:e                                   {: RESULT = e; :}
+                    | PARENOP operacion_relacional:e PARENCL   {: RESULT = e; :}
+                    | PARENOP bool:e PARENCL                   {: RESULT = e; :} ;
 
 
 /* ============================================================
@@ -609,8 +699,8 @@ condicion_control ::= operacion_relacional | condiciones_and | condiciones_or | 
    ============================================================ */
 
 expresion ::= expresion_aritmetica:e  {: RESULT = e; :}
-            | operacion_relacional    {: RESULT = new Atrib("error", "?"); :}
-            | expresion_logica        {: RESULT = new Atrib("error", "?"); :}
+            | operacion_relacional:r  {: RESULT = r; :}
+            | expresion_logica:l      {: RESULT = l; :}
             | bool:b                  {: RESULT = b; :} ;
 
 lista_expresiones ::= /* vacío */ | expresiones ;

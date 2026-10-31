@@ -18,4 +18,22 @@ void principal є: :э ¿:
     a Ͱ 3.5»
     f Ͱ 4»
     a Ͱ 10»
+    val char cc Ͱ 'x'»
+    val bool b1 Ͱ a < 10»
+    val bool b2 Ͱ f >= 1.5»
+    val bool b3 Ͱ a == a»
+    val bool b4 Ͱ a < f»
+    val bool b5 Ͱ a == f»
+    val bool b6 Ͱ cc < cc»
+    val bool b7 Ͱ s < s»
+    val bool b8 Ͱ a == s»
+    val int x Ͱ a < 10»
+    val bool p Ͱ true»
+    val bool v1 Ͱ є:a > 1:э λ є:a < 10:э»
+    val bool v2 Ͱ є:a > 1:э θ є:a < 0:э»
+    val bool v3 Ͱ Σє: a > 1 :э»
+    val bool v4 Ͱ є:p:э λ є:a > 1:э»
+    val bool v5 Ͱ є:1:э λ є:a > 1:э»
+    val bool v6 Ͱ є:a:э θ є:p:э»
+    val int v7 Ͱ є:a > 1:э λ є:a < 10:э»
 :?

@@ -1222,6 +1222,74 @@ public class parser extends java_cup.runtime.lr_parser {
         }
     }
 
+    /* SEM: comprueba los tipos de una comparación (<, >, <=, >=, ==, !=).
+       Entrada: los dos operandos, el operador y su posición.
+       Salida:  siempre un Atrib de tipo "bool" (una comparación da verdadero o falso).
+       Reglas:  ==  y  !=  : mismo tipo, o los dos numéricos.
+                <  >  <=  >= : mismo tipo numérico, o char con char. */
+    public Atrib relacional(Atrib a, String op, Atrib b, int linea, int columna) {
+
+        /* Regla 1: si alguno ya falló, no repetir el mensaje */
+        if (a.tipo.equals("error") || b.tipo.equals("error")) {
+            return new Atrib("bool", "?");
+        }
+
+        boolean aNumerico = a.tipo.equals("int") || a.tipo.equals("float");
+        boolean bNumerico = b.tipo.equals("int") || b.tipo.equals("float");
+        boolean valida;
+
+        if (op.equals("==") || op.equals("!=")) {
+            /* Regla 2: igualdad: mismo tipo, o los dos numéricos */
+            valida = a.tipo.equals(b.tipo) || (aNumerico && bNumerico);
+        } else {
+            /* Regla 3: orden: mismo tipo numérico, o char con char */
+            valida = (aNumerico && a.tipo.equals(b.tipo))
+                  || (a.tipo.equals("char") && b.tipo.equals("char"));
+        }
+
+        if (!valida) {
+            tabla.errorSemantico(linea, columna, "no se puede comparar '" + a.tipo
+                    + "' con '" + b.tipo + "' usando '" + op + "'");
+        }
+
+        /* Regla 4: una comparación siempre da bool, aunque haya fallado */
+        return new Atrib("bool", "?");
+    }
+
+    /* SEM: comprueba los tipos de una operación lógica (and, or).
+       Salida: siempre un Atrib de tipo "bool". */
+    public Atrib logica(Atrib a, String op, Atrib b, int linea, int columna) {
+
+        /* Regla 1: si alguno ya falló, no repetir el mensaje */
+        if (a.tipo.equals("error") || b.tipo.equals("error")) {
+            return new Atrib("bool", "?");
+        }
+
+        /* Regla 2: los dos operandos deben ser bool */
+        if (!a.tipo.equals("bool") || !b.tipo.equals("bool")) {
+            tabla.errorSemantico(linea, columna, "el operador lógico '" + op
+                    + "' requiere operandos bool y recibió '" + a.tipo + "' y '" + b.tipo + "'");
+        }
+
+        /* Regla 3: el resultado siempre es bool, aunque haya fallado */
+        return new Atrib("bool", "?");
+    }
+
+    /* SEM: comprueba el tipo de una negación (not). */
+    public Atrib negacion(Atrib e, int linea, int columna) {
+
+        if (e.tipo.equals("error")) {
+            return new Atrib("bool", "?");
+        }
+
+        if (!e.tipo.equals("bool")) {
+            tabla.errorSemantico(linea, columna, "el operador 'not' requiere un operando bool y recibió '"
+                    + e.tipo + "'");
+        }
+
+        return new Atrib("bool", "?");
+    }
+
 
 /** Cup generated class to encapsulate user supplied action code.*/
 @SuppressWarnings({"rawtypes", "unchecked", "unused"})
@@ -2551,8 +2619,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 111: // operadorRelacional ::= LT 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "<";  
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operadorRelacional",62, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2560,8 +2628,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 112: // operadorRelacional ::= GT 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = ">";  
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operadorRelacional",62, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2569,8 +2637,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 113: // operadorRelacional ::= LTE 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "<="; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operadorRelacional",62, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2578,8 +2646,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 114: // operadorRelacional ::= GTE 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = ">="; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operadorRelacional",62, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2587,8 +2655,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 115: // operadorRelacional ::= EQUAL 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "=="; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operadorRelacional",62, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2596,8 +2664,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 116: // operadorRelacional ::= NEQ 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "!="; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operadorRelacional",62, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2605,8 +2673,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 117: // operando_relacional ::= valor_aritmetico 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int vleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int vright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib v = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = v; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operando_relacional",63, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2614,8 +2685,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 118: // operando_relacional ::= bool 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = b; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operando_relacional",63, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2623,8 +2697,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 119: // operando_relacional ::= abrir_corcheteCuadrados expresion cerrar_corcheteCuadrados 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operando_relacional",63, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2632,8 +2709,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 120: // operacion_relacional ::= operando_relacional operadorRelacional operando_relacional 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int opleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int opright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		String op = (String)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.relacional(a, op, b, opleft, opright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operacion_relacional",64, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2641,8 +2727,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 121: // condicion_basica ::= PARENOP operacion_relacional PARENCL 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_basica",65, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2650,8 +2739,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 122: // condicion_basica ::= PARENOP bool PARENCL 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_basica",65, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2659,8 +2751,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 123: // condicion_basica ::= PARENOP condicion_basica PARENCL 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_basica",65, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2668,8 +2763,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 124: // condicion_basica ::= condiciones_logicas 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_basica",65, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2677,8 +2775,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 125: // condicion_basica ::= negacion 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_basica",65, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2686,8 +2787,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 126: // operando_logico ::= condicion_basica 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operando_logico",66, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2695,8 +2799,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 127: // operando_logico ::= PARENOP expresion_aritmetica PARENCL 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operando_logico",66, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2704,8 +2811,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 128: // condiciones_and ::= operando_logico AND operando_logico 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int oleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int oright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object o = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.logica(a, "and", b, oleft, oright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_and",67, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2713,8 +2829,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 129: // condiciones_and ::= condiciones_and AND operando_logico 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int oleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int oright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object o = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.logica(a, "and", b, oleft, oright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_and",67, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2722,8 +2847,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 130: // condiciones_or ::= operando_logico OR operando_logico 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int oleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int oright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object o = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.logica(a, "or", b, oleft, oright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_or",68, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2731,8 +2865,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 131: // condiciones_or ::= condiciones_and OR operando_logico 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int oleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int oright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object o = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.logica(a, "or", b, oleft, oright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_or",68, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2740,8 +2883,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 132: // condiciones_or ::= operando_logico OR condiciones_and 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int oleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int oright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object o = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.logica(a, "or", b, oleft, oright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_or",68, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2749,8 +2901,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 133: // condiciones_or ::= condiciones_and OR condiciones_and 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int oleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int oright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object o = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.logica(a, "or", b, oleft, oright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_or",68, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2758,8 +2919,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 134: // condiciones_or ::= condiciones_or OR operando_logico 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int oleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int oright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object o = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.logica(a, "or", b, oleft, oright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_or",68, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2767,8 +2937,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 135: // condiciones_or ::= condiciones_or OR condiciones_and 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int oleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int oright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object o = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.logica(a, "or", b, oleft, oright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_or",68, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2776,8 +2955,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 136: // condiciones_logicas ::= PARENOP condiciones_and PARENCL 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_logicas",69, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2785,8 +2967,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 137: // condiciones_logicas ::= PARENOP condiciones_or PARENCL 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condiciones_logicas",69, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2794,8 +2979,14 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 138: // negacion ::= NOT condicion_basica 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int nleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int nright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object n = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.negacion(e, nleft, nright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("negacion",70, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2803,8 +2994,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 139: // expresion_logica ::= condiciones_and 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_logica",71, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2812,8 +3006,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 140: // expresion_logica ::= condiciones_or 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_logica",71, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2821,8 +3018,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 141: // expresion_logica ::= negacion 
             {
-              Object RESULT =null;
-
+              Atrib RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_logica",71, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2831,7 +3031,10 @@ class CUP$parser$actions {
           case 142: // condicion_control ::= operacion_relacional 
             {
               Atrib RESULT =null;
-
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_control",10, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2840,7 +3043,10 @@ class CUP$parser$actions {
           case 143: // condicion_control ::= condiciones_and 
             {
               Atrib RESULT =null;
-
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_control",10, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2849,7 +3055,10 @@ class CUP$parser$actions {
           case 144: // condicion_control ::= condiciones_or 
             {
               Atrib RESULT =null;
-
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_control",10, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2858,7 +3067,10 @@ class CUP$parser$actions {
           case 145: // condicion_control ::= negacion 
             {
               Atrib RESULT =null;
-
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_control",10, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2867,7 +3079,10 @@ class CUP$parser$actions {
           case 146: // condicion_control ::= bool 
             {
               Atrib RESULT =null;
-
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_control",10, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2876,7 +3091,10 @@ class CUP$parser$actions {
           case 147: // condicion_control ::= PARENOP operacion_relacional PARENCL 
             {
               Atrib RESULT =null;
-
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_control",10, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2885,7 +3103,10 @@ class CUP$parser$actions {
           case 148: // condicion_control ::= PARENOP bool PARENCL 
             {
               Atrib RESULT =null;
-
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_control",10, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2906,7 +3127,10 @@ class CUP$parser$actions {
           case 150: // expresion ::= operacion_relacional 
             {
               Atrib RESULT =null;
-		 RESULT = new Atrib("error", "?"); 
+		int rleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int rright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib r = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = r; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion",72, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2915,7 +3139,10 @@ class CUP$parser$actions {
           case 151: // expresion ::= expresion_logica 
             {
               Atrib RESULT =null;
-		 RESULT = new Atrib("error", "?"); 
+		int lleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int lright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib l = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = l; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion",72, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
