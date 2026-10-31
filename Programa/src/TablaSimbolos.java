@@ -278,7 +278,9 @@ public class TablaSimbolos {
     private void error(int linea, int columna, String mensaje) {
         errores.add("Error semántico en línea " + linea + ", columna " + columna + ": " + mensaje);
     }
-
+    public void errorSemantico(int linea, int columna, String mensaje) {
+        error(linea, columna, mensaje);
+    }
     public List<String> getErrores() {
         return errores;
     }

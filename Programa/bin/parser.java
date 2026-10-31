@@ -1160,6 +1160,37 @@ public class parser extends java_cup.runtime.lr_parser {
         return textoEntre(l1, c1, ultimo.left, ultimo.right);
     }
 
+    /* SEM: comprueba los tipos de una operación aritmética.
+       Entrada: los dos operandos (con su tipo), el operador y su posición.
+       Salida:  un Atrib con el tipo del resultado, o de tipo "error".
+       Restricción: int y float no se mezclan (tipado fuerte). */
+    public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
+
+        /* Regla 1: si alguno ya falló, no repetir el mensaje */
+        if (a.tipo.equals("error") || b.tipo.equals("error")) {
+            return new Atrib("error", "?");
+        }
+
+        /* Regla 2: los dos deben ser int o float */
+        boolean aNumerico = a.tipo.equals("int") || a.tipo.equals("float");
+        boolean bNumerico = b.tipo.equals("int") || b.tipo.equals("float");
+        if (!aNumerico || !bNumerico) {
+            tabla.errorSemantico(linea, columna, "el operador '" + op + "' no se puede aplicar a '"
+                    + a.tipo + "' y '" + b.tipo + "' (se requieren int o float)");
+            return new Atrib("error", "?");
+        }
+
+        /* Regla 3: no se mezclan int y float */
+        if (!a.tipo.equals(b.tipo)) {
+            tabla.errorSemantico(linea, columna, "no se pueden mezclar '" + a.tipo + "' y '"
+                    + b.tipo + "' con el operador '" + op + "' (tipado fuerte)");
+            return new Atrib("error", "?");
+        }
+
+        /* Regla 4: todo bien, el resultado tiene el tipo de los operandos */
+        return new Atrib(a.tipo, "?");
+    }
+
 
 /** Cup generated class to encapsulate user supplied action code.*/
 @SuppressWarnings({"rawtypes", "unchecked", "unused"})
@@ -2136,8 +2167,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 84: // operador_suma ::= PLUS 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "+"; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operador_suma",51, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2145,8 +2176,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 85: // operador_suma ::= MINUS 
             {
-              Object RESULT =null;
-
+              String RESULT =null;
+		 RESULT = "-"; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("operador_suma",51, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2251,10 +2282,13 @@ class CUP$parser$actions {
 		int aleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
 		int aright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
 		Atrib a = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int opleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int opright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		String op = (String)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = a; 
+		 RESULT = parser.aritmetica(a, op, b, opleft, opright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_suma",55, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
