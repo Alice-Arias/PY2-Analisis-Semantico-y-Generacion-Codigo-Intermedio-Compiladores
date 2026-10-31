@@ -1486,8 +1486,29 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
 
-    /* 
-    public void validarRetorno(Atrib retorno, int linea, int columna)*/
+    /* SEM: valida que una función o expresión utilizada como valor no sea de tipo void.
+         Entrada: el atributo de la llamada o expresión evaluada.
+         Salida:  el atributo original si es válido, o un atributo de tipo "error" en caso contrario.
+         Reglas:  no se permite utilizar procedimientos void en contextos que requieren un valor (asignaciones, operaciones, etc.). */
+    public Atrib validarUsoExpresion(Atrib llamada, int linea, int columna) {
+
+        if (llamada == null || "error".equals(llamada.tipo)) {
+            return new Atrib("error", "?");
+        }
+
+        if ("void".equals(llamada.tipo)) {
+
+            tabla.errorSemantico(
+                linea,
+                columna,
+                "no se puede utilizar un procedimiento void como expresión"
+            );
+
+            return new Atrib("error", "?");
+        }
+
+        return llamada;
+    }
 
 
 
@@ -2793,7 +2814,10 @@ class CUP$parser$actions {
           case 105: // valor_aritmetico ::= llamada_funcion 
             {
               Atrib RESULT =null;
-		 RESULT = new Atrib("error", "?"); 
+		int lleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int lright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib l = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = parser.validarUsoExpresion(l, lleft, lright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("valor_aritmetico",60, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3459,7 +3483,7 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 157: // llamada_funcion ::= identificador PARENOP lista_expresiones PARENCL 
             {
-              Object RESULT =null;
+              Atrib RESULT =null;
 		int idleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)).left;
 		int idright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)).right;
 		String id = (String)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-3)).value;

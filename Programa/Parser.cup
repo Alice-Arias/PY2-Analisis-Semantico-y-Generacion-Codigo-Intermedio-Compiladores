@@ -370,8 +370,29 @@ parser code {:
     }
 
 
-    /* 
-    public void validarRetorno(Atrib retorno, int linea, int columna)*/
+    /* SEM: valida que una función o expresión utilizada como valor no sea de tipo void.
+         Entrada: el atributo de la llamada o expresión evaluada.
+         Salida:  el atributo original si es válido, o un atributo de tipo "error" en caso contrario.
+         Reglas:  no se permite utilizar procedimientos void en contextos que requieren un valor (asignaciones, operaciones, etc.). */
+    public Atrib validarUsoExpresion(Atrib llamada, int linea, int columna) {
+
+        if (llamada == null || "error".equals(llamada.tipo)) {
+            return new Atrib("error", "?");
+        }
+
+        if ("void".equals(llamada.tipo)) {
+
+            tabla.errorSemantico(
+                linea,
+                columna,
+                "no se puede utilizar un procedimiento void como expresión"
+            );
+
+            return new Atrib("error", "?");
+        }
+
+        return llamada;
+    }
 
 :};
 
@@ -518,7 +539,7 @@ non terminal Atrib expresion_logica;
 non terminal Atrib expresion;
 non terminal List<Atrib> lista_expresiones;
 non terminal List<Atrib> expresiones;
-non terminal llamada_funcion;
+non terminal Atrib llamada_funcion;
 
 /* Estructuras de control */
 non terminal if;
@@ -821,7 +842,7 @@ valor_aritmetico ::= valor_numerico:v   {: RESULT = v; :}
                         else           { RESULT = new Atrib(s.tipo, id); } :}
 
                   | acceso_arreglo:a     {: RESULT = a; :}
-                  | llamada_funcion      {: RESULT = new Atrib("error", "?"); :}
+                  | llamada_funcion:l    {: RESULT = parser.validarUsoExpresion(l, lleft, lright); :}
                   | cadena_texto:c       {: RESULT = c; :}
                   | caracter_literal:c   {: RESULT = c; :}
                   | PARENOP expresion_aritmetica:e PARENCL  {: RESULT = e; :} ;
