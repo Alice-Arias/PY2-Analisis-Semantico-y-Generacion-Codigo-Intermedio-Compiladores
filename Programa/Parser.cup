@@ -607,7 +607,8 @@ expresion_unaria ::= MINUS valor_numerico:v  {: RESULT = new Atrib(v.tipo, "-" +
                   | expresion_potencia:e    {: RESULT = e; :} ;
 
 expresion_potencia ::= valor_aritmetico:e  {: RESULT = e; :}
-                    | valor_aritmetico:a operadorPotencia:p exponente:b {: RESULT = parser.aritmetica(a, "pot", b, pleft pright); :} ;
+                    | valor_aritmetico:a operadorPotencia:p exponente:b
+                      {: RESULT = parser.aritmetica(a, "pot", b, pleft, pright); :} ;
 
 exponente ::= valor_aritmetico:e        {: RESULT = e; :}
             | MINUS valor_numerico:v    {: RESULT = new Atrib(v.tipo, "-" + v.lugar); :} ;

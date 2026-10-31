@@ -1161,9 +1161,9 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* SEM: comprueba los tipos de una operación aritmética.
-       Entrada: los dos operandos (con su tipo), el operador y su posición.
-       Salida:  un Atrib con el tipo del resultado, o de tipo "error".
-       Restricción: int y float no se mezclan (tipado fuerte). */
+      Entrada: los dos operandos (con su tipo), el operador y su posición.
+      Salida:  un Atrib con el tipo del resultado, o de tipo "error".
+      Restricción: int y float no se mezclan (tipado fuerte). */
     public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
 
         /* Regla 1: si alguno ya falló, no repetir el mensaje */
@@ -1174,6 +1174,7 @@ public class parser extends java_cup.runtime.lr_parser {
         /* Regla 2: los dos deben ser int o float */
         boolean aNumerico = a.tipo.equals("int") || a.tipo.equals("float");
         boolean bNumerico = b.tipo.equals("int") || b.tipo.equals("float");
+
         if (!aNumerico || !bNumerico) {
             tabla.errorSemantico(linea, columna, "el operador '" + op + "' no se puede aplicar a '"
                     + a.tipo + "' y '" + b.tipo + "' (se requieren int o float)");
@@ -1206,8 +1207,8 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* SEM: comprueba que el valor tenga el mismo tipo que la variable.
-       Entrada: nombre y tipo de la variable, el valor (con su tipo) y la posición.
-       Salida:  ninguna; si no coinciden, reporta un error semántico. */
+      Entrada: nombre y tipo de la variable, el valor (con su tipo) y la posición.
+      Salida:  ninguna; si no coinciden, reporta un error semántico. */
     public void asignar(String nombre, String tipoVar, Atrib valor, int linea, int columna) {
 
         /* Regla 1: si el valor ya falló, no repetir el mensaje */
@@ -1223,10 +1224,9 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* SEM: comprueba los tipos de una comparación (<, >, <=, >=, ==, !=).
-       Entrada: los dos operandos, el operador y su posición.
-       Salida:  siempre un Atrib de tipo "bool" (una comparación da verdadero o falso).
-       Reglas:  ==  y  !=  : mismo tipo, o los dos numéricos.
-                <  >  <=  >= : mismo tipo numérico, o char con char. */
+      Entrada: los dos operandos, el operador y su posición.
+      Salida:  siempre un Atrib de tipo "bool" (una comparación da verdadero o falso).
+      Reglas:  ==  y  !=  : mismo tipo, o los dos numéricos.  <  >  <=  >= : mismo tipo numérico, o char con char. */
     public Atrib relacional(Atrib a, String op, Atrib b, int linea, int columna) {
 
         /* Regla 1: si alguno ya falló, no repetir el mensaje */
@@ -1645,8 +1645,7 @@ class CUP$parser$actions {
           case 33: // palabraFor ::= FOR 
             {
               Object RESULT =null;
-		 parser.tabla.abrirAmbito("for");
-                               parser.tabla.siguienteAmbito("cuerpo for"); 
+		 parser.tabla.abrirAmbito("for"); parser.tabla.siguienteAmbito("cuerpo for"); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("palabraFor",30, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1755,7 +1754,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "int", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "int", e, idleft, idright); 
+        parser.asignar(id, "int", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1777,7 +1776,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "float", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "float", e, idleft, idright); 
+        parser.asignar(id, "float", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1799,7 +1798,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "bool", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "bool", e, idleft, idright); 
+        parser.asignar(id, "bool", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1821,7 +1820,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "char", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "char", e, idleft, idright); 
+        parser.asignar(id, "char", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1843,7 +1842,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "string", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "string", e, idleft, idright); 
+        parser.asignar(id, "string", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1859,7 +1858,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 Simbolo s = parser.tabla.usar(id, idleft, idright);
-                           if (s != null) { parser.asignar(id, s.tipo, e, idleft, idright); } 
+                        if (s != null) { parser.asignar(id, s.tipo, e, idleft, idright); } 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("asignacion_variable",35, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
