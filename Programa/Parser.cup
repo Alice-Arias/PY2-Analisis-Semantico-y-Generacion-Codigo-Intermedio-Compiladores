@@ -319,7 +319,8 @@ parser code {:
     }
 
 
-    /*SEM: valida llamada de funciones */
+    /*SEM: valida llamada de funciones
+      Salida: devulve un atrib de tipo y un identificador */
     public Atrib validarLlamada(String nombre, List<Atrib> argumentos, int linea, int columna) {
         // 1. Buscar la función declarada.
         Simbolo funcion = tabla.usarFuncion(nombre, linea, columna);
@@ -367,6 +368,10 @@ parser code {:
         // 6. La llamada es válida: devolver el tipo de retorno.
         return new Atrib(funcion.tipo, nombre);
     }
+
+
+    /* 
+    public void validarRetorno(Atrib retorno, int linea, int columna)*/
 
 :};
 
@@ -982,7 +987,10 @@ estructura_control ::= if | while | for ;
 
 break ::= palabraBreak ;
 
-return ::= palabraReturn fin_sentencia | palabraReturn expresion fin_sentencia ;
+return ::= palabraReturn:r fin_sentencia
+           {: parser.tabla.validarRetorno(null, rleft, rright); :} 
+          | palabraReturn:r expresion:e fin_sentencia 
+            {: parser.tabla.validarRetorno(e, rleft, rright); :};
 
 instruccion ::= sentencia_simple | estructura_control ;
 

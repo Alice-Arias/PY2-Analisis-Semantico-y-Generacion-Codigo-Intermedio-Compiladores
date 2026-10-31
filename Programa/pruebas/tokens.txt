@@ -28,7 +28,8 @@ LINEA    COLUMNA  TOKEN              LEXEMA
 5        10       ID                 x
 5        11       TERMINATOR         »
 6        2        RETURN             return
-6        8        TERMINATOR         »
+6        9        LITERAL_INT        5
+6        10       TERMINATOR         »
 7        3        CLBLOCK            :?
 9        1        VOID               void
 9        6        PRINCIPAL          principal
@@ -49,9 +50,9 @@ LINEA    COLUMNA  TOKEN              LEXEMA
 10       30       TERMINATOR         »
 11       5        ID                 _func2_
 11       13       PARENOP            є:
-11       16       LITERAL_STRING     "true"
-11       22       COMA               ,
-11       24       LITERAL_INT        5
-11       26       PARENCL            :э
-11       29       TERMINATOR         »
+11       16       TRUE               true
+11       20       COMA               ,
+11       22       LITERAL_INT        5
+11       24       PARENCL            :э
+11       27       TERMINATOR         »
 12       1        CLBLOCK            :?

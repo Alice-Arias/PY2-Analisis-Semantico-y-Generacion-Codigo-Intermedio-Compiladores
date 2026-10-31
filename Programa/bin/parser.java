@@ -1435,7 +1435,8 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
 
-    /*SEM: valida llamada de funciones */
+    /*SEM: valida llamada de funciones
+      Salida: devulve un atrib de tipo y un identificador */
     public Atrib validarLlamada(String nombre, List<Atrib> argumentos, int linea, int columna) {
         // 1. Buscar la función declarada.
         Simbolo funcion = tabla.usarFuncion(nombre, linea, columna);
@@ -1483,6 +1484,10 @@ public class parser extends java_cup.runtime.lr_parser {
         // 6. La llamada es válida: devolver el tipo de retorno.
         return new Atrib(funcion.tipo, nombre);
     }
+
+
+    /* 
+    public void validarRetorno(Atrib retorno, int linea, int columna)*/
 
 
 
@@ -3782,7 +3787,10 @@ class CUP$parser$actions {
           case 191: // return ::= palabraReturn fin_sentencia 
             {
               Object RESULT =null;
-
+		int rleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int rright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Object r = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 parser.tabla.validarRetorno(null, rleft, rright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("return",93, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3791,7 +3799,13 @@ class CUP$parser$actions {
           case 192: // return ::= palabraReturn expresion fin_sentencia 
             {
               Object RESULT =null;
-
+		int rleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int rright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Object r = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 parser.tabla.validarRetorno(e, rleft, rright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("return",93, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;

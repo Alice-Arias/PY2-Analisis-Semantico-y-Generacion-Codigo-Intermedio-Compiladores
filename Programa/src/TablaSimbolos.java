@@ -79,6 +79,60 @@ public class TablaSimbolos {
         todos.add(top);
     }
 
+    private Simbolo obtenerFuncionActual() {
+
+        for (Ambito a = top; a != null; a = a.anterior) {
+
+            if (a.duenio != null) {
+                return a.duenio;
+            }
+        }
+
+        return null;
+    }
+
+    /* ======================== Funciones ======================== */
+
+    public void validarRetorno(Atrib retorno, int linea, int columna) {
+
+        // 1. Obtener la función que contiene el return.
+        Simbolo funcion = obtenerFuncionActual();
+
+        // 2. Comprobar que estamos dentro de una función.
+        if (funcion == null) {
+            error(linea, columna, "la sentencia return solo puede utilizarse dentro de una función");
+            return;
+        }
+
+        // 3. Obtener el tipo esperado.
+        String tipoEsperado = funcion.tipo;
+
+        // 4. Comprobar si la función es void.
+        if ("void".equals(tipoEsperado)) {
+
+            if (retorno != null) {
+                error(linea, columna, "el procedimiento '" + funcion.nombre
+                        + "' no puede retornar un valor");
+            }
+
+            return;
+        }
+
+        // 5. Comprobar que una función con retorno no omita el valor.
+        if (retorno == null) {
+            error(linea, columna, "la función '" + funcion.nombre
+                    + "' debe retornar un valor de tipo " + tipoEsperado);
+            return;
+        }
+
+        // 6. Comparar el tipo recibido con el esperado.
+        if (!tipoEsperado.equals(retorno.tipo)) {
+            error(linea, columna, "la función '" + funcion.nombre
+                    + "' debe retornar un valor de tipo " + tipoEsperado
+                    + ", pero se recibió " + retorno.tipo);
+        }
+    }
+
     /* ======================== ÁMBITOS ======================== */
 
     /* Indico el nombre del próximo ámbito (if, while, else...). */
