@@ -52,7 +52,7 @@ parser code {:
        Entrada: los dos operandos (con su tipo), el operador y su posición.
        Salida:  un Atrib con el tipo del resultado, o de tipo "error".
        Restricción: int y float no se mezclan (tipado fuerte). */
-        public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
+    public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
 
         /* Regla 1: si alguno ya falló, no repetir el mensaje */
         if (a.tipo.equals("error") || b.tipo.equals("error")) {
@@ -91,6 +91,23 @@ parser code {:
 
         /* Regla 4: todo bien, el resultado tiene el tipo de los operandos */
         return new Atrib(a.tipo, "?");
+    }
+
+    /* SEM: comprueba que el valor tenga el mismo tipo que la variable.
+       Entrada: nombre y tipo de la variable, el valor (con su tipo) y la posición.
+       Salida:  ninguna; si no coinciden, reporta un error semántico. */
+    public void asignar(String nombre, String tipoVar, Atrib valor, int linea, int columna) {
+
+        /* Regla 1: si el valor ya falló, no repetir el mensaje */
+        if (valor.tipo.equals("error")) {
+            return;
+        }
+
+        /* Regla 2: el tipo del valor debe ser igual al de la variable */
+        if (!tipoVar.equals(valor.tipo)) {
+            tabla.errorSemantico(linea, columna, "la variable '" + nombre + "' es de tipo '"
+                    + tipoVar + "' y se le da un valor de tipo '" + valor.tipo + "'");
+        }
     }
 :};
 
@@ -234,7 +251,7 @@ non terminal negacion;
 non terminal expresion_logica;
 
 /* Expresiones y funciones */
-non terminal expresion;
+non terminal Atrib expresion;
 non terminal lista_expresiones;
 non terminal expresiones;
 non terminal llamada_funcion;
@@ -297,16 +314,16 @@ tipo ::= INT     {: RESULT = "int";    :}
 valor_numerico ::= entero:e    {: RESULT = e;  :}
                  | flotante:f  {: RESULT = f;  :} ;
 
-entero ::= LITERAL_INT:v  
+entero ::= LITERAL_INT:v
         {: RESULT = new Atrib("int", String.valueOf(v)); :} ;
 
-flotante ::= LITERAL_FLOAT :v  
+flotante ::= LITERAL_FLOAT :v
         {: RESULT = new Atrib("float", String.valueOf(v)); :} ;
 
-cadena_texto ::= LITERAL_STRING :v  
+cadena_texto ::= LITERAL_STRING :v
         {: RESULT = new Atrib("string", String.valueOf(v)); :} ;
 
-caracter_literal ::= LITERAL_CHAR :v  
+caracter_literal ::= LITERAL_CHAR :v
         {: RESULT = new Atrib("char", String.valueOf(v)); :} ;
 
 
@@ -378,6 +395,9 @@ escribir ::= WRITE ;
 
 /* ============================================================
                          VARIABLES
+   TS: se declara la variable.
+   SEM: si lleva valor inicial, se comprueba que el tipo del valor
+        coincida con el tipo de la variable (parser.asignar).
    ============================================================ */
 
 def_variable ::=
@@ -391,20 +411,28 @@ def_variable ::=
       {: parser.tabla.declararVariable(id, "char", null, idleft, idright); :}
     | palabraVal STRING identificador:id fin_sentencia
       {: parser.tabla.declararVariable(id, "string", null, idleft, idright); :}
-    | palabraVal INT    identificador:id asignacion:a expresion fin_sentencia:f
-      {: parser.tabla.declararVariable(id, "int", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright); :}
-    | palabraVal FLOAT  identificador:id asignacion:a expresion fin_sentencia:f
-      {: parser.tabla.declararVariable(id, "float", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright); :}
-    | palabraVal BOOL   identificador:id asignacion:a expresion fin_sentencia:f
-      {: parser.tabla.declararVariable(id, "bool", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright); :}
-    | palabraVal CHAR   identificador:id asignacion:a expresion fin_sentencia:f
-      {: parser.tabla.declararVariable(id, "char", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright); :}
-    | palabraVal STRING identificador:id asignacion:a expresion fin_sentencia:f
-      {: parser.tabla.declararVariable(id, "string", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright); :}
+    | palabraVal INT    identificador:id asignacion:a expresion:e fin_sentencia:f
+      {: parser.tabla.declararVariable(id, "int", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+         parser.asignar(id, "int", e, idleft, idright); :}
+    | palabraVal FLOAT  identificador:id asignacion:a expresion:e fin_sentencia:f
+      {: parser.tabla.declararVariable(id, "float", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+         parser.asignar(id, "float", e, idleft, idright); :}
+    | palabraVal BOOL   identificador:id asignacion:a expresion:e fin_sentencia:f
+      {: parser.tabla.declararVariable(id, "bool", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+         parser.asignar(id, "bool", e, idleft, idright); :}
+    | palabraVal CHAR   identificador:id asignacion:a expresion:e fin_sentencia:f
+      {: parser.tabla.declararVariable(id, "char", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+         parser.asignar(id, "char", e, idleft, idright); :}
+    | palabraVal STRING identificador:id asignacion:a expresion:e fin_sentencia:f
+      {: parser.tabla.declararVariable(id, "string", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+         parser.asignar(id, "string", e, idleft, idright); :}
     ;
 
-asignacion_variable ::= identificador:id asignacion expresion fin_sentencia
-                        {: parser.tabla.usar(id, idleft, idright); :} ;
+/* SEM: asignar a una variable que ya existe. El tipo de la variable se
+   lee de la tabla de símbolos; si no está declarada, usar() devuelve null. */
+asignacion_variable ::= identificador:id asignacion expresion:e fin_sentencia
+                        {: Simbolo s = parser.tabla.usar(id, idleft, idright);
+                           if (s != null) { parser.asignar(id, s.tipo, e, idleft, idright); } :} ;
 
 lista_globales ::= /* vacío */
     | def_variable lista_globales
@@ -580,7 +608,10 @@ condicion_control ::= operacion_relacional | condiciones_and | condiciones_or | 
                 EXPRESIONES Y FUNCIONES
    ============================================================ */
 
-expresion ::= expresion_aritmetica | operacion_relacional | expresion_logica | bool ;
+expresion ::= expresion_aritmetica:e  {: RESULT = e; :}
+            | operacion_relacional    {: RESULT = new Atrib("error", "?"); :}
+            | expresion_logica        {: RESULT = new Atrib("error", "?"); :}
+            | bool:b                  {: RESULT = b; :} ;
 
 lista_expresiones ::= /* vacío */ | expresiones ;
 
