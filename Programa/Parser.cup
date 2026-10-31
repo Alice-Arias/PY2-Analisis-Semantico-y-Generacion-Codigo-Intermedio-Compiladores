@@ -47,7 +47,7 @@ parser code {:
     /* SEM: comprueba los tipos de una operación aritmética.
       Entrada: los dos operandos (con su tipo), el operador y su posición.
       Salida:  un Atrib con el tipo del resultado, o de tipo "error".
-      Restricción: int y float no se mezclan (tipado fuerte). */
+       Restricción: int y float no se mezclan (tipado fuerte). */
     public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
 
         /* Regla 1: si alguno ya falló, no repetir el mensaje */
@@ -58,7 +58,6 @@ parser code {:
         /* Regla 2: los dos deben ser int o float */
         boolean aNumerico = a.tipo.equals("int") || a.tipo.equals("float");
         boolean bNumerico = b.tipo.equals("int") || b.tipo.equals("float");
-
         if (!aNumerico || !bNumerico) {
             tabla.errorSemantico(linea, columna, "el operador '" + op + "' no se puede aplicar a '"
                     + a.tipo + "' y '" + b.tipo + "' (se requieren int o float)");
@@ -86,17 +85,75 @@ parser code {:
             return new Atrib("error", "?");
         }
 
-        /* Regla 4: todo bien, el resultado tiene el tipo de los operandos */
-        return new Atrib(a.tipo, "?");
+        /* Regla 4: todo bien, el resultado tiene el tipo de los operandos.
+           Si los dos son constantes enteras, también se calcula su valor. */
+        Atrib r = new Atrib(a.tipo, "?");
+        r.valor = plegar(a, op, b);
+        return r;
+    }
+
+    /* SEM: convierte un texto en entero (null si no cabe en un int). */
+    public Integer aEntero(String texto) {
+        try {
+            return Integer.valueOf(texto.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /* SEM: el signo menos delante de un número; conserva el valor constante. */
+    public Atrib negativo(Atrib v) {
+        Atrib r = new Atrib(v.tipo, "-" + v.lugar);
+        if (v.valor != null) {
+            r.valor = -v.valor;
+        }
+        return r;
+    }
+
+    /* SEM: calcula "a op b" cuando los dos son constantes enteras (null si no se puede).
+       La división entera // trunca hacia cero. */
+    private Integer plegar(Atrib a, String op, Atrib b) {
+        if (!a.tipo.equals("int") || a.valor == null || b.valor == null) {
+            return null;
+        }
+        long x = a.valor;
+        long y = b.valor;
+        long r;
+        switch (op) {
+            case "+":   r = x + y; break;
+            case "-":   r = x - y; break;
+            case "*":   r = x * y; break;
+            case "//":  if (y == 0) return null; r = x / y; break;
+            case "mod": if (y == 0) return null; r = x % y; break;
+            case "pot":
+                if (y < 0 || y > 30) return null;
+                r = 1;
+                for (long k = 0; k < y; k++) {
+                    r *= x;
+                    if (Math.abs(r) > Integer.MAX_VALUE) return null;
+                }
+                break;
+            default:    return null;
+        }
+        if (r > Integer.MAX_VALUE || r < Integer.MIN_VALUE) {
+            return null;
+        }
+        return (int) r;
+    }
+
+    /* SEM: texto del tamaño de un arreglo para la tabla de símbolos:
+       el valor calculado si es constante (1 + 1 -> "2") o el texto original. */
+    public String tamanoTexto(Atrib tam, String crudo) {
+        return (tam != null && tam.valor != null) ? String.valueOf(tam.valor) : crudo;
     }
 
     /* SEM: comprueba que el valor tenga el mismo tipo que la variable.
-      Entrada: nombre y tipo de la variable, el valor (con su tipo) y la posición.
-      Salida:  ninguna; si no coinciden, reporta un error semántico. */
+    Entrada: nombre y tipo de la variable, el valor (con su tipo) y la posición.
+       Salida:  ninguna; si no coinciden, reporta un error semántico. */
     public void asignar(String nombre, String tipoVar, Atrib valor, int linea, int columna) {
 
-        /* Regla 1: si el valor ya falló, no repetir el mensaje */
-        if (valor.tipo.equals("error")) {
+        /* Regla 1: si el valor o la variable ya fallaron, no repetir el mensaje */
+        if (valor.tipo.equals("error") || tipoVar.equals("error")) {
             return;
         }
 
@@ -107,10 +164,96 @@ parser code {:
         }
     }
 
+    /* SEM: comprueba la declaración de un arreglo.
+      Entrada: nombre, tipo de los elementos, el tamaño (puede ser null), la lista de
+                valores iniciales (puede ser null) y la posición.
+      Reglas:  el tamaño debe ser una expresión int y mayor que cero;
+                cada valor debe tener el tipo del arreglo;
+                no pueden darse más valores que el tamaño (si el tamaño se conoce). */
+    public void arreglo(String id, String tipo, Atrib tam, ArrayList valores, int linea, int columna) {
+
+        /* Regla 1: el tamaño debe ser int (si ya falló, no repetir el mensaje) */
+        Integer tamano = null;
+        if (tam != null && !tam.tipo.equals("error")) {
+            if (!tam.tipo.equals("int")) {
+                tabla.errorSemantico(linea, columna, "el tamaño del arreglo '" + id
+                        + "' debe ser int y se encontró '" + tam.tipo + "'");
+            } else if (tam.valor != null) {
+                tamano = tam.valor;
+                if (tamano <= 0) {
+                    tabla.errorSemantico(linea, columna, "el tamaño del arreglo '" + id
+                            + "' debe ser mayor que 0 y es " + tamano);
+                    tamano = null;
+                }
+            }
+        }
+
+        if (valores == null) {
+            return;
+        }
+
+        /* Regla 2: todos los valores deben tener el tipo del arreglo (un solo mensaje) */
+        int malos = 0;
+        int primero = -1;
+        String tipoPrimero = null;
+        for (int k = 0; k < valores.size(); k++) {
+            Atrib v = (Atrib) valores.get(k);
+            if (!v.tipo.equals("error") && !v.tipo.equals(tipo)) {
+                malos++;
+                if (primero < 0) { primero = k; tipoPrimero = v.tipo; }
+            }
+        }
+        if (malos > 0) {
+            tabla.errorSemantico(linea, columna, "el arreglo '" + id + "' es de tipo '" + tipo + "' pero "
+                    + malos + " de sus " + valores.size() + " valores no lo son (el primero es el elemento "
+                    + primero + ", de tipo '" + tipoPrimero + "')");
+        }
+
+        /* Regla 3: no pueden sobrar valores si el tamaño se conoce */
+        if (tamano != null && valores.size() > tamano) {
+            tabla.errorSemantico(linea, columna, "el arreglo '" + id + "' tiene tamaño " + tamano
+                    + " pero se dieron " + valores.size() + " valores");
+        }
+    }
+
+    /* SEM: comprueba el acceso a un elemento de arreglo: nombre[indice].
+      Entrada: el símbolo del arreglo (puede ser null), su nombre, el índice y la posición.
+      Salida:  un Atrib con el tipo de los elementos del arreglo, o de tipo "error".
+       Los índices empiezan en 0: un arreglo de tamaño n tiene los índices 0 a n-1. */
+    public Atrib elemento(Simbolo s, String id, Atrib indice, int linea, int columna) {
+
+        /* Regla 1: si no existe o no es un arreglo, usarArreglo ya reportó el error */
+        if (s == null || !s.categoria.equals("arreglo")) {
+            return new Atrib("error", id);
+        }
+
+        /* Regla 2: el índice debe ser int (si ya falló, no repetir el mensaje) */
+        if (!indice.tipo.equals("error") && !indice.tipo.equals("int")) {
+            tabla.errorSemantico(linea, columna, "el índice del arreglo '" + id
+                    + "' debe ser int y se encontró '" + indice.tipo + "'");
+        }
+
+        /* Regla 3: si el índice es una constante, debe caer dentro del arreglo */
+        if (indice.valor != null) {
+            int v = indice.valor;
+            if (v < 0) {
+                tabla.errorSemantico(linea, columna, "el índice " + v + " del arreglo '" + id
+                        + "' no puede ser negativo");
+            } else if (s.elementos > 0 && v >= s.elementos) {
+                tabla.errorSemantico(linea, columna, "el índice " + v + " está fuera del arreglo '" + id
+                        + "' (índices válidos: 0 a " + (s.elementos - 1) + ")");
+            }
+        }
+
+        /* Regla 4: el elemento tiene el tipo del arreglo (el lugar guarda el nombre) */
+        return new Atrib(s.tipo, id);
+    }
+
     /* SEM: comprueba los tipos de una comparación (<, >, <=, >=, ==, !=).
       Entrada: los dos operandos, el operador y su posición.
       Salida:  siempre un Atrib de tipo "bool" (una comparación da verdadero o falso).
-      Reglas:  ==  y  !=  : mismo tipo, o los dos numéricos.  <  >  <=  >= : mismo tipo numérico, o char con char. */
+      Reglas:  ==  y  !=  : mismo tipo, o los dos numéricos.
+                <  >  <=  >= : mismo tipo numérico, o char con char. */
     public Atrib relacional(Atrib a, String op, Atrib b, int linea, int columna) {
 
         /* Regla 1: si alguno ya falló, no repetir el mensaje */
@@ -214,7 +357,7 @@ terminal LITERAL_INT;
 terminal LITERAL_FLOAT;
 terminal LITERAL_STRING;
 terminal LITERAL_CHAR;
-terminal String ID;                         
+terminal String ID;                         /* TS: el ID lleva su lexema */
 
 
 /* ============================================================
@@ -224,7 +367,7 @@ terminal String ID;
 non terminal programa;
 non terminal lista_globales;
 non terminal unidades_programa;
-non terminal String tipo;                   
+non terminal String tipo;                   /* TS */
 
 /* Valores */
 non terminal Atrib valor_numerico;
@@ -236,7 +379,7 @@ non terminal Atrib caracter_literal;
 non terminal Atrib condicion_control;
 
 /* Identificadores */
-non terminal String identificador;        
+non terminal String identificador;          /* TS */
 
 /* Delimitadores */
 non terminal abrir_bloque;
@@ -278,14 +421,14 @@ non terminal valor_escritura;
 /* Arreglos */
 non terminal Atrib indice;
 non terminal Atrib acceso_arreglo;
-non terminal Atrib creacion_arreglo;
-non terminal Atrib arreglo_con_tamano;
-non terminal Atrib arreglo_con_tamano_valores;
-non terminal Atrib arreglo_sin_tamano_valores;
-non terminal Integer lista_arreglo;                
-non terminal Integer inicio_lista_arreglo;
-non terminal Integer continuacion_lista_arreglo;
-non terminal Atrib modificacion_arreglo;
+non terminal creacion_arreglo;
+non terminal arreglo_con_tamano;
+non terminal arreglo_con_tamano_valores;
+non terminal arreglo_sin_tamano_valores;
+non terminal ArrayList lista_arreglo;
+non terminal ArrayList inicio_lista_arreglo;
+non terminal ArrayList continuacion_lista_arreglo;
+non terminal modificacion_arreglo;
 
 /* Operaciones aritméticas */
 non terminal String operador_suma;
@@ -343,13 +486,13 @@ non terminal break;
 non terminal return;
 
 /* Parámetros */
-non terminal Simbolo parametro;           
-non terminal ArrayList lista_parametros;   
-non terminal ArrayList parametros;          
+non terminal Simbolo parametro;             /* TS */
+non terminal ArrayList lista_parametros;    /* TS */
+non terminal ArrayList parametros;          /* TS */
 
 /* Funciones */
-non terminal encabezado_funcion;            
-non terminal encabezado_void;               
+non terminal encabezado_funcion;            /* TS */
+non terminal encabezado_void;               /* TS */
 non terminal funcion_no_void;
 non terminal funcion_void;
 non terminal principal;
@@ -365,25 +508,31 @@ start with programa;
                         VALORES
    ============================================================ */
 
-bool ::= TRUE  {: RESULT = new Atrib("bool", "true"); :}
+bool ::= TRUE   {: RESULT = new Atrib("bool", "true"); :}
       | FALSE  {: RESULT = new Atrib("bool", "false"); :} ;
 
-tipo ::= INT    {: RESULT = "int";    :}
+tipo ::= INT     {: RESULT = "int";    :}
       | FLOAT   {: RESULT = "float";  :}
       | BOOL    {: RESULT = "bool";   :}
       | CHAR    {: RESULT = "char";   :}
-      | STRING  {: RESULT = "string"; :} ;
+      | STRING  {: RESULT = "string"; :};
 
 valor_numerico ::= entero:e    {: RESULT = e;  :}
-                | flotante:f  {: RESULT = f;  :} ;
+              | flotante:f  {: RESULT = f;  :} ;
 
-entero ::= LITERAL_INT:v {: RESULT = new Atrib("int", String.valueOf(v)); :} ;
+entero ::= LITERAL_INT:v
+        {: Atrib a = new Atrib("int", String.valueOf(v));
+          a.valor = parser.aEntero(a.lugar);
+          RESULT = a; :} ;
 
-flotante ::= LITERAL_FLOAT :v {: RESULT = new Atrib("float", String.valueOf(v)); :} ;
+flotante ::= LITERAL_FLOAT :v
+        {: RESULT = new Atrib("float", String.valueOf(v)); :} ;
 
-cadena_texto ::= LITERAL_STRING :v {: RESULT = new Atrib("string", String.valueOf(v)); :} ;
+cadena_texto ::= LITERAL_STRING :v
+        {: RESULT = new Atrib("string", String.valueOf(v)); :} ;
 
-caracter_literal ::= LITERAL_CHAR :v {: RESULT = new Atrib("char", String.valueOf(v)); :} ;
+caracter_literal ::= LITERAL_CHAR :v
+        {: RESULT = new Atrib("char", String.valueOf(v)); :} ;
 
 
 /* ============================================================
@@ -428,18 +577,22 @@ palabraReturn ::= RETURN ;
 
 palabraPrint ::= PRINT ;
 
-
+/* TS: cada palabra le pone nombre al ámbito de su bloque */
+/* TS: principal se registra como procedimiento sin parámetros */
 Principal   ::= PRINCIPAL:p  {: parser.tabla.declararFuncion("principal", "void", null, pleft, pright); :} ;
 
-palabraIf   ::= IF   {: parser.tabla.siguienteAmbito("if");    :} ;
+palabraIf   ::= IF         {: parser.tabla.siguienteAmbito("if");    :} ;
 
-palabraElif ::= ELIF {: parser.tabla.siguienteAmbito("elif");  :} ;
+palabraElif ::= ELIF       {: parser.tabla.siguienteAmbito("elif");  :} ;
 
-palabraElse ::= ELSE {: parser.tabla.siguienteAmbito("else");  :} ;
+palabraElse ::= ELSE       {: parser.tabla.siguienteAmbito("else");  :} ;
 
-palabraWhile ::= WHILE   {: parser.tabla.siguienteAmbito("while"); :} ;
+palabraWhile ::= WHILE     {: parser.tabla.siguienteAmbito("while"); :} ;
 
-palabraFor  ::= FOR {: parser.tabla.abrirAmbito("for"); parser.tabla.siguienteAmbito("cuerpo for"); :} ;
+/* TS: el for abre su ámbito desde el inicio, porque la variable de
+   control (val int x Ͱ 9) se declara antes del ¿: */
+palabraFor  ::= FOR        {: parser.tabla.abrirAmbito("for");
+                              parser.tabla.siguienteAmbito("cuerpo for"); :} ;
 
 operadorPotencia ::= POT ;
 
@@ -449,7 +602,7 @@ escribir ::= WRITE ;
 
 
 /* ============================================================
-                VARIABLES
+                        VARIABLES
   TS: se declara la variable.
   SEM: si lleva valor inicial, se comprueba que el tipo del valor
         coincida con el tipo de la variable (parser.asignar).
@@ -458,56 +611,49 @@ escribir ::= WRITE ;
 def_variable ::=
       palabraVal INT    identificador:id fin_sentencia
       {: parser.tabla.declararVariable(id, "int", null, idleft, idright); :}
-
     | palabraVal FLOAT  identificador:id fin_sentencia
       {: parser.tabla.declararVariable(id, "float", null, idleft, idright); :}
-
     | palabraVal BOOL   identificador:id fin_sentencia
       {: parser.tabla.declararVariable(id, "bool", null, idleft, idright); :}
-
     | palabraVal CHAR   identificador:id fin_sentencia
       {: parser.tabla.declararVariable(id, "char", null, idleft, idright); :}
-
     | palabraVal STRING identificador:id fin_sentencia
       {: parser.tabla.declararVariable(id, "string", null, idleft, idright); :}
-
     | palabraVal INT    identificador:id asignacion:a expresion:e fin_sentencia:f
       {: parser.tabla.declararVariable(id, "int", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
         parser.asignar(id, "int", e, idleft, idright); :}
-
     | palabraVal FLOAT  identificador:id asignacion:a expresion:e fin_sentencia:f
       {: parser.tabla.declararVariable(id, "float", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
         parser.asignar(id, "float", e, idleft, idright); :}
-
     | palabraVal BOOL   identificador:id asignacion:a expresion:e fin_sentencia:f
       {: parser.tabla.declararVariable(id, "bool", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
         parser.asignar(id, "bool", e, idleft, idright); :}
-
     | palabraVal CHAR   identificador:id asignacion:a expresion:e fin_sentencia:f
       {: parser.tabla.declararVariable(id, "char", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
         parser.asignar(id, "char", e, idleft, idright); :}
-
     | palabraVal STRING identificador:id asignacion:a expresion:e fin_sentencia:f
       {: parser.tabla.declararVariable(id, "string", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-        parser.asignar(id, "string", e, idleft, idright); :};
+        parser.asignar(id, "string", e, idleft, idright); :}
+    ;
 
 /* SEM: asignar a una variable que ya existe. El tipo de la variable se
    lee de la tabla de símbolos; si no está declarada, usar() devuelve null. */
 asignacion_variable ::= identificador:id asignacion expresion:e fin_sentencia
                         {: Simbolo s = parser.tabla.usar(id, idleft, idright);
-                        if (s != null) { parser.asignar(id, s.tipo, e, idleft, idright); } :} ;
+                          if (s != null) { parser.asignar(id, s.tipo, e, idleft, idright); } :} ;
 
 lista_globales ::= /* vacío */
     | def_variable lista_globales
     | creacion_arreglo lista_globales
-    | error fin_sentencia lista_globales ;
+    | error fin_sentencia lista_globales
+    ;
 
 
 /* ============================================================
-                ENTRADA Y SALIDA
+                    ENTRADA Y SALIDA
    ============================================================ */
 
-lectura ::= leer identificador:id fin_sentencia   {: parser.tabla.usar(id, idleft, idright); :}
+lectura ::= leer identificador:id fin_sentencia                  {: parser.tabla.usar(id, idleft, idright); :}
           | leer acceso_arreglo fin_sentencia
           | leer PARENOP identificador:id PARENCL fin_sentencia  {: parser.tabla.usar(id, idleft, idright); :}
           | leer PARENOP acceso_arreglo PARENCL fin_sentencia
@@ -520,11 +666,7 @@ impresion ::= palabraPrint PARENOP lista_valores PARENCL fin_sentencia ;
 
 lista_valores ::= valor_escritura | valor_escritura coma lista_valores ;
 
-valor_escritura ::= entero 
-                  | flotante 
-                  | bool 
-                  | cadena_texto 
-                  | caracter_literal
+valor_escritura ::= entero | flotante | bool | cadena_texto | caracter_literal
                   | identificador:id  {: parser.tabla.usar(id, idleft, idright); :}
                   | acceso_arreglo ;
 
@@ -532,46 +674,55 @@ valor_escritura ::= entero
                 ARREGLOS
    ============================================================ */
 
-indice ::= expresion_aritmetica ;
+indice ::= expresion_aritmetica:e  {: RESULT = e; :} ;
 
-acceso_arreglo ::= identificador:id abrir_corcheteCuadrados indice cerrar_corcheteCuadrados
-                  {: parser.tabla.usarArreglo(id, idleft, idright); :} ;
+acceso_arreglo ::= identificador:id abrir_corcheteCuadrados indice:i cerrar_corcheteCuadrados
+                  {: Simbolo s = parser.tabla.usarArreglo(id, idleft, idright);
+                      RESULT = parser.elemento(s, id, i, idleft, idright); :} ;
 
 creacion_arreglo ::= arreglo_con_tamano | arreglo_con_tamano_valores | arreglo_sin_tamano_valores ;
 
+/* TS: las llaves de la lista de valores usan OPBLOCK/CLBLOCK directo,
+   para que no abran un ámbito nuevo */
 arreglo_con_tamano ::=
-      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice cerrar_corcheteCuadrados:c fin_sentencia
-      {: parser.tabla.declararArreglo(id, "int", parser.textoEntre(aleft, aright, cleft, cright), 0, null, idleft, idright); :}
-
-    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice cerrar_corcheteCuadrados:c fin_sentencia
-      {: parser.tabla.declararArreglo(id, "float", parser.textoEntre(aleft, aright, cleft, cright), 0, null, idleft, idright); :}
+      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c fin_sentencia
+      {: parser.tabla.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), 0, null, idleft, idright);
+        parser.arreglo(id, "int", i, null, idleft, idright); :}
+    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c fin_sentencia
+      {: parser.tabla.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), 0, null, idleft, idright);
+        parser.arreglo(id, "float", i, null, idleft, idright); :}
     ;
 
 arreglo_con_tamano_valores ::=
-      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
-      {: parser.tabla.declararArreglo(id, "int", parser.textoEntre(aleft, aright, cleft, cright), n, "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright); :}
+      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
+      {: parser.tabla.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
+        parser.arreglo(id, "int", i, n, idleft, idright); :}
 
-    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
-      {: parser.tabla.declararArreglo(id, "float", parser.textoEntre(aleft, aright, cleft, cright), n, "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright); :}
+    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
+      {: parser.tabla.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
+        parser.arreglo(id, "float", i, n, idleft, idright); :}
     ;
 
 arreglo_sin_tamano_valores ::=
       palabraVal INT   identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
-      {: parser.tabla.declararArreglo(id, "int", null, n, "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright); :}
+      {: parser.tabla.declararArreglo(id, "int", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
+        parser.arreglo(id, "int", null, n, idleft, idright); :}
 
     | palabraVal FLOAT identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
-      {: parser.tabla.declararArreglo(id, "float", null, n, "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright); :}
+      {: parser.tabla.declararArreglo(id, "float", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
+        parser.arreglo(id, "float", null, n, idleft, idright); :}
     ;
 
 
-lista_arreglo ::= inicio_lista_arreglo:n  {: RESULT = n; :} ;
+/* SEM: la lista guarda cada valor con su tipo (Atrib). El tamaño de la lista es n.size() */
+lista_arreglo ::= inicio_lista_arreglo:l  {: RESULT = l; :} ;
 
-inicio_lista_arreglo ::= expresion_aritmetica continuacion_lista_arreglo:n  {: RESULT = n + 1; :} ;
+inicio_lista_arreglo ::= expresion_aritmetica:e continuacion_lista_arreglo:l  {: l.add(0, e); RESULT = l; :} ;
 
-continuacion_lista_arreglo ::= coma expresion_aritmetica continuacion_lista_arreglo:n  {: RESULT = n + 1; :}
-                             | /* vacío */  {: RESULT = 0; :} ;
+continuacion_lista_arreglo ::= coma expresion_aritmetica:e continuacion_lista_arreglo:l  {: l.add(0, e); RESULT = l; :}
+                             | /* vacío */  {: RESULT = new ArrayList(); :} ;
 
-modificacion_arreglo ::= acceso_arreglo asignacion expresion fin_sentencia ;
+modificacion_arreglo ::= acceso_arreglo:a asignacion expresion:e fin_sentencia  {: parser.asignar(a.lugar, a.tipo, e, aleft, aright); :} ;
 
 
 /* ============================================================
@@ -588,30 +739,23 @@ operador_multiplicacion ::= MULTIPLY   {: RESULT = "*";  :}
 
 expresion_aritmetica ::= expresion_mod:e  {: RESULT = e; :} ;
 
-expresion_mod ::= expresion_mod:a MOD:m expresion_multiplicacion:b
-                  {: RESULT = parser.aritmetica(a, "mod", b, mleft, mright); :}
+expresion_mod ::= expresion_mod:a MOD:m expresion_multiplicacion:b  {: RESULT = parser.aritmetica(a, "mod", b, mleft, mright); :}
                 | expresion_multiplicacion:e  {: RESULT = e; :} ;
 
-expresion_multiplicacion ::= expresion_multiplicacion:a operador_multiplicacion:op expresion_suma:b
-                            {: RESULT = parser.aritmetica(a, op, b, opleft, opright); :}
-
+expresion_multiplicacion ::= expresion_multiplicacion:a operador_multiplicacion:op expresion_suma:b {: RESULT = parser.aritmetica(a, op, b, opleft, opright); :}
                           | expresion_suma:e  {: RESULT = e; :} ;
 
-expresion_suma ::= expresion_suma:a operador_suma:op expresion_unaria:b
-                  {: RESULT = parser.aritmetica(a, op, b, opleft, opright); :}
-
+expresion_suma ::= expresion_suma:a operador_suma:op expresion_unaria:b {: RESULT = parser.aritmetica(a, op, b, opleft, opright); :}
                 | expresion_unaria:e  {: RESULT = e; :} ;
 
-expresion_unaria ::= MINUS valor_numerico:v  {: RESULT = new Atrib(v.tipo, "-" + v.lugar); :}
-
+expresion_unaria ::= MINUS valor_numerico:v  {: RESULT = parser.negativo(v); :}
                   | expresion_potencia:e    {: RESULT = e; :} ;
 
 expresion_potencia ::= valor_aritmetico:e  {: RESULT = e; :}
-                    | valor_aritmetico:a operadorPotencia:p exponente:b
-                      {: RESULT = parser.aritmetica(a, "pot", b, pleft, pright); :} ;
+                    | valor_aritmetico:a operadorPotencia:p exponente:b {: RESULT = parser.aritmetica(a, "pot", b, pleft, pright); :} ;
 
 exponente ::= valor_aritmetico:e        {: RESULT = e; :}
-            | MINUS valor_numerico:v    {: RESULT = new Atrib(v.tipo, "-" + v.lugar); :} ;
+            | MINUS valor_numerico:v    {: RESULT = parser.negativo(v); :} ;
 
 valor_aritmetico ::= valor_numerico:v   {: RESULT = v; :}
                   |  identificador:id
@@ -619,7 +763,7 @@ valor_aritmetico ::= valor_numerico:v   {: RESULT = v; :}
                         if (s == null) { RESULT = new Atrib("error", id); }
                         else           { RESULT = new Atrib(s.tipo, id); } :}
 
-                  | acceso_arreglo       {: RESULT = new Atrib("error", "?"); :}
+                  | acceso_arreglo:a     {: RESULT = a; :}
                   | llamada_funcion      {: RESULT = new Atrib("error", "?"); :}
                   | cadena_texto:c       {: RESULT = c; :}
                   | caracter_literal:c   {: RESULT = c; :}
@@ -644,8 +788,7 @@ operando_relacional ::= valor_aritmetico:v  {: RESULT = v; :}
                       | bool:b              {: RESULT = b; :}
                       | abrir_corcheteCuadrados expresion:e cerrar_corcheteCuadrados  {: RESULT = e; :} ;
 
-operacion_relacional ::= operando_relacional:a operadorRelacional:op operando_relacional:b
-                        {: RESULT = parser.relacional(a, op, b, opleft, opright); :} ;
+operacion_relacional ::= operando_relacional:a operadorRelacional:op operando_relacional:b {: RESULT = parser.relacional(a, op, b, opleft, opright); :} ;
 
 
 /* ============================================================
@@ -653,17 +796,16 @@ operacion_relacional ::= operando_relacional:a operadorRelacional:op operando_re
    ============================================================ */
 
 condicion_basica ::= PARENOP operacion_relacional:e PARENCL  {: RESULT = e; :}
-                  | PARENOP bool:e PARENCL        {: RESULT = e; :}
-                  | PARENOP condicion_basica:e PARENCL   {: RESULT = e; :}
-                  | condiciones_logicas:e           {: RESULT = e; :}
-                  | negacion:e                    {: RESULT = e; :} ;
+                  | PARENOP bool:e PARENCL                  {: RESULT = e; :}
+                  | PARENOP condicion_basica:e PARENCL      {: RESULT = e; :}
+                  | condiciones_logicas:e                   {: RESULT = e; :}
+                  | negacion:e               {: RESULT = e; :} ;
 
-operando_logico ::= condicion_basica:e     {: RESULT = e; :}
+operando_logico ::= condicion_basica:e                       {: RESULT = e; :}
                   | PARENOP expresion_aritmetica:e PARENCL   {: RESULT = e; :} ;
 
 condiciones_and ::= operando_logico:a AND:o operando_logico:b
                     {: RESULT = parser.logica(a, "and", b, oleft, oright); :}
-
                   | condiciones_and:a AND:o operando_logico:b
                     {: RESULT = parser.logica(a, "and", b, oleft, oright); :} ;
 
@@ -672,16 +814,16 @@ condiciones_or ::= operando_logico:a OR:o operando_logico:b
 
                 | condiciones_and:a OR:o operando_logico:b
                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
-                
+
                 | operando_logico:a OR:o condiciones_and:b
                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
-                
+
                 | condiciones_and:a OR:o condiciones_and:b
                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
-                
+
                 | condiciones_or:a OR:o operando_logico:b
                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
-                
+                  
                 | condiciones_or:a OR:o condiciones_and:b
                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :} ;
 
@@ -694,13 +836,13 @@ expresion_logica ::= condiciones_and:e  {: RESULT = e; :}
                   | condiciones_or:e   {: RESULT = e; :}
                   | negacion:e         {: RESULT = e; :} ;
 
-condicion_control ::= operacion_relacional:e       {: RESULT = e; :}
-                    | condiciones_and:e       {: RESULT = e; :}
-                    | condiciones_or:e    {: RESULT = e; :}
-                    | negacion:e         {: RESULT = e; :}
-                    | bool:e        {: RESULT = e; :}
+condicion_control ::= operacion_relacional:e                   {: RESULT = e; :}
+                    | condiciones_and:e                        {: RESULT = e; :}
+                    | condiciones_or:e                         {: RESULT = e; :}
+                    | negacion:e                               {: RESULT = e; :}
+                    | bool:e                                   {: RESULT = e; :}
                     | PARENOP operacion_relacional:e PARENCL   {: RESULT = e; :}
-                    | PARENOP bool:e PARENCL       {: RESULT = e; :} ;
+                    | PARENOP bool:e PARENCL                   {: RESULT = e; :} ;
 
 
 /* ============================================================
@@ -714,8 +856,7 @@ expresion ::= expresion_aritmetica:e  {: RESULT = e; :}
 
 lista_expresiones ::= /* vacío */ | expresiones ;
 
-expresiones ::= expresion 
-            | expresion coma expresiones ;
+expresiones ::= expresion | expresion coma expresiones ;
 
 llamada_funcion ::= identificador:id PARENOP lista_expresiones PARENCL
                     {: parser.tabla.usarFuncion(id, idleft, idright); :} ;
@@ -747,18 +888,14 @@ while ::= palabraWhile PARENOP condicion_control PARENCL abrir_bloque bloque cer
 /* TS: al terminar el for se cierra el ámbito que abrió palabraFor */
 for ::= palabraFor PARENOP inicio_for fin_sentencia condicion_for fin_sentencia incremento_for PARENCL abrir_bloque bloque cerrar_bloque
         {: parser.tabla.cerrarAmbito(); :}
-
       | palabraFor error abrir_bloque bloque cerrar_bloque
         {: parser.tabla.cerrarAmbito(); :}
       ;
 
 inicio_for ::= /* vacío */
-            | identificador:id asignacion expresion
-              {: parser.tabla.usar(id, idleft, idright); :}
+            | identificador:id asignacion expresion{: parser.tabla.usar(id, idleft, idright); :}
 
-            | palabraVal tipo:t identificador:id asignacion:a expresion
-              {: parser.tabla.declararVariable(id, t, parser.textoDesde(aleft, aright), idleft, idright); :}
-            ;
+            | palabraVal tipo:t identificador:id asignacion:a expresion{: parser.tabla.declararVariable(id, t, parser.textoDesde(aleft, aright), idleft, idright); :};
 
 condicion_for ::= /* vacío */   operacion_relacional
                 | expresion_logica
@@ -769,8 +906,7 @@ condicion_for ::= /* vacío */   operacion_relacional
 incremento_for ::= /* vacío */
                 | operacion_incremento
                 | expresion_aritmetica
-                | identificador:id asignacion expresion {: parser.tabla.usar(id, idleft, idright); :}
-                ;
+                | identificador:id asignacion expresion  {: parser.tabla.usar(id, idleft, idright); :};
 
 estructura_control ::= if | while | for ;
 
@@ -806,32 +942,32 @@ bloque ::= /* vacío */ | lista_instrucciones ;
 
 
 /* ============================================================
-                      PARÁMETROS
+                    PARÁMETROS
    ============================================================ */
 
 parametro ::= tipo:t identificador:id
               {: RESULT = new Simbolo(id, t, Simbolo.PARAMETRO, idleft, idright); :} ;
 
-lista_parametros ::= /* vacío */      {: RESULT = new ArrayList(); :}
+lista_parametros ::= /* vacío */ {: RESULT = new ArrayList(); :}
                   | parametros:l     {: RESULT = l; :} ;
 
-parametros ::= parametro:p{: ArrayList l = new ArrayList(); l.add(p); RESULT = l; :}
+parametros ::= parametro:p {: ArrayList l = new ArrayList(); l.add(p); RESULT = l; :}
 
-          | parametro:p coma parametros:l {: l.add(0, p); RESULT = l; :} ;
+            | parametro:p coma parametros:l {: l.add(0, p); RESULT = l; :} ;
 
 
 /* ============================================================
                         FUNCIONES
    ============================================================ */
 
+/* TS: el encabezado se reduce ANTES del cuerpo, así la función ya existe
+   (permite recursión) y sus parámetros entran al ámbito del cuerpo */
+encabezado_funcion ::= tipo:t identificador:id PARENOP lista_parametros:p PARENCL {: parser.tabla.declararFuncion(id, t, p, idleft, idright); :} ;
 
-encabezado_funcion ::= tipo:t identificador:id PARENOP lista_parametros:p PARENCL
-                      {: parser.tabla.declararFuncion(id, t, p, idleft, idright); :} ;
-
-encabezado_void ::= VOID identificador:id PARENOP lista_parametros:p PARENCL
-                    {: parser.tabla.declararFuncion(id, "void", p, idleft, idright); :} ;
+encabezado_void ::= VOID identificador:id PARENOP lista_parametros:p PARENCL {: parser.tabla.declararFuncion(id, "void", p, idleft, idright); :} ;
 
 funcion_no_void ::= encabezado_funcion abrir_bloque bloque cerrar_bloque
+
                   | tipo error abrir_bloque bloque cerrar_bloque ;
 
 funcion_void ::= encabezado_void abrir_bloque bloque cerrar_bloque ;
