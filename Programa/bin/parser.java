@@ -4,6 +4,7 @@
 //----------------------------------------------------
 
 import java_cup.runtime.*;
+import java.util.List;
 import java.util.ArrayList;
 import java_cup.runtime.XMLElement;
 
@@ -1161,8 +1162,8 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* SEM: comprueba los tipos de una operación aritmética.
-       Entrada: los dos operandos (con su tipo), el operador y su posición.
-       Salida:  un Atrib con el tipo del resultado, o de tipo "error".
+      Entrada: los dos operandos (con su tipo), el operador y su posición.
+      Salida:  un Atrib con el tipo del resultado, o de tipo "error".
        Restricción: int y float no se mezclan (tipado fuerte). */
     public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
 
@@ -1264,7 +1265,7 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* SEM: comprueba que el valor tenga el mismo tipo que la variable.
-       Entrada: nombre y tipo de la variable, el valor (con su tipo) y la posición.
+    Entrada: nombre y tipo de la variable, el valor (con su tipo) y la posición.
        Salida:  ninguna; si no coinciden, reporta un error semántico. */
     public void asignar(String nombre, String tipoVar, Atrib valor, int linea, int columna) {
 
@@ -1281,9 +1282,9 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* SEM: comprueba la declaración de un arreglo.
-       Entrada: nombre, tipo de los elementos, el tamaño (puede ser null), la lista de
+      Entrada: nombre, tipo de los elementos, el tamaño (puede ser null), la lista de
                 valores iniciales (puede ser null) y la posición.
-       Reglas:  el tamaño debe ser una expresión int y mayor que cero;
+      Reglas:  el tamaño debe ser una expresión int y mayor que cero;
                 cada valor debe tener el tipo del arreglo;
                 no pueden darse más valores que el tamaño (si el tamaño se conoce). */
     public void arreglo(String id, String tipo, Atrib tam, ArrayList valores, int linea, int columna) {
@@ -1333,8 +1334,8 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* SEM: comprueba el acceso a un elemento de arreglo: nombre[indice].
-       Entrada: el símbolo del arreglo (puede ser null), su nombre, el índice y la posición.
-       Salida:  un Atrib con el tipo de los elementos del arreglo, o de tipo "error".
+      Entrada: el símbolo del arreglo (puede ser null), su nombre, el índice y la posición.
+      Salida:  un Atrib con el tipo de los elementos del arreglo, o de tipo "error".
        Los índices empiezan en 0: un arreglo de tamaño n tiene los índices 0 a n-1. */
     public Atrib elemento(Simbolo s, String id, Atrib indice, int linea, int columna) {
 
@@ -1366,9 +1367,9 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* SEM: comprueba los tipos de una comparación (<, >, <=, >=, ==, !=).
-       Entrada: los dos operandos, el operador y su posición.
-       Salida:  siempre un Atrib de tipo "bool" (una comparación da verdadero o falso).
-       Reglas:  ==  y  !=  : mismo tipo, o los dos numéricos.
+      Entrada: los dos operandos, el operador y su posición.
+      Salida:  siempre un Atrib de tipo "bool" (una comparación da verdadero o falso).
+      Reglas:  ==  y  !=  : mismo tipo, o los dos numéricos.
                 <  >  <=  >= : mismo tipo numérico, o char con char. */
     public Atrib relacional(Atrib a, String op, Atrib b, int linea, int columna) {
 
@@ -1432,6 +1433,57 @@ public class parser extends java_cup.runtime.lr_parser {
 
         return new Atrib("bool", "?");
     }
+
+
+    /*SEM: valida llamada de funciones */
+    public Atrib validarLlamada(String nombre, List<Atrib> argumentos, int linea, int columna) {
+        // 1. Buscar la función declarada.
+        Simbolo funcion = tabla.usarFuncion(nombre, linea, columna);
+
+        // 2. Si no existe o no es una función, detener la validación.
+        if (funcion == null || !funcion.esFuncion()) {
+            return new Atrib("error", "?");
+        }
+
+        // 3. Obtener los parámetros formales.
+        List<Simbolo> parametros = funcion.parametros;
+
+        // 4. Comprobar que coincida la cantidad de argumentos.
+        if (argumentos.size() != parametros.size()) {
+            tabla.errorSemantico(
+                linea,
+                columna,
+                "la función '" + nombre + "' espera "
+                + parametros.size() + " argumentos, pero recibió "
+                + argumentos.size()
+            );
+            return new Atrib("error", "?");
+        }
+
+        // 5. Comparar los tipos de cada argumento.
+        for (int i = 0; i < argumentos.size(); i++) {
+
+            String tipoEsperado = parametros.get(i).tipo;
+            String tipoRecibido = argumentos.get(i).tipo;
+
+                if (!tipoEsperado.equals(tipoRecibido)) {
+
+                tabla.errorSemantico(
+                    linea,
+                    columna,
+                    "el argumento " + (i + 1) + " de la función '"
+                    + nombre + "' debe ser de tipo " + tipoEsperado
+                    + ", pero se recibió " + tipoRecibido
+                );
+
+                return new Atrib("error", "?");
+            }
+        }
+
+        // 6. La llamada es válida: devolver el tipo de retorno.
+        return new Atrib(funcion.tipo, nombre);
+    }
+
 
 
 /** Cup generated class to encapsulate user supplied action code.*/
@@ -1567,8 +1619,8 @@ class CUP$parser$actions {
 		int vright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object v = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 Atrib a = new Atrib("int", String.valueOf(v));
-           a.valor = parser.aEntero(a.lugar);
-           RESULT = a; 
+          a.valor = parser.aEntero(a.lugar);
+          RESULT = a; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("entero",5, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1791,7 +1843,7 @@ class CUP$parser$actions {
             {
               Object RESULT =null;
 		 parser.tabla.abrirAmbito("for");
-                               parser.tabla.siguienteAmbito("cuerpo for"); 
+                              parser.tabla.siguienteAmbito("cuerpo for"); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("palabraFor",30, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1900,7 +1952,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "int", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "int", e, idleft, idright); 
+        parser.asignar(id, "int", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1922,7 +1974,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "float", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "float", e, idleft, idright); 
+        parser.asignar(id, "float", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1944,7 +1996,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "bool", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "bool", e, idleft, idright); 
+        parser.asignar(id, "bool", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1966,7 +2018,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "char", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "char", e, idleft, idright); 
+        parser.asignar(id, "char", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -1988,7 +2040,7 @@ class CUP$parser$actions {
 		int fright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Object f = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.tabla.declararVariable(id, "string", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
-         parser.asignar(id, "string", e, idleft, idright); 
+        parser.asignar(id, "string", e, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",34, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2004,7 +2056,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 Simbolo s = parser.tabla.usar(id, idleft, idright);
-                           if (s != null) { parser.asignar(id, s.tipo, e, idleft, idright); } 
+                          if (s != null) { parser.asignar(id, s.tipo, e, idleft, idright); } 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("asignacion_variable",35, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2270,7 +2322,7 @@ class CUP$parser$actions {
 		int cright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Object c = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.tabla.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), 0, null, idleft, idright);
-         parser.arreglo(id, "int", i, null, idleft, idright); 
+        parser.arreglo(id, "int", i, null, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("arreglo_con_tamano",44, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-6)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2292,7 +2344,7 @@ class CUP$parser$actions {
 		int cright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Object c = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.tabla.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), 0, null, idleft, idright);
-         parser.arreglo(id, "float", i, null, idleft, idright); 
+        parser.arreglo(id, "float", i, null, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("arreglo_con_tamano",44, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-6)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2323,7 +2375,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Object e = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.tabla.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "int", i, n, idleft, idright); 
+        parser.arreglo(id, "int", i, n, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("arreglo_con_tamano_valores",45, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-10)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2354,7 +2406,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Object e = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.tabla.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "float", i, n, idleft, idright); 
+        parser.arreglo(id, "float", i, n, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("arreglo_con_tamano_valores",45, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-10)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2376,7 +2428,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Object e = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.tabla.declararArreglo(id, "int", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "int", null, n, idleft, idright); 
+        parser.arreglo(id, "int", null, n, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("arreglo_sin_tamano_valores",46, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-9)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2398,7 +2450,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Object e = (Object)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.tabla.declararArreglo(id, "float", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "float", null, n, idleft, idright); 
+        parser.arreglo(id, "float", null, n, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("arreglo_sin_tamano_valores",46, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-9)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3347,8 +3399,8 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 153: // lista_expresiones ::= 
             {
-              Object RESULT =null;
-
+              List<Atrib> RESULT =null;
+		 RESULT = new ArrayList<Atrib>(); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("lista_expresiones",73, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3356,8 +3408,11 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 154: // lista_expresiones ::= expresiones 
             {
-              Object RESULT =null;
-
+              List<Atrib> RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		List<Atrib> e = (List<Atrib>)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		 RESULT = e; 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("lista_expresiones",73, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3365,8 +3420,15 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 155: // expresiones ::= expresion 
             {
-              Object RESULT =null;
-
+              List<Atrib> RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		
+                      ArrayList<Atrib> lista = new ArrayList<Atrib>();
+                      lista.add(e);
+                      RESULT = lista;
+                    
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresiones",74, ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3374,8 +3436,17 @@ class CUP$parser$actions {
           /*. . . . . . . . . . . . . . . . . . . .*/
           case 156: // expresiones ::= expresion coma expresiones 
             {
-              Object RESULT =null;
-
+              List<Atrib> RESULT =null;
+		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)).right;
+		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-2)).value;
+		int lleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
+		int lright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
+		List<Atrib> l = (List<Atrib>)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
+		
+                      l.add(0, e);
+                      RESULT = l;
+                    
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresiones",74, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3387,7 +3458,10 @@ class CUP$parser$actions {
 		int idleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)).left;
 		int idright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)).right;
 		String id = (String)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-3)).value;
-		 parser.tabla.usarFuncion(id, idleft, idright); 
+		int argsleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
+		int argsright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
+		List<Atrib> args = (List<Atrib>)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
+		 RESULT = parser.validarLlamada(id, args, idleft, idright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("llamada_funcion",75, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;

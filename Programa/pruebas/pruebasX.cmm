@@ -1,0 +1,12 @@
+val int _i_ Ͱ 5»
+val int _arr_ʃ:20:ʅ»
+
+bool _func2_  є: bool _b1_, int _i1_ :э   ¿: 
+	val int x» |sintactico
+	return» |generar error con -5.6 y con i1
+  :?
+
+void principal є:  :э  ¿: | semantico tipo void
+	_arr_ʃ:67+_i_:ʅ  Ͱ -1 + 1010»  | semantico
+    _func2_ є: "true", 5 :э »
+:?

@@ -1,4 +1,5 @@
 import java_cup.runtime.*;
+import java.util.List;
 import java.util.ArrayList;
 
 
@@ -316,6 +317,57 @@ parser code {:
 
         return new Atrib("bool", "?");
     }
+
+
+    /*SEM: valida llamada de funciones */
+    public Atrib validarLlamada(String nombre, List<Atrib> argumentos, int linea, int columna) {
+        // 1. Buscar la función declarada.
+        Simbolo funcion = tabla.usarFuncion(nombre, linea, columna);
+
+        // 2. Si no existe o no es una función, detener la validación.
+        if (funcion == null || !funcion.esFuncion()) {
+            return new Atrib("error", "?");
+        }
+
+        // 3. Obtener los parámetros formales.
+        List<Simbolo> parametros = funcion.parametros;
+
+        // 4. Comprobar que coincida la cantidad de argumentos.
+        if (argumentos.size() != parametros.size()) {
+            tabla.errorSemantico(
+                linea,
+                columna,
+                "la función '" + nombre + "' espera "
+                + parametros.size() + " argumentos, pero recibió "
+                + argumentos.size()
+            );
+            return new Atrib("error", "?");
+        }
+
+        // 5. Comparar los tipos de cada argumento.
+        for (int i = 0; i < argumentos.size(); i++) {
+
+            String tipoEsperado = parametros.get(i).tipo;
+            String tipoRecibido = argumentos.get(i).tipo;
+
+                if (!tipoEsperado.equals(tipoRecibido)) {
+
+                tabla.errorSemantico(
+                    linea,
+                    columna,
+                    "el argumento " + (i + 1) + " de la función '"
+                    + nombre + "' debe ser de tipo " + tipoEsperado
+                    + ", pero se recibió " + tipoRecibido
+                );
+
+                return new Atrib("error", "?");
+            }
+        }
+
+        // 6. La llamada es válida: devolver el tipo de retorno.
+        return new Atrib(funcion.tipo, nombre);
+    }
+
 :};
 
 /* ============================================================
@@ -459,8 +511,8 @@ non terminal Atrib expresion_logica;
 
 /* Expresiones y funciones */
 non terminal Atrib expresion;
-non terminal lista_expresiones;
-non terminal expresiones;
+non terminal List<Atrib> lista_expresiones;
+non terminal List<Atrib> expresiones;
 non terminal llamada_funcion;
 
 /* Estructuras de control */
@@ -854,12 +906,25 @@ expresion ::= expresion_aritmetica:e  {: RESULT = e; :}
             | expresion_logica:l      {: RESULT = l; :}
             | bool:b                  {: RESULT = b; :} ;
 
-lista_expresiones ::= /* vacío */ | expresiones ;
+lista_expresiones ::= /* vacío */ {: RESULT = new ArrayList<Atrib>(); :}
+                    | expresiones:e {: RESULT = e; :} ;
 
-expresiones ::= expresion | expresion coma expresiones ;
+expresiones ::= 
+                    expresion:e
+                    {:
+                      ArrayList<Atrib> lista = new ArrayList<Atrib>();
+                      lista.add(e);
+                      RESULT = lista;
+                    :}
+                    | expresion:e coma expresiones:l 
+                    {:
+                      l.add(0, e);
+                      RESULT = l;
+                    :}
+                    ;
 
-llamada_funcion ::= identificador:id PARENOP lista_expresiones PARENCL
-                    {: parser.tabla.usarFuncion(id, idleft, idright); :} ;
+llamada_funcion ::= identificador:id PARENOP lista_expresiones:args PARENCL
+                    {: RESULT = parser.validarLlamada(id, args, idleft, idright); :} ;
 
 
 /* ============================================================
