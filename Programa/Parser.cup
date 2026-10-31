@@ -164,14 +164,14 @@ non terminal modificacion_arreglo;
 /* Operaciones aritméticas */
 non terminal operador_suma;
 non terminal operador_multiplicacion;
-non terminal expresion_aritmetica;
-non terminal expresion_mod;
-non terminal expresion_suma;
-non terminal expresion_multiplicacion;
-non terminal expresion_unaria;
-non terminal expresion_potencia;
-non terminal exponente;
-non terminal valor_aritmetico;
+non terminal Atrib expresion_aritmetica;
+non terminal Atrib expresion_mod;
+non terminal Atrib expresion_suma;
+non terminal Atrib expresion_multiplicacion;
+non terminal Atrib expresion_unaria;
+non terminal Atrib expresion_potencia;
+non terminal Atrib exponente;
+non terminal Atrib valor_aritmetico;
 non terminal operacion_incremento;
 
 /* Operaciones relacionales */
@@ -249,8 +249,9 @@ tipo ::= INT     {: RESULT = "int";    :}
        | STRING  {: RESULT = "string"; :}
        ;
 
-valor_numerico ::= entero:e    {: RESULT = e; System.err.println("DEBUG: " + e.tipo + " " + e.lugar); :}
-                 | flotante:f  {: RESULT = f; System.err.println("DEBUG: " + f.tipo + " " + f.lugar); :} ;
+valor_numerico ::= entero:e    {: RESULT = e;  :}
+                 | flotante:f  {: RESULT = f;  :} ;
+                 
 entero ::= LITERAL_INT:v  
         {: RESULT = new Atrib("int", String.valueOf(v)); :} ;
 
@@ -442,27 +443,36 @@ operador_suma ::= PLUS | MINUS ;
 
 operador_multiplicacion ::= MULTIPLY | FLOATDIV | ENTIREDIV ;
 
-expresion_aritmetica ::= expresion_mod ;
+expresion_aritmetica ::= expresion_mod:e  {: RESULT = e; :} ;
 
-expresion_mod ::= expresion_mod MOD expresion_multiplicacion | expresion_multiplicacion ;
+expresion_mod ::= expresion_mod:a MOD expresion_multiplicacion:b  {: RESULT = a; :}
+                | expresion_multiplicacion:e                      {: RESULT = e; :} ;
 
-expresion_multiplicacion ::= expresion_multiplicacion operador_multiplicacion expresion_suma | expresion_suma ;
+expresion_multiplicacion ::= expresion_multiplicacion:a operador_multiplicacion expresion_suma:b  {: RESULT = a; :}
+                           | expresion_suma:e                                                      {: RESULT = e; :} ;
 
-expresion_suma ::= expresion_suma operador_suma expresion_unaria | expresion_unaria ;
+expresion_suma ::= expresion_suma:a operador_suma expresion_unaria:b  {: RESULT = a; :}
+                 | expresion_unaria:e                                  {: RESULT = e; :} ;
 
-expresion_unaria ::= MINUS valor_numerico | expresion_potencia ;
+expresion_unaria ::= MINUS valor_numerico:v  {: RESULT = new Atrib(v.tipo, "-" + v.lugar); :}
+                   | expresion_potencia:e    {: RESULT = e; :} ;
 
-expresion_potencia ::= valor_aritmetico | valor_aritmetico operadorPotencia exponente ;
+expresion_potencia ::= valor_aritmetico:e                                   {: RESULT = e; :}
+                     | valor_aritmetico:a operadorPotencia exponente:b      {: RESULT = a; :} ;
 
-exponente ::= valor_aritmetico | MINUS valor_numerico ;
+exponente ::= valor_aritmetico:e        {: RESULT = e; :}
+            | MINUS valor_numerico:v    {: RESULT = new Atrib(v.tipo, "-" + v.lugar); :} ;
 
-valor_aritmetico ::= valor_numerico
-                   | identificador:id  {: parser.tabla.usar(id, idleft, idright); :}
-                   | acceso_arreglo
-                   | llamada_funcion
-                   | cadena_texto
-                   | caracter_literal
-                   | PARENOP expresion_aritmetica PARENCL ;
+valor_aritmetico ::= valor_numerico:v   {: RESULT = v; :}
+                   |  identificador:id
+                    {: Simbolo s = parser.tabla.usar(id, idleft, idright);
+                        if (s == null) { RESULT = new Atrib("error", id); }
+                        else           { RESULT = new Atrib(s.tipo, id); } :}
+                   | acceso_arreglo       {: RESULT = new Atrib("error", "?"); :}
+                   | llamada_funcion      {: RESULT = new Atrib("error", "?"); :}
+                   | cadena_texto:c       {: RESULT = c; :}
+                   | caracter_literal:c   {: RESULT = c; :}
+                   | PARENOP expresion_aritmetica:e PARENCL  {: RESULT = e; :} ;
 
 operacion_incremento ::= identificador:id incremento  {: parser.tabla.usar(id, idleft, idright); :}
                        | identificador:id decremento  {: parser.tabla.usar(id, idleft, idright); :} ;
