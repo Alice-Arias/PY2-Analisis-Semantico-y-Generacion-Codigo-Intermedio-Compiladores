@@ -1178,7 +1178,9 @@ condicion_control ::= operacion_relacional:e                   {: RESULT = e; :}
                     | bool:e                                   {: RESULT = e; :}
                     | valor_aritmetico:e                       {: RESULT = e; :}
                     | PARENOP operacion_relacional:e PARENCL   {: RESULT = e; :}
-                    | PARENOP bool:e PARENCL                   {: RESULT = e; :} ;
+                    | PARENOP bool:e PARENCL                   {: RESULT = e; :} 
+                    | /* Vacío */                              {: RESULT = null; :}
+;
 
 
 /* ============================================================
