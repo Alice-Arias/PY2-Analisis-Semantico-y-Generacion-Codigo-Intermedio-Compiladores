@@ -8,30 +8,8 @@ import java.util.ArrayList;
 
 parser code {:
     public TablaSimbolos tabla = new TablaSimbolos();
-    /* =====================================================
-   GENERADOR DE CÓDIGO DE TRES DIRECCIONES
-   ===================================================== */
-
-    private StringBuilder codigoC3D = new StringBuilder();
-    private int contadorTemporales = 0;
-
-    public String nuevoTemporal() {
-        contadorTemporales++;
-        return "t" + contadorTemporales;
-    }
-
-    public void emitir(String instruccion) {
-        codigoC3D.append(instruccion).append("\n");
-    }
-
-    public String obtenerCodigoC3D() {
-        return codigoC3D.toString();
-    }
-
-    public void limpiarCodigoC3D() {
-        codigoC3D.setLength(0);
-        contadorTemporales = 0;
-    }
+    /* El código intermedio vive en su propio archivo: src/Generador.java */
+    public Generador gen = new Generador();
 
     /* TS: guardo los tokens leídos para recuperar el texto del valor inicial y del tamaño de los arreglos */
     private final ArrayList<Symbol> leidos = new ArrayList<Symbol>();
@@ -135,29 +113,11 @@ parser code {:
         r.valor = plegar(a, op, b);
         return r;
     }
-    public Atrib generarAritmetica(
-        Atrib a, String op, Atrib b,
-        int linea, int columna) {
 
-    // Primero se validan los tipos
-    Atrib resultado = aritmetica(a, op, b, linea, columna);
-
-    // Si hay error, no se genera código
-    if (resultado.tipo.equals("error")) {
-        return resultado;
-    }
-
-    // Crear temporal
-    String temporal = nuevoTemporal();
-
-    // Generar instrucción
-    emitir(temporal + " = " + a.lugar
-            + " " + op + " " + b.lugar);
-
-    // Guardar el temporal como resultado
-    resultado.lugar = temporal;
-
-    return resultado;
+    /* Operación aritmética: primero se validan los tipos (aritmetica) y, si no hay error,
+       el generador crea el temporal y la instrucción. */
+    public Atrib generarAritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
+        return gen.binaria(aritmetica(a, op, b, linea, columna), a, op, b);
     }
 
     /* SEM: convierte un texto en entero (null si no cabe en un int). */
@@ -1073,7 +1033,7 @@ asignacion_variable ::=
             if (e.tipo.equals(s.tipo) &&
                 !e.tipo.equals("error")) {
 
-                parser.emitir(id + " = " + e.lugar);
+                parser.gen.emitir(id + " = " + e.lugar);
             }
         }
     :}

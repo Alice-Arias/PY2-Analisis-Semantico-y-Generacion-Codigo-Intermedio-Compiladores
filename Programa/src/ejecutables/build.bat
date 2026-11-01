@@ -303,6 +303,7 @@ javac ^
     "%SRC%\Main.java" ^
     "%SRC%\TablaSimbolos.java" ^
     "%SRC%\Atrib.java" ^
+    "%SRC%\Generador.java" ^
     "%BIN%\Lexer.java" ^
     "%BIN%\parser.java" ^
     "%BIN%\sym.java"

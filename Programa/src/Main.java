@@ -694,6 +694,39 @@ public class Main {
             estado(false, "El archivo contiene errores semánticos.");
         }
 
+        /* ----------------- FASE 4: CÓDIGO INTERMEDIO ----------------- */
+
+        seccion("FASE 4 · CÓDIGO INTERMEDIO");
+
+        int erroresPrevios = erroresLexicos.size() + analizador.errores.size() + erroresSemanticos.size();
+
+        if (erroresPrevios > 0) {
+
+            /* Con errores el código no tendría sentido: no se genera ni se guarda */
+            estado(false, "No se generó código intermedio: el archivo tiene errores.");
+
+        } else {
+
+            String codigo = analizador.gen.obtenerCodigo();
+
+            File archivoTac = analizador.gen.guardar(archivoFuente);
+
+            int instrucciones = codigo.isEmpty() ? 0 : codigo.split("\n").length;
+
+            contador("Instrucciones", instrucciones);
+
+            kv("Archivo", archivoTac.getName());
+
+            kv("Carpeta", archivoTac.getParentFile().getParentFile().getName()
+                    + File.separator + archivoTac.getParentFile().getName());
+
+            estado(true, "Código intermedio generado.");
+
+            if (preguntarSiNo("¿Desea ver el código intermedio? (s/n): ")) {
+                mostrarCodigoIntermedio(codigo);
+            }
+        }
+
         /* ----------------- RESULTADO FINAL ----------------- */
 
         seccion("RESULTADO FINAL");
@@ -778,9 +811,16 @@ public class Main {
      * Objetivo:
      * Dejar que el usuario decida si ver la tabla.
      */
+    /* Se crea una sola vez: dos Scanner sobre System.in se robarían la entrada */
+    private static java.util.Scanner teclado = null;
+
     private static boolean preguntarSiNo(String pregunta) {
 
-        java.util.Scanner lector = new java.util.Scanner(System.in, StandardCharsets.UTF_8);
+        if (teclado == null) {
+            teclado = new java.util.Scanner(System.in, StandardCharsets.UTF_8);
+        }
+
+        java.util.Scanner lector = teclado;
 
         while (true) {
 
@@ -1045,7 +1085,7 @@ public class Main {
         "Nº", "NOMBRE", "CATEGORÍA", "TIPO", "ÁMBITO", "BYTES",
         "DIMENSIÓN", "DIRECCIÓN", "VALOR INICIAL", "ACCESO", "LÍNEA", "COL"};
 
-    private static final int[] ANCHOS_TS = {3, 14, 13, 7, 24, 5, 10, 11, 26, 8, 5, 3};
+    private static final int[] ANCHOS_TS = {3, 18, 13, 7, 24, 5, 10, 11, 22, 8, 5, 3};
 
     /*
      * Descripcion:
@@ -1540,6 +1580,37 @@ public class Main {
         }
 
         System.out.println(color);
+    }
+
+    /*
+     * Descripcion:
+     * Muestro el código intermedio en la consola, numerado.
+     * Las etiquetas (L1:) se resaltan para ver dónde empiezan los saltos.
+     *
+     * Entrada: el texto del código intermedio.
+     * Salida : el código en la consola.
+     */
+    private static void mostrarCodigoIntermedio(String codigo) {
+
+        seccion("CÓDIGO INTERMEDIO");
+
+        if (codigo.isEmpty()) {
+            System.out.println(col("90", "  (el generador todavía no produjo instrucciones)"));
+            System.out.println();
+            return;
+        }
+
+        int n = 1;
+
+        for (String linea : codigo.split("\n")) {
+
+            boolean etiqueta = linea.endsWith(":");
+
+            System.out.println(col("90", String.format("  %3d  ", n++))
+                    + (etiqueta ? col("1;33", linea) : linea));
+        }
+
+        System.out.println();
     }
 
     /*
