@@ -3,10 +3,10 @@
 ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
   Archivo fuente : ejemplo1.cmm
-  Generado       : 31/10/2026 14:37:19
+  Generado       : 01/11/2026 11:01:26
   Ámbitos        : 9
   Símbolos       : 34
-  Errores        : 31
+  Errores        : 35
 
   CONVENCIONES
   ─────────────
@@ -175,68 +175,80 @@
   ┌─────┬────────┬───────┬──────────────────────────────────────────────────────────────────────────────────┐
   │ Nº  │ LÍNEA  │ COL   │ DESCRIPCIÓN                                                                      │
   ╞═════╪════════╪═══════╪══════════════════════════════════════════════════════════════════════════════════╡
-  │ 1   │ 7      │ 31    │ 'x22' ya fue declarado en este ámbito (línea 7)                                  │
+  │ 1   │ 7      │ 31    │ [FUN-4] 'x22' ya fue declarado en este ámbito (línea 7)                          │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 2   │ 16     │ 10    │ '_x50_' ya fue declarado en este ámbito (línea 15)                               │
+  │ 2   │ 15     │ 12    │ [ARR-3] el arreglo '_x50_' es de tipo 'float' pero 6 de sus 6 valores no lo son  │
+  │     │        │       │ (el primero es el elemento 0, de tipo 'int')                                     │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 3   │ 17     │ 21    │ no se pueden mezclar 'int' y 'float' con el operador '+' (tipado fuerte)         │
+  │ 3   │ 16     │ 10    │ [TS-1] '_x50_' ya fue declarado en este ámbito (línea 15)                        │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 4   │ 17     │ 10    │ 'x' ya fue declarado en este ámbito (línea 9)                                    │
+  │ 4   │ 16     │ 10    │ [ARR-3] el arreglo '_x50_' es de tipo 'int' pero 6 de sus 6 valores no lo son    │
+  │     │        │       │ (el primero es el elemento 0, de tipo 'float')                                   │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 5   │ 18     │ 12    │ 'x' ya fue declarado en este ámbito (línea 9)                                    │
+  │ 5   │ 17     │ 21    │ [ARI-3] no se pueden mezclar 'int' y 'float' con el operador '+' (tipado fuerte) │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 6   │ 18     │ 12    │ la variable 'x' es de tipo 'float' y se le da un valor de tipo 'int'             │
+  │ 6   │ 17     │ 10    │ [TS-1] 'x' ya fue declarado en este ámbito (línea 9)                             │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 7   │ 19     │ 13    │ '_x50_' ya fue declarado en este ámbito (línea 15)                               │
+  │ 7   │ 18     │ 12    │ [TS-1] 'x' ya fue declarado en este ámbito (línea 9)                             │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 8   │ 20     │ 32    │ 'var' no ha sido declarado                                                       │
+  │ 8   │ 18     │ 12    │ [ASG-1] la variable 'x' es de tipo 'float' y se le da un valor de tipo 'int'     │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 9   │ 22     │ 3     │ la variable 'x22' es de tipo 'char' y se le da un valor de tipo 'int'            │
+  │ 9   │ 19     │ 13    │ [TS-1] '_x50_' ya fue declarado en este ámbito (línea 15)                        │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 10  │ 33     │ 16    │ 'id' no ha sido declarado                                                        │
+  │ 10  │ 20     │ 32    │ [TS-2] 'var' no ha sido declarado                                                │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 11  │ 33     │ 26    │ la función 'f' no ha sido declarada                                              │
+  │ 11  │ 22     │ 3     │ [ASG-2] la variable 'x22' es de tipo 'char' y se le da un valor de tipo 'int'    │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 12  │ 33     │ 44    │ 'var' no ha sido declarado                                                       │
+  │ 12  │ 33     │ 16    │ [TS-2] 'id' no ha sido declarado                                                 │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 13  │ 33     │ 67    │ la función 'f1' no ha sido declarada                                             │
+  │ 13  │ 33     │ 26    │ [TS-3] la función 'f' no ha sido declarada                                       │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 14  │ 33     │ 53    │ la función 'f1' no ha sido declarada                                             │
+  │ 14  │ 33     │ 44    │ [TS-2] 'var' no ha sido declarado                                                │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 15  │ 34     │ 14    │ '_i_' no ha sido declarado                                                       │
+  │ 15  │ 33     │ 67    │ [TS-3] la función 'f1' no ha sido declarada                                      │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 16  │ 59     │ 23    │ no se pueden mezclar 'float' y 'int' con el operador '/' (tipado fuerte)         │
+  │ 16  │ 33     │ 53    │ [TS-3] la función 'f1' no ha sido declarada                                      │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 17  │ 59     │ 12    │ 'fl1' ya fue declarado en este ámbito (línea 58)                                 │
+  │ 17  │ 34     │ 14    │ [TS-2] '_i_' no ha sido declarado                                                │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 18  │ 62     │ 33    │ el operador '/' requiere operandos float y recibió 'int'                         │
+  │ 18  │ 46     │ 8     │ [FUN-3] la función '_func3_' no puede retornar string (solo int, float, char o   │
+  │     │        │       │ bool)                                                                            │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 19  │ 64     │ 41    │ no se pueden mezclar 'float' y 'int' con el operador 'mod' (tipado fuerte)       │
+  │ 19  │ 59     │ 23    │ [ARI-3] no se pueden mezclar 'float' y 'int' con el operador '/' (tipado fuerte) │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 20  │ 67     │ 22    │ la función 'f' no ha sido declarada                                              │
+  │ 20  │ 59     │ 12    │ [TS-1] 'fl1' ya fue declarado en este ámbito (línea 58)                          │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 21  │ 67     │ 14    │ el arreglo 'arr' no ha sido declarado                                            │
+  │ 21  │ 62     │ 33    │ [ARI-5] el operador '/' requiere operandos float y recibió 'int'                 │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 22  │ 67     │ 42    │ 'hola' no ha sido declarado                                                      │
+  │ 22  │ 64     │ 41    │ [ARI-3] no se pueden mezclar 'float' y 'int' con el operador 'mod' (tipado       │
+  │     │        │       │ fuerte)                                                                          │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 23  │ 67     │ 2     │ 'arr' no ha sido declarado                                                       │
+  │ 23  │ 67     │ 22    │ [TS-3] la función 'f' no ha sido declarada                                       │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 24  │ 68     │ 10    │ la función 'f' no ha sido declarada                                              │
+  │ 24  │ 67     │ 14    │ [TS-4] el arreglo 'arr' no ha sido declarado                                     │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 25  │ 68     │ 2     │ el arreglo 'arr' no ha sido declarado                                            │
+  │ 25  │ 67     │ 42    │ [TS-2] 'hola' no ha sido declarado                                               │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 26  │ 68     │ 15    │ la variable 'arr' es de tipo 'error' y se le da un valor de tipo 'float'         │
+  │ 26  │ 67     │ 32    │ [FUN-1] la función 'func1' espera 2 argumento(s) y recibió 5                     │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 27  │ 69     │ 24    │ el operador 'pot' no se puede aplicar a 'char' y 'float' (se requieren int o     │
-  │     │        │       │ float)                                                                           │
+  │ 27  │ 67     │ 2     │ [TS-2] 'arr' no ha sido declarado                                                │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 28  │ 70     │ 12    │ la función 'miFunc' no ha sido declarada                                         │
+  │ 28  │ 68     │ 10    │ [TS-3] la función 'f' no ha sido declarada                                       │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 29  │ 70     │ 2     │ la función 'miFunc' no ha sido declarada                                         │
+  │ 29  │ 68     │ 2     │ [TS-4] el arreglo 'arr' no ha sido declarado                                     │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 30  │ 73     │ 28    │ no se puede comparar 'int' con 'float' usando '>'                                │
+  │ 30  │ 69     │ 24    │ [ARI-2] el operador 'pot' no se puede aplicar a 'char' y 'float' (se requieren   │
+  │     │        │       │ int o float)                                                                     │
   ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 31  │ 73     │ 52    │ la función 'func2' no ha sido declarada                                          │
+  │ 31  │ 70     │ 12    │ [TS-3] la función 'miFunc' no ha sido declarada                                  │
+  ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
+  │ 32  │ 70     │ 2     │ [TS-3] la función 'miFunc' no ha sido declarada                                  │
+  ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
+  │ 33  │ 73     │ 28    │ [REL-2] no se puede comparar 'int' con 'float' usando '>'                        │
+  ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
+  │ 34  │ 73     │ 52    │ [TS-3] la función 'func2' no ha sido declarada                                   │
+  ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
+  │ 35  │ 74     │ 2     │ [RET-1] el procedimiento 'principal' no puede retornar un valor                  │
   └─────┴────────┴───────┴──────────────────────────────────────────────────────────────────────────────────┘
 
 ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════

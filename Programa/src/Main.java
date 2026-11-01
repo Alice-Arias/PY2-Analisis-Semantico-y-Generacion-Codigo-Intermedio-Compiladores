@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -687,7 +688,7 @@ public class Main {
 
         } else {
 
-            mostrarTablaLexica(erroresSemanticos);
+            mostrarErroresSemanticos(erroresSemanticos);
             estado(false, "El archivo contiene errores semánticos.");
         }
 
@@ -1378,6 +1379,160 @@ public class Main {
 
             numero++;
         }
+    }
+
+    /*
+     * ========================================================
+     * ERRORES SEMÁNTICOS (una línea por error, con colores)
+     * ========================================================
+     */
+
+    /* Ancho máximo de esta sección: cada error cabe en una sola línea.
+       El ancho que se usa de verdad se ajusta a la descripción más larga. */
+    private static final int ANCHO_ERR = 170;
+
+    /* Largo del prefijo de cada línea: Nº, LÍNEA, COL y VALIDACIÓN */
+    private static final int PREFIJO_ERR = 37;
+
+    /* El parser entrega cada error como "[ARI-3] mensaje": grupo 1 = ARI, 2 = 3, 3 = mensaje */
+    private static final Pattern PATRON_REGLA = Pattern.compile("^\\[([A-Z]+)-(\\d+)\\]\\s*(.*)$");
+
+    /* Familia de reglas -> nombre de la validación */
+    private static final Map<String, String> FAMILIAS = new HashMap<>();
+
+    static {
+        FAMILIAS.put("TS",  "Nombres");
+        FAMILIAS.put("ARI", "Aritmética");
+        FAMILIAS.put("REL", "Comparación");
+        FAMILIAS.put("LOG", "Lógica");
+        FAMILIAS.put("ASG", "Asignación");
+        FAMILIAS.put("ARR", "Arreglos");
+        FAMILIAS.put("FUN", "Funciones");
+        FAMILIAS.put("RET", "Return");
+        FAMILIAS.put("CON", "Control");
+        FAMILIAS.put("INC", "Incremento");
+        FAMILIAS.put("ES",  "Entrada/Salida");
+    }
+
+    /* Un solo color para la validación, para que la lista se lea sin ruido */
+    private static final String COLOR_VALIDACION = "36";    /* cian: como los encabezados */
+
+    /*
+     * Descripcion:
+     * Muestro los errores semánticos. Cada error ocupa una línea con el
+     * número, la línea y la columna del código, la regla, el tipo de
+     * validación (con su color) y la descripción.
+     *
+     * Entrada:
+     * La lista de errores ("Error ... en línea L, columna C: [REGLA] detalle").
+     *
+     * Salida:
+     * Los errores en la consola, y al final un resumen por tipo de validación.
+     *
+     * Restricciones:
+     * Si una descripción no cabe en el ancho, continúa en la línea siguiente.
+     *
+     * Objetivo:
+     * Que cada error se entienda de un vistazo.
+     */
+    private static void mostrarErroresSemanticos(List<String> errores) {
+
+        /* ---- 1. Se analiza cada error para saber cuánto mide la descripción más larga ---- */
+
+        List<String[]> filas = new ArrayList<>();   /* {línea, columna, validación, detalle} */
+
+        int masLarga = 0;
+
+        for (String error : errores) {
+
+            String texto = error == null ? "" : error.trim().replace("\r", " ").replace("\n", " ");
+
+            String linea = "-";
+            String columna = "-";
+            String detalle = texto;
+
+            Matcher m = PATRON_ERROR.matcher(texto);
+
+            if (m.matches()) {
+                linea = m.group(1);
+                columna = m.group(2);
+                detalle = m.group(3);
+            }
+
+            /* Tipo de validación (sale del código de la regla: [ARI-3] -> Aritmética) */
+            String validacion = "Semántico";
+
+            Matcher r = PATRON_REGLA.matcher(detalle);
+
+            if (r.matches()) {
+                detalle = r.group(3);
+                validacion = FAMILIAS.getOrDefault(r.group(1), validacion);
+            }
+
+            filas.add(new String[]{linea, columna, validacion, detalle});
+
+            masLarga = Math.max(masLarga, detalle.length());
+        }
+
+        /* Ancho de la sección: lo que pide la descripción más larga, sin pasar de ANCHO_ERR */
+        int ancho = Math.min(ANCHO_ERR, Math.max(100, PREFIJO_ERR + masLarga));
+
+        /* ---- 2. Se muestra ---- */
+
+        System.out.println();
+
+        System.out.println(col("1;36", String.format("  %-4s %6s %5s  %-15s %s",
+                "Nº", "LÍNEA", "COL", "VALIDACIÓN", "DESCRIPCIÓN")));
+
+        System.out.println(col("90", "  " + "─".repeat(ancho - 2)));
+
+        /* validación -> cantidad (en orden de aparición) */
+        Map<String, Integer> conteo = new LinkedHashMap<>();
+
+        int numero = 1;
+
+        for (String[] f : filas) {
+
+            conteo.merge(f[2], 1, Integer::sum);
+
+            String num = String.format("%02d", numero++);
+
+            String prefijoColor = "  "
+                    + col("90", String.format("%-4s", num)) + " "
+                    + col("33", String.format("%6s", f[0])) + " "
+                    + col("33", String.format("%5s", f[1])) + "  "
+                    + col(COLOR_VALIDACION, String.format("%-15s", f[2])) + " ";
+
+            List<String> partes = ajustar(f[3], ancho - PREFIJO_ERR);
+
+            for (int i = 0; i < partes.size(); i++) {
+                System.out.println((i == 0 ? prefijoColor : " ".repeat(PREFIJO_ERR)) + partes.get(i));
+            }
+        }
+
+        /* ---- 3. Resumen por tipo de validación ---- */
+
+        System.out.println(col("90", "  " + "─".repeat(ancho - 2)));
+
+        StringBuilder plano = new StringBuilder("  Por validación: ");
+        StringBuilder color = new StringBuilder("  " + col("1", "Por validación: "));
+
+        for (Map.Entry<String, Integer> e : conteo.entrySet()) {
+
+            String item = e.getKey() + " " + e.getValue();
+
+            if (plano.length() + item.length() + 5 > ancho) {
+                System.out.println(color);
+                plano = new StringBuilder("    ");
+                color = new StringBuilder("    ");
+            }
+
+            plano.append(item).append("   ");
+            color.append(col(COLOR_VALIDACION, e.getKey())).append(" ")
+                 .append(col("1;33", String.valueOf(e.getValue()))).append("   ");
+        }
+
+        System.out.println(color);
     }
 
     /*

@@ -1,0 +1,142 @@
+| ============================================================
+| PRUEBA SEMÁNTICA: una línea por regla. Cada línea dice OK o ERROR.
+| ============================================================
+
+| ---------- variables globales ----------
+val int g1 Ͱ 10»   | OK
+val int g1 Ͱ 20»   | ERROR: 'g1' ya fue declarado en este ámbito
+val float gf Ͱ 1.5»   | OK
+val int ga ʃ:3:ʅ Ͱ ¿:1, 2, 3:?»   | OK
+
+| ---------- funciones ----------
+int suma є: int x, int y :э ¿:   | OK
+    return x + y»   | OK
+:?
+
+float mitad є: float v :э ¿:   | OK
+    return v / 2.0»   | OK
+:?
+
+bool esPar є: int n :э ¿:   | OK
+    return true»   | OK
+:?
+
+bool sinValor є: :э ¿:   | OK: un return sin valor se permite
+    return»   | OK
+:?
+
+string texto є: :э ¿:   | ERROR: una función no puede retornar string
+    return "hola"»   | OK
+:?
+
+int repetidos є: int p, int p :э ¿:   | ERROR: el parámetro 'p' está repetido
+    return p»   | OK
+:?
+
+int malo1 є: :э ¿:   | OK
+    return 2.5»   | ERROR: devuelve float en una función int
+:?
+
+bool malo2 є: :э ¿:   | OK
+    return 1»   | ERROR: devuelve int en una función bool
+:?
+
+void otra є: :э ¿:   | ERROR (sintáctico): void solo puede ser principal
+:?
+
+| ---------- principal ----------
+void principal є: :э ¿:
+    | nombres
+    val int a Ͱ 5»   | OK
+    val int a Ͱ 6»   | ERROR: 'a' ya fue declarado en este ámbito
+    val float f Ͱ 2.5»   | OK
+    val char c Ͱ 'x'»   | OK
+    val string s Ͱ "hola"»   | OK
+    val bool bo Ͱ true»   | OK
+    z Ͱ 3»   | ERROR: 'z' no ha sido declarado
+    val int uu Ͱ suma»   | ERROR: 'suma' es una función y se usa como variable
+    val int uv Ͱ ga»   | ERROR: 'ga' es un arreglo y debe usarse con un índice
+    | aritméticas
+    val int s1 Ͱ a + 3»   | OK
+    val int s2 Ͱ a + f»   | ERROR: int con float
+    val int s3 Ͱ a + "hola"»   | ERROR: un string en una suma
+    val int s4 Ͱ f // 2.0»   | ERROR: // solo con int
+    val float s5 Ͱ a / 2»   | ERROR: / solo con float
+    val float s6 Ͱ f / 2.0»   | OK
+    val int s7 Ͱ 2 pot 3»   | OK
+    val int s8 Ͱ 2 pot -1»   | ERROR: pot con exponente negativo
+    val int s9 Ͱ a mod 2»   | OK
+    val int s10 Ͱ -5»   | OK
+    | asignaciones
+    val int m1 Ͱ 2.5»   | ERROR: float en una variable int
+    val float m2 Ͱ 7»   | ERROR: int en una variable float
+    val char m3 Ͱ "x"»   | ERROR: string en una variable char
+    a Ͱ 3.5»   | ERROR: float en la variable a (int)
+    a Ͱ 10»   | OK
+    | comparaciones
+    val bool c1 Ͱ ʃ:a:ʅ < ʃ:10:ʅ»   | OK
+    val bool c2 Ͱ ʃ:a:ʅ < ʃ:f:ʅ»   | ERROR: int < float
+    val bool c3 Ͱ ʃ:a:ʅ == ʃ:f:ʅ»   | OK: con == se pueden mezclar números
+    val bool c4 Ͱ ʃ:c:ʅ == ʃ:c:ʅ»   | OK: char con ==
+    val bool c5 Ͱ ʃ:c:ʅ < ʃ:c:ʅ»   | ERROR: char con < (solo int y float)
+    val bool c6 Ͱ ʃ:s:ʅ == ʃ:s:ʅ»   | ERROR: los string no se comparan
+    val bool c7 Ͱ ʃ:bo:ʅ != ʃ:true:ʅ»   | OK: bool con !=
+    val int c8 Ͱ ʃ:a:ʅ < ʃ:10:ʅ»   | ERROR: un bool en una variable int
+    | lógicas
+    val bool l1 Ͱ є:ʃ:a:ʅ > ʃ:1:ʅ:э λ є:ʃ:a:ʅ < ʃ:10:ʅ:э»   | OK
+    val bool l2 Ͱ є:1:э λ є:ʃ:a:ʅ > ʃ:1:ʅ:э»   | ERROR: un int en un 'and'
+    val bool l3 Ͱ Σє:ʃ:a:ʅ > ʃ:1:ʅ:э»   | OK
+    | arreglos
+    val int arr ʃ:5:ʅ»   | OK
+    val int ar2 ʃ:2.5:ʅ»   | ERROR: el tamaño es float
+    val int ar3 ʃ:0:ʅ»   | ERROR: el tamaño debe ser mayor que 0
+    val int ar4 ʃ:3:ʅ Ͱ ¿:1, 2.5, 3:?»   | ERROR: un valor float en un arreglo int
+    val int ar5 ʃ:2:ʅ Ͱ ¿:1, 2, 3:?»   | ERROR: más valores que el tamaño
+    val int ar6 ʃ:1 + 1:ʅ»   | OK: tamaño 2 (1 + 1)
+    val int e1 Ͱ arrʃ:1 + 1:ʅ»   | OK
+    val int e2 Ͱ arrʃ:2.5:ʅ»   | ERROR: el índice es float
+    val int e3 Ͱ ar6ʃ:2:ʅ»   | ERROR: índice fuera del arreglo (válidos 0 y 1)
+    val int e4 Ͱ ar6ʃ:-1:ʅ»   | ERROR: índice negativo
+    val int e5 Ͱ aʃ:0:ʅ»   | ERROR: 'a' no es un arreglo
+    val int e6 Ͱ noExisteʃ:0:ʅ»   | ERROR: 'noExiste' no está declarado
+    arrʃ:0:ʅ Ͱ 9»   | OK
+    arrʃ:0:ʅ Ͱ 2.5»   | ERROR: float en un elemento int
+    | llamadas a funciones
+    val int k1 Ͱ suma є: 1, 2 :э»   | OK
+    val int k2 Ͱ suma є: 1 :э»   | ERROR: faltan argumentos
+    val int k3 Ͱ suma є: 1, 2.5 :э»   | ERROR: el argumento 2 debe ser int
+    val int k4 Ͱ noExiste є: 1 :э»   | ERROR: la función no existe
+    val int k5 Ͱ principal є: :э»   | ERROR (sintáctico): principal es palabra reservada y no se puede llamar
+    suma є: 1, 2 :э»   | OK: una llamada sola
+    val float k6 Ͱ mitad є: 3.0 :э»   | OK
+    val int k7 Ͱ mitad є: 3.0 :э»   | ERROR: la función devuelve float
+    | condiciones, ciclos y break
+    if є: ʃ:a:ʅ > ʃ:0:ʅ :э ¿: :?   | OK
+    if є: a :э ¿: :?   | ERROR: la condición es int
+    while є: bo :э ¿: :?   | OK
+    while є: a :э ¿: :?   | ERROR: la condición es int
+    for є: val int i Ͱ 0 » ʃ:i:ʅ < ʃ:3:ʅ » i++ :э ¿: :?   | OK
+    for є: val int j Ͱ 0.5 » ʃ:j:ʅ < ʃ:3:ʅ » j++ :э ¿: :?   | ERROR: valor inicial float en una variable int
+    for є: val int q Ͱ 0 » q » q++ :э ¿: :?   | ERROR: la condición es int
+    while є: bo :э ¿: break» :?   | OK: break dentro de un ciclo
+    break»   | ERROR: break fuera de un ciclo
+    | ++ y --
+    a++   | OK
+    f--   | OK
+    s++   | ERROR: ++ solo con int o float
+    bo--   | ERROR: -- solo con int o float
+    | read y write
+    read є: a :э»   | OK
+    read є: arrʃ:0:ʅ :э»   | OK
+    read є: s :э»   | ERROR: read no lee string
+    read є: noExiste :э»   | ERROR: no está declarada
+    write є: "hola" :э»   | OK
+    write є: a :э»   | OK
+    write є: -6//7 :э»   | OK
+    write є: bo :э»   | ERROR: write no escribe bool
+    write є: true :э»   | ERROR: write no escribe bool
+    write є: c :э»   | ERROR: write no escribe char
+    | return en principal
+    return»   | OK
+    return 5»   | ERROR: principal es void y no devuelve valor
+:?
