@@ -1603,6 +1603,14 @@ public class parser extends java_cup.runtime.lr_parser {
         return gen.binaria(aritmetica(a, op, b, linea, columna), a, op, b);
     }
 
+    /* Código intermedio de una asignación (id = valor). Solo se genera si el valor no falló
+       y su tipo es el de la variable: la validación se queda aquí y el generador solo escribe. */
+    public void generarAsignacion(String id, String tipoVar, Atrib valor) {
+        if (!valor.tipo.equals("error") && valor.tipo.equals(tipoVar)) {
+            gen.asignacion(id, valor);
+        }
+    }
+
     /* SEM: convierte un texto en entero (null si no cabe en un int). */
     public Integer aEntero(String texto) {
         try {
@@ -2658,7 +2666,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(id, "int", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "int", e, idleft, idright); 
+         parser.asignar("ASG-1", id, "int", e, idleft, idright); parser.generarAsignacion(id, "int", e); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2677,7 +2685,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(id, "float", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "float", e, idleft, idright); 
+         parser.asignar("ASG-1", id, "float", e, idleft, idright); parser.generarAsignacion(id, "float", e); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2696,7 +2704,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(id, "bool", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "bool", e, idleft, idright); 
+         parser.asignar("ASG-1", id, "bool", e, idleft, idright); parser.generarAsignacion(id, "bool", e); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2715,7 +2723,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(id, "char", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "char", e, idleft, idright); 
+         parser.asignar("ASG-1", id, "char", e, idleft, idright); parser.generarAsignacion(id, "char", e); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2734,7 +2742,7 @@ class CUP$parser$actions {
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(id, "string", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "string", e, idleft, idright); 
+         parser.asignar("ASG-1", id, "string", e, idleft, idright); parser.generarAsignacion(id, "string", e); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -2808,11 +2816,7 @@ class CUP$parser$actions {
             parser.asignar("ASG-2", id, s.tipo, e,
                         idleft, idright);
 
-            if (e.tipo.equals(s.tipo) &&
-                !e.tipo.equals("error")) {
-
-                parser.gen.emitir(id + " = " + e.lugar);
-            }
+            parser.generarAsignacion(id, s.tipo, e);
         }
     
               CUP$parser$result = parser.getSymbolFactory().newSymbol("asignacion_variable",38, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
@@ -3450,7 +3454,7 @@ class CUP$parser$actions {
 		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = parser.aritmetica(a, "pot", b, pleft, pright); 
+		 RESULT = parser.generarAritmetica(a, "pot", b, pleft, pright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_potencia",59, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;

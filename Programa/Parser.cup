@@ -120,6 +120,14 @@ parser code {:
         return gen.binaria(aritmetica(a, op, b, linea, columna), a, op, b);
     }
 
+    /* Código intermedio de una asignación (id = valor). Solo se genera si el valor no falló
+       y su tipo es el de la variable: la validación se queda aquí y el generador solo escribe. */
+    public void generarAsignacion(String id, String tipoVar, Atrib valor) {
+        if (!valor.tipo.equals("error") && valor.tipo.equals(tipoVar)) {
+            gen.asignacion(id, valor);
+        }
+    }
+
     /* SEM: convierte un texto en entero (null si no cabe en un int). */
     public Integer aEntero(String texto) {
         try {
@@ -992,19 +1000,19 @@ def_variable ::=
       {: parser.declararVariable(id, "string", null, idleft, idright); :}
     | palabraVal INT    identificador:id asignacion:a expresion:e fin_o_falta
       {: parser.declararVariable(id, "int", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "int", e, idleft, idright); :}
+         parser.asignar("ASG-1", id, "int", e, idleft, idright); parser.generarAsignacion(id, "int", e); :}
     | palabraVal FLOAT  identificador:id asignacion:a expresion:e fin_o_falta
       {: parser.declararVariable(id, "float", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "float", e, idleft, idright); :}
+         parser.asignar("ASG-1", id, "float", e, idleft, idright); parser.generarAsignacion(id, "float", e); :}
     | palabraVal BOOL   identificador:id asignacion:a expresion:e fin_o_falta
       {: parser.declararVariable(id, "bool", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "bool", e, idleft, idright); :}
+         parser.asignar("ASG-1", id, "bool", e, idleft, idright); parser.generarAsignacion(id, "bool", e); :}
     | palabraVal CHAR   identificador:id asignacion:a expresion:e fin_o_falta
       {: parser.declararVariable(id, "char", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "char", e, idleft, idright); :}
+         parser.asignar("ASG-1", id, "char", e, idleft, idright); parser.generarAsignacion(id, "char", e); :}
     | palabraVal STRING identificador:id asignacion:a expresion:e fin_o_falta
       {: parser.declararVariable(id, "string", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "string", e, idleft, idright); :}
+         parser.asignar("ASG-1", id, "string", e, idleft, idright); parser.generarAsignacion(id, "string", e); :}
     | palabraVal identificador:id asignacion expresion fin_o_falta
       {: parser.errorProduccion(idleft, idright, "falta el tipo en la declaración de '" + id + "' (int, float, bool, char o string)");
          parser.declararVariable(id, "error", null, idleft, idright); :}
@@ -1030,11 +1038,7 @@ asignacion_variable ::=
             parser.asignar("ASG-2", id, s.tipo, e,
                         idleft, idright);
 
-            if (e.tipo.equals(s.tipo) &&
-                !e.tipo.equals("error")) {
-
-                parser.gen.emitir(id + " = " + e.lugar);
-            }
+            parser.generarAsignacion(id, s.tipo, e);
         }
     :}
     ;
@@ -1172,7 +1176,7 @@ expresion_unaria ::= MINUS valor_numerico:v  {: RESULT = parser.negativo(v); :}
 
 expresion_potencia ::= valor_aritmetico:e  {: RESULT = e; :}
                      | valor_aritmetico:a operadorPotencia:p exponente:b
-                       {: RESULT = parser.aritmetica(a, "pot", b, pleft, pright); :} ;
+                       {: RESULT = parser.generarAritmetica(a, "pot", b, pleft, pright); :} ;
 
 exponente ::= valor_aritmetico:e        {: RESULT = e; :}
             | MINUS valor_numerico:v    {: RESULT = parser.negativo(v); :} ;

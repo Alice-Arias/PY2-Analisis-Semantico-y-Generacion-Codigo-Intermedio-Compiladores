@@ -38,6 +38,11 @@ public class Generador {
         return "L" + contadorEtiquetas;
     }
 
+    /* Instrucción de una asignación: destino = lugar del valor */
+    public void asignacion(String destino, Atrib valor) {
+        emitir(destino + " = " + valor.lugar);
+    }
+
     /* Agrega una instrucción al código */
     public void emitir(String instruccion) {
         codigo.append(instruccion).append("\n");
