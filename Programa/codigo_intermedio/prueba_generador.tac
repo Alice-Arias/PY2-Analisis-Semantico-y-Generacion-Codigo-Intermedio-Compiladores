@@ -1,0 +1,22 @@
+letrica = '5'
+_i_ = 5
+t1 = 34 + 35
+t2 = 12 >= t1
+t3 = not t2
+t4 = true and t3
+result = t4
+t5 = 22 < 45
+x = t5
+var = 10
+t6 = 22 < 45
+t7 = 5 // 6
+t8 = var > t7
+t9 = t6 and t8
+ch33 = 'a'
+t10 = true and false
+t11 = t10 or true
+str2 = "sdff"
+t12 = x > 10
+t13 = edades + 1
+t14 = 3 + _i_
+t15 = -1 + 5

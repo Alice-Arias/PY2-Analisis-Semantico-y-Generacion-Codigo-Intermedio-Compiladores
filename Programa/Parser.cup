@@ -119,7 +119,28 @@ parser code {:
     public Atrib generarAritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
         return gen.binaria(aritmetica(a, op, b, linea, columna), a, op, b);
     }
+    public Atrib generarRelacional(Atrib a, String op, Atrib b, int linea, int columna) {
+    int antes = tabla.getErrores().size();
+    Atrib r = relacional(a, op, b, linea, columna);
+    boolean bien = tabla.getErrores().size() == antes
+            && !a.tipo.equals("error") && !b.tipo.equals("error");
+    return bien ? gen.binaria(r, a, op, b) : r;
+}
 
+public Atrib generarLogica(Atrib a, String op, Atrib b, int linea, int columna) {
+    int antes = tabla.getErrores().size();
+    Atrib r = logica(a, op, b, linea, columna);
+    boolean bien = tabla.getErrores().size() == antes
+            && !a.tipo.equals("error") && !b.tipo.equals("error");
+    return bien ? gen.binaria(r, a, op, b) : r;
+}
+
+public Atrib generarNegacion(Atrib e, int linea, int columna) {
+    int antes = tabla.getErrores().size();
+    Atrib r = negacion(e, linea, columna);
+    boolean bien = tabla.getErrores().size() == antes && !e.tipo.equals("error");
+    return bien ? gen.unaria(r, "not", e) : r;
+}
     /* Código intermedio de una asignación (id = valor). Solo se genera si el valor no falló
        y su tipo es el de la variable: la validación se queda aquí y el generador solo escribe. */
     public void generarAsignacion(String id, String tipoVar, Atrib valor) {
@@ -1215,7 +1236,7 @@ operando_relacional ::= valor_aritmetico:v  {: RESULT = v; :}
                       | abrir_corcheteCuadrados expresion:e cerrar_corcheteCuadrados  {: RESULT = e; :} ;
 
 operacion_relacional ::= operando_relacional:a operadorRelacional:op operando_relacional:b
-                         {: RESULT = parser.relacional(a, op, b, opleft, opright); :} ;
+                         {: RESULT = parser.generarRelacional(a, op, b, opleft, opright); :} ;
 
 
 /* ============================================================
@@ -1232,27 +1253,27 @@ operando_logico ::= condicion_basica:e                       {: RESULT = e; :}
                   | PARENOP expresion_aritmetica:e PARENCL   {: RESULT = e; :} ;
 
 condiciones_and ::= operando_logico:a AND:o operando_logico:b
-                    {: RESULT = parser.logica(a, "and", b, oleft, oright); :}
+                    {: RESULT = parser.generarLogica(a, "and", b, oleft, oright); :}
                   | condiciones_and:a AND:o operando_logico:b
-                    {: RESULT = parser.logica(a, "and", b, oleft, oright); :} ;
+                    {: RESULT = parser.generarLogica(a, "and", b, oleft, oright); :} ;
 
 condiciones_or ::= operando_logico:a OR:o operando_logico:b
-                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :}
                  | condiciones_and:a OR:o operando_logico:b
-                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :}
                  | operando_logico:a OR:o condiciones_and:b
-                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :}
                  | condiciones_and:a OR:o condiciones_and:b
-                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :}
                  | condiciones_or:a OR:o operando_logico:b
-                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :}
+                   {: RESULT =parser.generarLogica(a, "or", b, oleft, oright); :}
                  | condiciones_or:a OR:o condiciones_and:b
-                   {: RESULT = parser.logica(a, "or", b, oleft, oright); :} ;
+                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :} ;
 
 condiciones_logicas ::= PARENOP condiciones_and:e PARENCL  {: RESULT = e; :}
                       | PARENOP condiciones_or:e PARENCL   {: RESULT = e; :} ;
 
-negacion ::= NOT:n condicion_basica:e  {: RESULT = parser.negacion(e, nleft, nright); :} ;
+negacion ::= NOT:n condicion_basica:e  {: RESULT = parser.generarNegacion(e, nleft, nright); :} ;
 
 expresion_logica ::= condiciones_and:e  {: RESULT = e; :}
                    | condiciones_or:e   {: RESULT = e; :}
@@ -1354,7 +1375,7 @@ condicion_for ::= operacion_relacional:e                  {: RESULT = e; :}
                 | valor_aritmetico:e                      {: RESULT = e; :}
                 | PARENOP operacion_relacional:e PARENCL  {: RESULT = e; :}
                 | PARENOP bool:e PARENCL                  {: RESULT = e; :}
-                | /* Vacío */                             {: RESULT = e; :} 
+                | /* Vacío */                             {: RESULT = null; :}
                 ;
 
 incremento_for ::= /* vacío */

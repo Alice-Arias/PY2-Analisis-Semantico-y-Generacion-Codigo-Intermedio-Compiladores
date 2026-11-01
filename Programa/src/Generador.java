@@ -139,4 +139,19 @@ public class Generador {
 
         return validado;
     }
+    /* Operación de un solo operando: t = not e */
+public Atrib unaria(Atrib validado, String op, Atrib e) {
+
+    if (validado.tipo.equals("error")) {
+        return validado;
+    }
+
+    String temporal = nuevoTemporal();
+
+    emitir(temporal + " = " + op + " " + e.lugar);
+
+    validado.lugar = temporal;
+
+    return validado;
+}
 }

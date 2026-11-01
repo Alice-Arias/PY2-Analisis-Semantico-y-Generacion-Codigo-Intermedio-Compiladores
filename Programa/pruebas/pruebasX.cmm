@@ -5,7 +5,7 @@ val int arrʃ:3:ʅ Ͱ ¿:22, 10, 11:? »
 
 
 
-int f є:  :э ¿: :?
+int f є:  :э ¿:return 1» :?
 
 bool _funcionInt_ є:  :э ¿:
     val bool result Ͱ є:true:э λ Σ є: є:ʃ:12:ʅ >= ʃ:34+35:ʅ:э :э »
@@ -17,7 +17,7 @@ bool _funcionInt_ є:  :э ¿:
     return true»
 :?
 
-void procedimientoVoid є:  :э ¿:
+void principal є:  :э ¿:
     val int var Ͱ 10 »
     if є: є:ʃ:22:ʅ<ʃ:45:ʅ:э λ є:ʃ:var:ʅ>ʃ:5//6:ʅ:э :э  ¿:
 		val int y»
@@ -52,10 +52,9 @@ bool _func2_  є: bool _b1_, int _i1_ :э   ¿:
 	return x» 
   :?
 
-void principal є:  :э  ¿: | semantico tipo void
+
     val int filasʃ:5:ʅ »
     read є: filasʃ:0:ʅ :э »
 	_arr_ʃ:67+_i_:ʅ  Ͱ -1 + 5»  | semantico
     _func2_ є: true, 5 :э »
-    write є: _funcionInt_ є:  :э  :э »
-:?
+    write є: "hola" є:  :э  :э »

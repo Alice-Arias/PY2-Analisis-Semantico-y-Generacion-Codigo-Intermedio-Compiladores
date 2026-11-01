@@ -3,10 +3,10 @@
 ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
   Archivo fuente : pruebasX.cmm
-  Generado       : 01/11/2026 14:10:01
-  Ámbitos        : 14
-  Símbolos       : 22
-  Errores        : 2
+  Generado       : 01/11/2026 15:58:36
+  Ámbitos        : 13
+  Símbolos       : 21
+  Errores        : 1
 
   CONVENCIONES
   ─────────────
@@ -22,22 +22,21 @@
   ├── funcion f  (0 símbolos)
   ├── funcion _funcionInt_  (1 símbolo)
   │   └── while  (0 símbolos)
-  ├── bloque  (3 símbolos)
+  ├── procedimiento principal  (3 símbolos)
   │   ├── if  (2 símbolos)
   │   ├── elif  (1 símbolo)
   │   ├── else  (2 símbolos)
   │   └── for  (0 símbolos)
   │       └── cuerpo for  (0 símbolos)
   │           └── if  (0 símbolos)
-  ├── funcion _func2_  (3 símbolos)
-  │   └── if  (1 símbolo)
-  └── procedimiento principal  (1 símbolo)
+  └── funcion _func2_  (3 símbolos)
+      └── if  (1 símbolo)
 
   2. SÍMBOLOS POR ÁMBITO
   ──────────────────────
 
   ÁMBITO: global
-  Nivel 0 (global) · padre: — · tablas hijas: funcion f, funcion _funcionInt_, bloque, funcion _func2_, procedimiento principal
+  Nivel 0 (global) · padre: — · tablas hijas: funcion f, funcion _funcionInt_, procedimiento principal, funcion _func2_
   ┌─────┬──────────────────┬───────────────┬─────────┬────────┬──────────────┬─────────────┬────────────────────────────────┬──────────┬──────────┐
   │ Nº  │ NOMBRE           │ CATEGORÍA     │ TIPO    │ BYTES  │ DIMENSIÓN    │ DIRECCIÓN   │ VALOR INICIAL                  │ ACCESO   │ LÍN:COL  │
   ╞═════╪══════════════════╪═══════════════╪═════════╪════════╪══════════════╪═════════════╪════════════════════════════════╪══════════╪══════════╡
@@ -53,9 +52,9 @@
   ├─────┼──────────────────┼───────────────┼─────────┼────────┼──────────────┼─────────────┼────────────────────────────────┼──────────┼──────────┤
   │ 6   │ _funcionInt_     │ función       │ bool    │ —      │ —            │ código      │ —                              │ público  │ 10:6     │
   ├─────┼──────────────────┼───────────────┼─────────┼────────┼──────────────┼─────────────┼────────────────────────────────┼──────────┼──────────┤
-  │ 7   │ _func2_          │ función       │ bool    │ —      │ —            │ código      │ —                              │ público  │ 47:6     │
+  │ 7   │ principal        │ procedimiento │ void    │ —      │ —            │ código      │ —                              │ público  │ 20:6     │
   ├─────┼──────────────────┼───────────────┼─────────┼────────┼──────────────┼─────────────┼────────────────────────────────┼──────────┼──────────┤
-  │ 8   │ principal        │ procedimiento │ void    │ —      │ —            │ código      │ —                              │ público  │ 55:6     │
+  │ 8   │ _func2_          │ función       │ bool    │ —      │ —            │ código      │ —                              │ público  │ 47:6     │
   └─────┴──────────────────┴───────────────┴─────────┴────────┴──────────────┴─────────────┴────────────────────────────────┴──────────┴──────────┘
 
   ÁMBITO: global › funcion f
@@ -75,55 +74,55 @@
   Nivel 2 (local) · padre: funcion _funcionInt_ · tablas hijas: —
   (sin declaraciones)
 
-  ÁMBITO: global › bloque
+  ÁMBITO: global › procedimiento principal
   Nivel 1 (local) · padre: global · tablas hijas: if, elif, else, for
   ┌─────┬──────────────────┬───────────────┬─────────┬────────┬──────────────┬─────────────┬────────────────────────────────┬──────────┬──────────┐
   │ Nº  │ NOMBRE           │ CATEGORÍA     │ TIPO    │ BYTES  │ DIMENSIÓN    │ DIRECCIÓN   │ VALOR INICIAL                  │ ACCESO   │ LÍN:COL  │
   ╞═════╪══════════════════╪═══════════════╪═════════╪════════╪══════════════╪═════════════╪════════════════════════════════╪══════════╪══════════╡
-  │ 1   │ var              │ variable      │ int     │ 4      │ —            │ global+97   │ 10                             │ privado  │ 21:13    │
+  │ 1   │ var              │ variable      │ int     │ 4      │ —            │ pila+0      │ 10                             │ privado  │ 21:13    │
   ├─────┼──────────────────┼───────────────┼─────────┼────────┼──────────────┼─────────────┼────────────────────────────────┼──────────┼──────────┤
-  │ 2   │ x                │ variable      │ int     │ 4      │ —            │ global+118  │ —                              │ privado  │ 33:13    │
+  │ 2   │ x                │ variable      │ int     │ 4      │ —            │ pila+21     │ —                              │ privado  │ 33:13    │
   ├─────┼──────────────────┼───────────────┼─────────┼────────┼──────────────┼─────────────┼────────────────────────────────┼──────────┼──────────┤
-  │ 3   │ edades           │ arreglo       │ int     │ 12     │ [0..2]       │ global+122  │ ¿: 22, 10, 11 :?               │ privado  │ 34:13    │
+  │ 3   │ edades           │ arreglo       │ int     │ 12     │ [0..2]       │ pila+25     │ ¿: 22, 10, 11 :?               │ privado  │ 34:13    │
   └─────┴──────────────────┴───────────────┴─────────┴────────┴──────────────┴─────────────┴────────────────────────────────┴──────────┴──────────┘
 
-  ÁMBITO: global › bloque › if
-  Nivel 2 (local) · padre: bloque · tablas hijas: —
+  ÁMBITO: global › procedimiento principal › if
+  Nivel 2 (local) · padre: procedimiento principal · tablas hijas: —
   ┌─────┬──────────────────┬───────────────┬─────────┬────────┬──────────────┬─────────────┬────────────────────────────────┬──────────┬──────────┐
   │ Nº  │ NOMBRE           │ CATEGORÍA     │ TIPO    │ BYTES  │ DIMENSIÓN    │ DIRECCIÓN   │ VALOR INICIAL                  │ ACCESO   │ LÍN:COL  │
   ╞═════╪══════════════════╪═══════════════╪═════════╪════════╪══════════════╪═════════════╪════════════════════════════════╪══════════╪══════════╡
-  │ 1   │ y                │ variable      │ int     │ 4      │ —            │ global+101  │ —                              │ privado  │ 23:11    │
+  │ 1   │ y                │ variable      │ int     │ 4      │ —            │ pila+4      │ —                              │ privado  │ 23:11    │
   ├─────┼──────────────────┼───────────────┼─────────┼────────┼──────────────┼─────────────┼────────────────────────────────┼──────────┼──────────┤
-  │ 2   │ ch33             │ variable      │ char    │ 1      │ —            │ global+105  │ 'a'                            │ privado  │ 24:12    │
+  │ 2   │ ch33             │ variable      │ char    │ 1      │ —            │ pila+8      │ 'a'                            │ privado  │ 24:12    │
   └─────┴──────────────────┴───────────────┴─────────┴────────┴──────────────┴─────────────┴────────────────────────────────┴──────────┴──────────┘
 
-  ÁMBITO: global › bloque › elif
-  Nivel 2 (local) · padre: bloque · tablas hijas: —
+  ÁMBITO: global › procedimiento principal › elif
+  Nivel 2 (local) · padre: procedimiento principal · tablas hijas: —
   ┌─────┬──────────────────┬───────────────┬─────────┬────────┬──────────────┬─────────────┬────────────────────────────────┬──────────┬──────────┐
   │ Nº  │ NOMBRE           │ CATEGORÍA     │ TIPO    │ BYTES  │ DIMENSIÓN    │ DIRECCIÓN   │ VALOR INICIAL                  │ ACCESO   │ LÍN:COL  │
   ╞═════╪══════════════════╪═══════════════╪═════════╪════════╪══════════════╪═════════════╪════════════════════════════════╪══════════╪══════════╡
-  │ 1   │ y                │ variable      │ int     │ 4      │ —            │ global+106  │ —                              │ privado  │ 27:11    │
+  │ 1   │ y                │ variable      │ int     │ 4      │ —            │ pila+9      │ —                              │ privado  │ 27:11    │
   └─────┴──────────────────┴───────────────┴─────────┴────────┴──────────────┴─────────────┴────────────────────────────────┴──────────┴──────────┘
 
-  ÁMBITO: global › bloque › else
-  Nivel 2 (local) · padre: bloque · tablas hijas: —
+  ÁMBITO: global › procedimiento principal › else
+  Nivel 2 (local) · padre: procedimiento principal · tablas hijas: —
   ┌─────┬──────────────────┬───────────────┬─────────┬────────┬──────────────┬─────────────┬────────────────────────────────┬──────────┬──────────┐
   │ Nº  │ NOMBRE           │ CATEGORÍA     │ TIPO    │ BYTES  │ DIMENSIÓN    │ DIRECCIÓN   │ VALOR INICIAL                  │ ACCESO   │ LÍN:COL  │
   ╞═════╪══════════════════╪═══════════════╪═════════╪════════╪══════════════╪═════════════╪════════════════════════════════╪══════════╪══════════╡
-  │ 1   │ y                │ variable      │ int     │ 4      │ —            │ global+110  │ —                              │ privado  │ 30:11    │
+  │ 1   │ y                │ variable      │ int     │ 4      │ —            │ pila+13     │ —                              │ privado  │ 30:11    │
   ├─────┼──────────────────┼───────────────┼─────────┼────────┼──────────────┼─────────────┼────────────────────────────────┼──────────┼──────────┤
-  │ 2   │ str2             │ variable      │ string  │ 4      │ —            │ global+114  │ "sdff"                         │ privado  │ 31:14    │
+  │ 2   │ str2             │ variable      │ string  │ 4      │ —            │ pila+17     │ "sdff"                         │ privado  │ 31:14    │
   └─────┴──────────────────┴───────────────┴─────────┴────────┴──────────────┴─────────────┴────────────────────────────────┴──────────┴──────────┘
 
-  ÁMBITO: global › bloque › for
-  Nivel 2 (local) · padre: bloque · tablas hijas: cuerpo for
+  ÁMBITO: global › procedimiento principal › for
+  Nivel 2 (local) · padre: procedimiento principal · tablas hijas: cuerpo for
   (sin declaraciones)
 
-  ÁMBITO: global › bloque › for › cuerpo for
+  ÁMBITO: global › procedimiento principal › for › cuerpo for
   Nivel 3 (local) · padre: for · tablas hijas: if
   (sin declaraciones)
 
-  ÁMBITO: global › bloque › for › cuerpo for › if
+  ÁMBITO: global › procedimiento principal › for › cuerpo for › if
   Nivel 4 (local) · padre: cuerpo for · tablas hijas: —
   (sin declaraciones)
 
@@ -147,14 +146,6 @@
   │ 1   │ y                │ variable      │ int     │ 4      │ —            │ pila+6      │ —                              │ privado  │ 50:17    │
   └─────┴──────────────────┴───────────────┴─────────┴────────┴──────────────┴─────────────┴────────────────────────────────┴──────────┴──────────┘
 
-  ÁMBITO: global › procedimiento principal
-  Nivel 1 (local) · padre: global · tablas hijas: —
-  ┌─────┬──────────────────┬───────────────┬─────────┬────────┬──────────────┬─────────────┬────────────────────────────────┬──────────┬──────────┐
-  │ Nº  │ NOMBRE           │ CATEGORÍA     │ TIPO    │ BYTES  │ DIMENSIÓN    │ DIRECCIÓN   │ VALOR INICIAL                  │ ACCESO   │ LÍN:COL  │
-  ╞═════╪══════════════════╪═══════════════╪═════════╪════════╪══════════════╪═════════════╪════════════════════════════════╪══════════╪══════════╡
-  │ 1   │ filas            │ arreglo       │ int     │ 20     │ [0..4]       │ pila+0      │ —                              │ privado  │ 56:13    │
-  └─────┴──────────────────┴───────────────┴─────────┴────────┴──────────────┴─────────────┴────────────────────────────────┴──────────┴──────────┘
-
   3. FUNCIONES Y PROCEDIMIENTOS (estructura de parámetros)
   ────────────────────────────────────────────────────────
 
@@ -165,9 +156,9 @@
   ├────────────────┼───────────────┼──────────┼───────────┼────────────────────────────────┼───────────┼─────────────┼──────────────────────────┼──────────┤
   │ _funcionInt_   │ función       │ bool     │ 0         │ (ninguno)                      │ —         │ 1 B         │ funcion _funcionInt_     │ 10:6     │
   ├────────────────┼───────────────┼──────────┼───────────┼────────────────────────────────┼───────────┼─────────────┼──────────────────────────┼──────────┤
-  │ _func2_        │ función       │ bool     │ 2         │ bool _b1_, int _i1_            │ por valor │ 10 B        │ funcion _func2_          │ 47:6     │
+  │ principal      │ procedimiento │ void     │ 0         │ (ninguno)                      │ —         │ 37 B        │ procedimiento principal  │ 20:6     │
   ├────────────────┼───────────────┼──────────┼───────────┼────────────────────────────────┼───────────┼─────────────┼──────────────────────────┼──────────┤
-  │ principal      │ procedimiento │ void     │ 0         │ (ninguno)                      │ —         │ 20 B        │ procedimiento principal  │ 55:6     │
+  │ _func2_        │ función       │ bool     │ 2         │ bool _b1_, int _i1_            │ por valor │ 10 B        │ funcion _func2_          │ 47:6     │
   └────────────────┴───────────────┴──────────┴───────────┴────────────────────────────────┴───────────┴─────────────┴──────────────────────────┴──────────┘
 
   4. ERRORES SEMÁNTICOS DETECTADOS CON LA TABLA
@@ -176,9 +167,7 @@
   ┌─────┬────────┬───────┬──────────────────────────────────────────────────────────────────────────────────┐
   │ Nº  │ LÍNEA  │ COL   │ DESCRIPCIÓN                                                                      │
   ╞═════╪════════╪═══════╪══════════════════════════════════════════════════════════════════════════════════╡
-  │ 1   │ 8      │ 5     │ [FUN-7] la función 'f' debe tener al menos un return                             │
-  ├─────┼────────┼───────┼──────────────────────────────────────────────────────────────────────────────────┤
-  │ 2   │ 60     │ 31    │ [ES-2] write no permite valores de tipo bool                                     │
+  │ 1   │ 57     │ 13    │ [TS-4] el arreglo 'filas' no ha sido declarado                                   │
   └─────┴────────┴───────┴──────────────────────────────────────────────────────────────────────────────────┘
 
 ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
