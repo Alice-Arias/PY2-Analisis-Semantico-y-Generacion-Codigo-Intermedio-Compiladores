@@ -8,6 +8,30 @@ import java.util.ArrayList;
 
 parser code {:
     public TablaSimbolos tabla = new TablaSimbolos();
+    /* =====================================================
+   GENERADOR DE CÓDIGO DE TRES DIRECCIONES
+   ===================================================== */
+
+    private StringBuilder codigoC3D = new StringBuilder();
+    private int contadorTemporales = 0;
+
+    public String nuevoTemporal() {
+        contadorTemporales++;
+        return "t" + contadorTemporales;
+    }
+
+    public void emitir(String instruccion) {
+        codigoC3D.append(instruccion).append("\n");
+    }
+
+    public String obtenerCodigoC3D() {
+        return codigoC3D.toString();
+    }
+
+    public void limpiarCodigoC3D() {
+        codigoC3D.setLength(0);
+        contadorTemporales = 0;
+    }
 
     /* TS: guardo los tokens leídos para recuperar el texto del valor inicial y del tamaño de los arreglos */
     private final ArrayList<Symbol> leidos = new ArrayList<Symbol>();
@@ -111,7 +135,30 @@ parser code {:
         r.valor = plegar(a, op, b);
         return r;
     }
+    public Atrib generarAritmetica(
+        Atrib a, String op, Atrib b,
+        int linea, int columna) {
 
+    // Primero se validan los tipos
+    Atrib resultado = aritmetica(a, op, b, linea, columna);
+
+    // Si hay error, no se genera código
+    if (resultado.tipo.equals("error")) {
+        return resultado;
+    }
+
+    // Crear temporal
+    String temporal = nuevoTemporal();
+
+    // Generar instrucción
+    emitir(temporal + " = " + a.lugar
+            + " " + op + " " + b.lugar);
+
+    // Guardar el temporal como resultado
+    resultado.lugar = temporal;
+
+    return resultado;
+    }
     /* SEM: convierte un texto en entero (null si no cabe en un int). */
     public Integer aEntero(String texto) {
         try {
@@ -985,8 +1032,23 @@ def_variable ::=
 
 /* SEM: asignar a una variable que ya existe. El tipo de la variable se
    lee de la tabla de símbolos; si no está declarada, usar() devuelve null. */
-asignacion_variable ::= identificador:id asignacion expresion:e fin_o_falta
-                        {: Simbolo s = parser.usar(id, idleft, idright); if (s != null) { parser.asignar("ASG-2", id, s.tipo, e, idleft, idright); } :} ;
+asignacion_variable ::=
+    identificador:id asignacion expresion:e fin_o_falta
+    {:
+        Simbolo s = parser.usar(id, idleft, idright);
+
+        if (s != null) {
+            parser.asignar("ASG-2", id, s.tipo, e,
+                        idleft, idright);
+
+            if (e.tipo.equals(s.tipo) &&
+                !e.tipo.equals("error")) {
+
+                parser.emitir(id + " = " + e.lugar);
+            }
+        }
+    :}
+    ;
 
 lista_globales ::= /* vacío */
     | def_variable lista_globales
@@ -1083,13 +1145,13 @@ operador_multiplicacion ::= MULTIPLY   {: RESULT = "*";  :}
 
 expresion_aritmetica ::= expresion_mod:e  {: RESULT = e; :} ;
 
-expresion_mod ::= expresion_mod:a MOD:m expresion_multiplicacion:b {: RESULT = parser.aritmetica(a, "mod", b, mleft, mright); :}
+expresion_mod ::= expresion_mod:a MOD:m expresion_multiplicacion:b {: RESULT = parser.generarAritmetica(a, "mod", b, mleft, mright); :}
                 | expresion_multiplicacion:e  {: RESULT = e; :} ;
 
-expresion_multiplicacion ::= expresion_multiplicacion:a operador_multiplicacion:op expresion_suma:b {: RESULT = parser.aritmetica(a, op, b, opleft, opright); :}
+expresion_multiplicacion ::= expresion_multiplicacion:a operador_multiplicacion:op expresion_suma:b {: RESULT = parser.generarAritmetica(a, op, b, opleft, opright); :}
                         | expresion_suma:e  {: RESULT = e; :} ;
 
-expresion_suma ::= expresion_suma:a operador_suma:op expresion_unaria:b {: RESULT = parser.aritmetica(a, op, b, opleft, opright); :}
+expresion_suma ::= expresion_suma:a operador_suma:op expresion_unaria:b {: RESULT = parser.generarAritmetica(a, op, b, opleft, opright); :}
                 | expresion_unaria:e  {: RESULT = e; :} ;
 
 expresion_unaria ::= MINUS valor_numerico:v  {: RESULT = parser.negativo(v); :}

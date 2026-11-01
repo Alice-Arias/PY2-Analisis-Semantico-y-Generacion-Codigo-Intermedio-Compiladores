@@ -1389,6 +1389,30 @@ public class parser extends java_cup.runtime.lr_parser {
 
 
     public TablaSimbolos tabla = new TablaSimbolos();
+    /* =====================================================
+   GENERADOR DE CÓDIGO DE TRES DIRECCIONES
+   ===================================================== */
+
+    private StringBuilder codigoC3D = new StringBuilder();
+    private int contadorTemporales = 0;
+
+    public String nuevoTemporal() {
+        contadorTemporales++;
+        return "t" + contadorTemporales;
+    }
+
+    public void emitir(String instruccion) {
+        codigoC3D.append(instruccion).append("\n");
+    }
+
+    public String obtenerCodigoC3D() {
+        return codigoC3D.toString();
+    }
+
+    public void limpiarCodigoC3D() {
+        codigoC3D.setLength(0);
+        contadorTemporales = 0;
+    }
 
     /* TS: guardo los tokens leídos para recuperar el texto del valor inicial y del tamaño de los arreglos */
     private final ArrayList<Symbol> leidos = new ArrayList<Symbol>();
@@ -1492,7 +1516,30 @@ public class parser extends java_cup.runtime.lr_parser {
         r.valor = plegar(a, op, b);
         return r;
     }
+    public Atrib generarAritmetica(
+        Atrib a, String op, Atrib b,
+        int linea, int columna) {
 
+    // Primero se validan los tipos
+    Atrib resultado = aritmetica(a, op, b, linea, columna);
+
+    // Si hay error, no se genera código
+    if (resultado.tipo.equals("error")) {
+        return resultado;
+    }
+
+    // Crear temporal
+    String temporal = nuevoTemporal();
+
+    // Generar instrucción
+    emitir(temporal + " = " + a.lugar
+            + " " + op + " " + b.lugar);
+
+    // Guardar el temporal como resultado
+    resultado.lugar = temporal;
+
+    return resultado;
+    }
     /* SEM: convierte un texto en entero (null si no cabe en un int). */
     public Integer aEntero(String texto) {
         try {
@@ -2627,7 +2674,20 @@ class CUP$parser$actions {
 		int eleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
 		int eright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib e = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
-		 Simbolo s = parser.usar(id, idleft, idright); if (s != null) { parser.asignar("ASG-2", id, s.tipo, e, idleft, idright); } 
+		
+        Simbolo s = parser.usar(id, idleft, idright);
+
+        if (s != null) {
+            parser.asignar("ASG-2", id, s.tipo, e,
+                        idleft, idright);
+
+            if (e.tipo.equals(s.tipo) &&
+                !e.tipo.equals("error")) {
+
+                parser.emitir(id + " = " + e.lugar);
+            }
+        }
+    
               CUP$parser$result = parser.getSymbolFactory().newSymbol("asignacion_variable",38, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3068,7 +3128,7 @@ class CUP$parser$actions {
 		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = parser.aritmetica(a, "mod", b, mleft, mright); 
+		 RESULT = parser.generarAritmetica(a, "mod", b, mleft, mright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_mod",55, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3098,7 +3158,7 @@ class CUP$parser$actions {
 		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = parser.aritmetica(a, op, b, opleft, opright); 
+		 RESULT = parser.generarAritmetica(a, op, b, opleft, opright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_multiplicacion",57, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3128,7 +3188,7 @@ class CUP$parser$actions {
 		int bleft = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).left;
 		int bright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib b = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
-		 RESULT = parser.aritmetica(a, op, b, opleft, opright); 
+		 RESULT = parser.generarAritmetica(a, op, b, opleft, opright); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("expresion_suma",56, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
