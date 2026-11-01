@@ -24,8 +24,13 @@ public class Atrib {
     public String lugar;     /* literal, identificador o temporal */
     public Integer valor;    /* valor si es una constante entera (3, 1 + 1, -2); null si no se conoce */
 
+    // Nuevo campo para el código de tres direcciones
+    public String codigo;
+
     public Atrib(String tipo, String lugar) {
         this.tipo = tipo;
         this.lugar = lugar;
+        this.codigo = "";
+        this.valor = null;
     }
 }
