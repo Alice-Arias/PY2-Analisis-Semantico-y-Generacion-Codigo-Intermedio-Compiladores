@@ -1,15 +1,45 @@
 val int _i_ Ͱ 5»
 val int _arr_ʃ:20:ʅ»
 
+int f є:  :э ¿: :?
+
 bool _funcionInt_ є:  :э ¿:
+    val bool result Ͱ є:true:э λ Σ є: є:ʃ:12:ʅ >= ʃ:34+35:ʅ:э :э »
+
+    while є: true :э¿: 
+        write є: _i_ :э »
+        break »
+    :?
+
     return true»
 :?
 
-void procedimientoVoid є:  :э ¿: :?
+void procedimientoVoid є:  :э ¿:
+    val int var Ͱ 10 »
+    if є: є:ʃ:22:ʅ<ʃ:45:ʅ:э λ є:ʃ:var:ʅ>ʃ:5//6:ʅ:э :э  ¿:
+		val int y»
+		val char ch33 Ͱ 'a'»
+	 :?
+	 elif є:є:true:э λ є:false:э θ є:true:э :э ¿:
+		val int y» |no error duplicado en if-else
+	 :?
+	else  ¿: 
+		val int y»
+		val string str2 Ͱ "sdff"»
+	 :?
+    val int x»
 
-int _func2_  є: bool _b1_, int _i1_ :э   ¿: 
-	val int x Ͱ procedimientoVoid є::э» 
-    x Ͱ 10 + _funcionInt_ є::э »
+    for є: x  Ͱ 0 » 10 » x++ :э ¿:
+        write є: x :э »
+    :?
+
+:?
+
+bool _func2_  є: bool _b1_, int _i1_ :э   ¿: 
+    val bool x Ͱ ʃ:22:ʅ<ʃ:45:ʅ »
+    if є:x:э ¿:
+        val int y»
+    :?
 	return x» 
   :?
 
