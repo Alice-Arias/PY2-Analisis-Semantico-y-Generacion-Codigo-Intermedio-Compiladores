@@ -33,7 +33,7 @@ void procedimientoVoid є:  :э ¿:
     val int x»
     val int edadesʃ:3:ʅ Ͱ ¿:22, 10, 11:? »
     
-    for є: x  Ͱ 0 » ʃ:x:ʅ < ʃ:10:ʅ » x++ :э ¿:
+    for є: x  Ͱ 0 »  » x++ :э ¿:
         write є: "Hola mundo" :э »
         if є: ʃ:x:ʅ > ʃ:10:ʅ :э ¿:
             edadesʃ:2:ʅ Ͱ edadesʃ:2:ʅ + 1 »
