@@ -961,7 +961,7 @@ public class Main {
             System.out.println(col("90", "  " + borde('┌', '┬', '┐')));
 
             filaTabla(new String[]{"NOMBRE", "CATEGORÍA", "TIPO", "BYTES", "DIRECCIÓN", "LÍNEA"},
-                      new String[]{"1", "1", "1", "1", "1", "1"});
+                    new String[]{"1", "1", "1", "1", "1", "1"});
 
             System.out.println(col("90", "  " + borde('├', '┼', '┤')));
 
@@ -976,7 +976,7 @@ public class Main {
                                 s.esFuncion() ? "—" : (s.bytes > 0 ? String.valueOf(s.bytes) : "?"),
                                 s.direccion(),
                                 String.valueOf(s.linea)},
-                          new String[]{"1", colorCategoria(s.categoria), "0", "0", "0", "0"});
+                        new String[]{"1", colorCategoria(s.categoria), "0", "0", "0", "0"});
 
                 /* Información que no cabe en la tabla */
                 if (s.esFuncion()) {
@@ -1026,10 +1026,10 @@ public class Main {
             String texto = String.format("%-" + COLUMNAS[i] + "s", celdas[i]);
 
             sb.append(" ")
-              .append("0".equals(colores[i]) ? texto : col(colores[i], texto))
-              .append(" ")
-              .append(col("90", "│"));
-        }
+            .append("0".equals(colores[i]) ? texto : col(colores[i], texto))
+            .append(" ")
+            .append(col("90", "│"));
+    }
 
         System.out.println(sb);
     }
@@ -1185,10 +1185,10 @@ public class Main {
                 String texto = String.format("%-" + ANCHOS_TS[i] + "s", t);
 
                 sb.append(" ")
-                  .append("0".equals(colores[i]) ? texto : col(colores[i], texto))
-                  .append(" ")
-                  .append(col("90", "│"));
-            }
+                .append("0".equals(colores[i]) ? texto : col(colores[i], texto))
+                .append(" ")
+                .append(col("90", "│"));
+        }
 
             System.out.println(sb);
         }
@@ -1534,7 +1534,7 @@ public class Main {
 
             plano.append(item).append("   ");
             color.append(col(COLOR_VALIDACION, e.getKey())).append(" ")
-                 .append(col("1;33", String.valueOf(e.getValue()))).append("   ");
+                .append(col("1;33", String.valueOf(e.getValue()))).append("   ");
         }
 
         System.out.println(color);
