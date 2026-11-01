@@ -14,10 +14,29 @@ void principal є: :э ¿:                   | OK: principal puede ir en medio
     write є: a :э                         | ERROR sintáctico: falta »
     val int c Ͱ 1 @ »                     | ERROR léxico: el carácter @ no existe en el lenguaje
     val int e Ͱ 2.5»                      | ERROR semántico: float en una variable int
+    if є: ʃ:a:ʅ > ʃ:0:ʅ ¿: :?            | ERROR sintáctico: falta :э antes del bloque
+    val x Ͱ 7»                            | ERROR producción de error: falta el tipo de la variable
+    val bool v ʃ:3:ʅ»                     | ERROR producción de error: un arreglo no puede ser bool
+    read a»                               | ERROR producción de error: read necesita paréntesis
 :?
 
 int triple є: int n :э ¿:                 | OK: una función puede ir DESPUÉS de principal
     return n + n + n»
+:?
+
+int mal є: x :э ¿:                        | ERROR producción de error: falta el tipo del parámetro
+    return 1»
+:?
+
+int cuadrado є: int n ¿:                  | ERROR sintáctico: falta :э en el encabezado
+    return n + n»
+:?
+
+int sinCierre є: :э ¿:
+    return 1»                             | ERROR sintáctico: falta :? (cierre de la función)
+
+int despues є: :э ¿:                      | OK: la función siguiente se lee bien
+    return 2»
 :?
 
 void otra є: :э ¿:                        | ERROR sintáctico: void solo puede ser principal (modo pánico)
