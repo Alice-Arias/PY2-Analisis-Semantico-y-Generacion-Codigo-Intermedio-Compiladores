@@ -48,6 +48,16 @@ parser code {:
         return textoEntre(l1, c1, ultimo.left, ultimo.right);
     }
 
+    /* Texto del valor inicial de una variable (lo que va entre Ͱ y »).
+       Si el parser ya leyó el token que sigue al », el texto trae el » al final: se quita. */
+    public String textoValor(int linea, int columna) {
+        String t = textoDesde(linea, columna);
+        if (t != null && t.endsWith("»")) {
+            t = t.substring(0, t.length() - 1).trim();
+        }
+        return t;
+    }
+
     /* SEM: comprueba los tipos de una operación aritmética.
        Entrada: los dos operandos (con su tipo), el operador y su posición.
        Salida:  un Atrib con el tipo del resultado, o de tipo "error".
@@ -333,6 +343,40 @@ parser code {:
        REGLAS SOBRE LOS NOMBRES: declarar y usar
        La tabla de símbolos solo guarda y busca; aquí se decide qué es un error.
        ==================================================================== */
+
+    /* Regla PRG-1: el programa debe tener una función principal.
+       Si se repite, declararFuncion ya reporta el nombre repetido (TS-1). */
+    public void finPrograma() {
+        if (tabla.buscar("principal") == null) {
+            int linea = 1;
+            int columna = 1;
+            for (int i = leidos.size() - 1; i >= 0; i--) {
+                Symbol t = leidos.get(i);
+                if (t.left > 0) {
+                    linea = t.left;
+                    columna = t.right;
+                    break;
+                }
+            }
+            reportar("PRG-1", linea, columna, "el programa debe tener una función principal");
+        }
+    }
+
+    /* Recuperación a nivel de frase: avisa que falta el terminador. Main lo
+       sobrescribe para registrarlo como error sintáctico; aquí no hace nada. */
+    public void tokenFaltante(String token, int linea, int columna) {
+    }
+
+    /* El » que falta va justo después del último token de la sentencia, es decir,
+       antes del token que el parser acaba de leer (el que sigue). */
+    public void faltaTerminador() {
+        int n = leidos.size();
+        if (n >= 2) {
+            Symbol previo = leidos.get(n - 2);
+            int largo = previo.value == null ? 1 : Math.max(1, String.valueOf(previo.value).length());
+            tokenFaltante("»", previo.left, previo.right + largo);
+        }
+    }
 
     /* Guarda un error semántico con el código de su regla, por ejemplo
        "[ARI-3] no se pueden mezclar ...". Main usa el código para clasificar
@@ -653,6 +697,7 @@ terminal String ID;                         /* TS: el ID lleva su lexema */
 non terminal programa;
 non terminal lista_globales;
 non terminal unidades_programa;
+non terminal unidad;
 non terminal String tipo;                   /* TS */
 
 /* Valores */
@@ -674,6 +719,7 @@ non terminal abrir_corcheteCuadrados;
 non terminal cerrar_corcheteCuadrados;
 non terminal coma;
 non terminal fin_sentencia;
+non terminal fin_o_falta;
 non terminal asignacion;
 non terminal incremento;
 non terminal decremento;
@@ -845,6 +891,12 @@ coma ::= COMA ;
 
 fin_sentencia ::= TERMINATOR ;
 
+/* Recuperación a nivel de frase: si falta el terminador », el parser lo "inserta",
+   lo reporta con un mensaje específico (parser.faltaTerminador) y sigue leyendo,
+   sin descartar código. El modo pánico (error fin_sentencia) queda para los demás casos. */
+fin_o_falta ::= TERMINATOR
+              | /* falta » */  {: parser.faltaTerminador(); :} ;
+
 asignacion ::= ASIGN ;
 
 incremento ::= INCREMENT ;
@@ -894,36 +946,36 @@ escribir ::= WRITE ;
    ============================================================ */
 
 def_variable ::=
-      palabraVal INT    identificador:id fin_sentencia
+      palabraVal INT    identificador:id fin_o_falta
       {: parser.declararVariable(id, "int", null, idleft, idright); :}
-    | palabraVal FLOAT  identificador:id fin_sentencia
+    | palabraVal FLOAT  identificador:id fin_o_falta
       {: parser.declararVariable(id, "float", null, idleft, idright); :}
-    | palabraVal BOOL   identificador:id fin_sentencia
+    | palabraVal BOOL   identificador:id fin_o_falta
       {: parser.declararVariable(id, "bool", null, idleft, idright); :}
-    | palabraVal CHAR   identificador:id fin_sentencia
+    | palabraVal CHAR   identificador:id fin_o_falta
       {: parser.declararVariable(id, "char", null, idleft, idright); :}
-    | palabraVal STRING identificador:id fin_sentencia
+    | palabraVal STRING identificador:id fin_o_falta
       {: parser.declararVariable(id, "string", null, idleft, idright); :}
-    | palabraVal INT    identificador:id asignacion:a expresion:e fin_sentencia:f
-      {: parser.declararVariable(id, "int", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+    | palabraVal INT    identificador:id asignacion:a expresion:e fin_o_falta
+      {: parser.declararVariable(id, "int", parser.textoValor(aleft, aright), idleft, idright);
          parser.asignar("ASG-1", id, "int", e, idleft, idright); :}
-    | palabraVal FLOAT  identificador:id asignacion:a expresion:e fin_sentencia:f
-      {: parser.declararVariable(id, "float", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+    | palabraVal FLOAT  identificador:id asignacion:a expresion:e fin_o_falta
+      {: parser.declararVariable(id, "float", parser.textoValor(aleft, aright), idleft, idright);
          parser.asignar("ASG-1", id, "float", e, idleft, idright); :}
-    | palabraVal BOOL   identificador:id asignacion:a expresion:e fin_sentencia:f
-      {: parser.declararVariable(id, "bool", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+    | palabraVal BOOL   identificador:id asignacion:a expresion:e fin_o_falta
+      {: parser.declararVariable(id, "bool", parser.textoValor(aleft, aright), idleft, idright);
          parser.asignar("ASG-1", id, "bool", e, idleft, idright); :}
-    | palabraVal CHAR   identificador:id asignacion:a expresion:e fin_sentencia:f
-      {: parser.declararVariable(id, "char", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+    | palabraVal CHAR   identificador:id asignacion:a expresion:e fin_o_falta
+      {: parser.declararVariable(id, "char", parser.textoValor(aleft, aright), idleft, idright);
          parser.asignar("ASG-1", id, "char", e, idleft, idright); :}
-    | palabraVal STRING identificador:id asignacion:a expresion:e fin_sentencia:f
-      {: parser.declararVariable(id, "string", parser.textoEntre(aleft, aright, fleft, fright), idleft, idright);
+    | palabraVal STRING identificador:id asignacion:a expresion:e fin_o_falta
+      {: parser.declararVariable(id, "string", parser.textoValor(aleft, aright), idleft, idright);
          parser.asignar("ASG-1", id, "string", e, idleft, idright); :}
     ;
 
 /* SEM: asignar a una variable que ya existe. El tipo de la variable se
    lee de la tabla de símbolos; si no está declarada, usar() devuelve null. */
-asignacion_variable ::= identificador:id asignacion expresion:e fin_sentencia
+asignacion_variable ::= identificador:id asignacion expresion:e fin_o_falta
                         {: Simbolo s = parser.usar(id, idleft, idright);
                            if (s != null) { parser.asignar("ASG-2", id, s.tipo, e, idleft, idright); } :} ;
 
@@ -940,17 +992,17 @@ lista_globales ::= /* vacío */
 
 /* SEM: read recibe UN solo destino: una variable o un elemento de arreglo
    de tipo int, float o char (parser.leer). */
-lectura ::= leer PARENOP identificador:id PARENCL fin_sentencia
+lectura ::= leer PARENOP identificador:id PARENCL fin_o_falta
             {: Simbolo s = parser.usar(id, idleft, idright);
                if (s != null) { parser.leer(new Atrib(s.tipo, id), idleft, idright); } :}
-          | leer PARENOP acceso_arreglo:a PARENCL fin_sentencia
+          | leer PARENOP acceso_arreglo:a PARENCL fin_o_falta
             {: parser.leer(a, aleft, aright); :}
           ;
 
 /* SEM: write recibe UN solo valor, que debe ser de tipo int, float o string
    (parser.escribir). Acepta una expresión aritmética (el ejemplo2 del profe
    escribe -6//7) o un bool; si el tipo no sirve, escribir() lo reporta. */
-escritura ::= escribir PARENOP valor_escritura:v PARENCL fin_sentencia
+escritura ::= escribir PARENOP valor_escritura:v PARENCL fin_o_falta
               {: parser.escribir(v, vleft, vright); :} ;
 
 valor_escritura ::= expresion_aritmetica:e  {: RESULT = e; :}
@@ -971,28 +1023,28 @@ creacion_arreglo ::= arreglo_con_tamano | arreglo_con_tamano_valores | arreglo_s
 /* TS: las llaves de la lista de valores usan OPBLOCK/CLBLOCK directo,
    para que no abran un ámbito nuevo */
 arreglo_con_tamano ::=
-      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c fin_sentencia
+      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c fin_o_falta
       {: parser.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), 0, null, idleft, idright);
          parser.arreglo(id, "int", i, null, idleft, idright); :}
-    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c fin_sentencia
+    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c fin_o_falta
       {: parser.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), 0, null, idleft, idright);
          parser.arreglo(id, "float", i, null, idleft, idright); :}
     ;
 
 arreglo_con_tamano_valores ::=
-      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
+      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
       {: parser.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
          parser.arreglo(id, "int", i, n, idleft, idright); :}
-    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
+    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
       {: parser.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
          parser.arreglo(id, "float", i, n, idleft, idright); :}
     ;
 
 arreglo_sin_tamano_valores ::=
-      palabraVal INT   identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
+      palabraVal INT   identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
       {: parser.declararArreglo(id, "int", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
          parser.arreglo(id, "int", null, n, idleft, idright); :}
-    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_sentencia
+    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
       {: parser.declararArreglo(id, "float", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
          parser.arreglo(id, "float", null, n, idleft, idright); :}
     ;
@@ -1008,7 +1060,7 @@ continuacion_lista_arreglo ::= coma expresion_aritmetica:e continuacion_lista_ar
                                {: l.add(0, e); RESULT = l; :}
                              | /* vacío */  {: RESULT = new ArrayList(); :} ;
 
-modificacion_arreglo ::= acceso_arreglo:a asignacion expresion:e fin_sentencia
+modificacion_arreglo ::= acceso_arreglo:a asignacion expresion:e fin_o_falta
                          {: parser.asignar("ARR-8", a.lugar, a.tipo, e, aleft, aright); :} ;
 
 
@@ -1242,7 +1294,7 @@ break ::= palabraBreak:b {: parser.validarBreak(bleft, bright); :} ;
 
 return ::= palabraReturn:r fin_sentencia
            {: parser.retorno(null, rleft, rright); :}
-         | palabraReturn:r expresion:e fin_sentencia
+         | palabraReturn:r expresion:e fin_o_falta
            {: parser.retorno(e, rleft, rright); :} ;
 
 instruccion ::= sentencia_simple | estructura_control ;
@@ -1255,8 +1307,8 @@ sentencia_simple ::=
     | lectura
     | escritura
     | operacion_incremento
-    | llamada_funcion fin_sentencia
-    | break fin_sentencia
+    | llamada_funcion fin_o_falta
+    | break fin_o_falta
     | return
     | error fin_sentencia
     ;
@@ -1312,11 +1364,18 @@ principal ::= VOID Principal PARENOP PARENCL abrir_bloque bloque cerrar_bloque ;
                   UNIDADES DEL PROGRAMA
    ============================================================ */
 
-unidades_programa ::= principal | funcion_no_void unidades_programa | funcion_void_invalida unidades_programa ;
+/* Las funciones y principal pueden ir en cualquier orden. Que haya exactamente
+   una principal se comprueba al final del programa (parser.finPrograma): si falta
+   se reporta PRG-1, y si se repite, el nombre repetido (TS-1). */
+unidades_programa ::= /* vacío */
+                    | unidad unidades_programa ;
+
+unidad ::= funcion_no_void | principal | funcion_void_invalida ;
 
 
 /* ============================================================
                         PROGRAMA
    ============================================================ */
 
-programa ::= lista_globales unidades_programa ;
+programa ::= lista_globales unidades_programa
+            {: parser.finPrograma(); :} ;

@@ -721,10 +721,14 @@ public class Main {
 
         if (erroresTotales == 0) {
 
-            caja(true, "  ARCHIVO CORRECTO", "No se encontraron errores léxicos, sintácticos ni semánticos.");
+            caja(true, "  ARCHIVO CORRECTO",
+                    "El archivo SÍ puede ser generado por la gramática.",
+                    "No se encontraron errores léxicos, sintácticos ni semánticos.");
 
         } else {
-            caja(false, "  ARCHIVO CON ERRORES", "Corrige los errores indicados y vuelve a ejecutar.");
+            caja(false, "  ARCHIVO CON ERRORES",
+                    "El archivo NO puede ser generado por la gramática.",
+                    "Corrige los errores indicados y vuelve a ejecutar.");
         }
 
         /* ----------------- TABLA DE SÍMBOLOS ----------------- */
@@ -1412,6 +1416,7 @@ public class Main {
         FAMILIAS.put("CON", "Control");
         FAMILIAS.put("INC", "Incremento");
         FAMILIAS.put("ES",  "Entrada/Salida");
+        FAMILIAS.put("PRG", "Programa");
     }
 
     /* Un solo color para la validación, para que la lista se lea sin ruido */
@@ -1695,55 +1700,64 @@ public class Main {
             fila("", "");
         }
 
-        /* ---- Qué se encontró ---- */
+        if (e.mensaje != null) {
 
-        if (e.fin) {
-
-            detalle("Se encontró", "fin de archivo", "1;33");
+            /* Recuperación a nivel de frase */
+            detalle("Se esperaba", String.join(", ", e.esperados), "32");
+            detalle("Corrección", e.mensaje, "1;33");
 
         } else {
 
-            String lexema = e.lexema == null ? "" : e.lexema;
+            /* ---- Qué se encontró ---- */
 
-            if (lexema.length() > 40) {
+            if (e.fin) {
 
-                lexema = lexema.substring(0, 39) + "…";
+                detalle("Se encontró", "fin de archivo", "1;33");
+
+            } else {
+
+                String lexema = e.lexema == null ? "" : e.lexema;
+
+                if (lexema.length() > 40) {
+
+                    lexema = lexema.substring(0, 39) + "…";
+                }
+
+                String hallado = "'" + lexema + "'";
+
+                String token = "(" + e.token + ")";
+
+                String prefijo = String.format("%-11s : ", "Se encontró");
+
+                fila(prefijo + hallado + "  " + token,
+                        col("1", prefijo)
+                                + col("1;33", hallado)
+                                + "  " + col("90", token));
             }
 
-            String hallado = "'" + lexema + "'";
+            /* ---- Qué se esperaba (máximo 6 opciones) ---- */
 
-            String token = "(" + e.token + ")";
+            if (!e.esperados.isEmpty()) {
 
-            String prefijo = String.format("%-11s : ", "Se encontró");
+                List<String> lista = new ArrayList<>(e.esperados);
 
-            fila(prefijo + hallado + "  " + token,
-                    col("1", prefijo)
-                            + col("1;33", hallado)
-                            + "  " + col("90", token));
-        }
+                boolean hayMas = lista.remove("…");
 
-        /* ---- Qué se esperaba (máximo 6 opciones) ---- */
+                if (lista.size() > 6) {
+                    lista = new ArrayList<>(lista.subList(0, 6));
+                    hayMas = true;
+                }
 
-        if (!e.esperados.isEmpty()) {
-
-            List<String> lista = new ArrayList<>(e.esperados);
-
-            boolean hayMas = lista.remove("…");
-
-            if (lista.size() > 6) {
-                lista = new ArrayList<>(lista.subList(0, 6));
-                hayMas = true;
+                detalle("Se esperaba",
+                        String.join(", ", lista) + (hayMas ? ", …" : ""),
+                        "32");
             }
 
-            detalle("Se esperaba",
-                    String.join(", ", lista) + (hayMas ? ", …" : ""),
-                    "32");
-        }
-
-        if (e.fin) {
-            detalle("Sugerencia",
-                    "Puede faltar un cierre de bloque o un terminador.",
-                    "36");
+            if (e.fin) {
+                detalle("Sugerencia",
+                        "Puede faltar un cierre de bloque o un terminador.",
+                        "36");
+            }
         }
 
         /* ---- Borde inferior y espacio entre errores ---- */
@@ -1778,6 +1792,9 @@ public class Main {
         String token;
         String lexema;
         List<String> esperados = new ArrayList<>();
+
+        /* Recuperación a nivel de frase: qué se hizo (null en un error normal) */
+        String mensaje;
     }
 
     /*
@@ -1967,6 +1984,39 @@ public class Main {
         @Override
         public void report_fatal_error(String message, Object info) {
             abortado = true;
+        }
+
+        /*
+         * Descripcion:
+         * Registro un token que faltaba y que el parser insertó por su cuenta
+         * (recuperación a nivel de frase).
+         *
+         * Entrada:
+         * El token que faltaba y el lugar donde debía ir.
+         *
+         * Salida:
+         * Un error sintáctico con un mensaje específico.
+         *
+         * Restricciones:
+         * Solo lo llama el parser, desde la regla fin_o_falta.
+         *
+         * Objetivo:
+         * Informar el error exacto y seguir leyendo sin descartar código.
+         */
+        @Override
+        public void tokenFaltante(String token, int linea, int columna) {
+
+            ErrorSintactico e = new ErrorSintactico();
+
+            e.linea = linea;
+            e.columna = columna;
+            e.token = "TERMINATOR";
+            e.lexema = null;
+            e.mensaje = "Falta el terminador " + token + " al final de la sentencia. "
+                    + "Se insertó y se siguió leyendo.";
+            e.esperados.add(token);
+
+            errores.add(e);
         }
 
         /*
