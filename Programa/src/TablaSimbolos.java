@@ -74,6 +74,9 @@ public class TablaSimbolos {
     private Simbolo funcionSiguiente = null;
     private final List<Simbolo> pendientes = new ArrayList<>();
 
+    /* Control de ciclos */
+    private int ciclosActivos;
+
     public TablaSimbolos() {
         top = new Ambito(null, "global", true);
         todos.add(top);
@@ -131,6 +134,67 @@ public class TablaSimbolos {
                     + "' debe retornar un valor de tipo " + tipoEsperado
                     + ", pero se recibió " + retorno.tipo);
         }
+    }
+
+    /* ======================== CICLOS ======================== */
+
+    /* Inicia el contador de ciclos */
+    public void entrarCiclo() {
+        ciclosActivos++;
+    }
+
+    /* Hace la reducción después de salir de un ciclo */
+    public void salirCiclo() {
+        if (ciclosActivos > 0) {
+            ciclosActivos--;
+        }
+    }
+
+    /* Realiza la validación del break */
+    public void validarBreak(int linea, int columna) {
+        if (ciclosActivos == 0) {
+            error(linea, columna,
+                "break solo puede utilizarse dentro de un ciclo");
+        }
+    }
+
+    /* ==================== LECTURA E IMPRESION ====================== */
+
+    /* Valida el tipado y los valores utilizados en la lectura de entrada */
+    private void validarTipoLectura(String tipo, int linea, int columna) {
+        if (!"int".equals(tipo) &&
+            !"float".equals(tipo) &&
+            !"char".equals(tipo)) {
+
+            error(linea, columna,
+                "read solo permite valores de tipo int, float o char; se recibió " + tipo);
+        }
+    }
+
+    public void validarLectura(String nombre, int linea, int columna) {
+        Simbolo s = usar(nombre, linea, columna);
+
+        if (s == null || s.esFuncion()) {
+            return;
+        }
+
+        if (!Simbolo.VARIABLE.equals(s.categoria) &&
+            !Simbolo.PARAMETRO.equals(s.categoria)) {
+
+            error(linea, columna,
+                "'" + nombre + "' no es una variable válida para read");
+            return;
+        }
+
+        validarTipoLectura(s.tipo, linea, columna);
+    }
+
+    public void validarLectura(Atrib elemento, int linea, int columna) {
+        if (elemento == null || "error".equals(elemento.tipo)) {
+            return;
+        }
+
+        validarTipoLectura(elemento.tipo, linea, columna);
     }
 
     /* ======================== ÁMBITOS ======================== */

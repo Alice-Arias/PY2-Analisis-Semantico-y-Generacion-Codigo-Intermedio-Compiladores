@@ -395,7 +395,10 @@ parser code {:
     }
 
 
-    /* */
+    /* SEM: comprueba que la condición de una estructura de control sea estrictamente de tipo bool.
+        Entrada: el atributo de la condición evaluada, y su posición (línea y columna).
+        Salida:  el atributo original si es válido, o un atributo de tipo "error" en caso contrario.
+        Reglas:  las condiciones (en if, while, etc.) deben evaluar obligatoriamente a booleano. */
     public Atrib validarCondicion(Atrib condicion, int linea, int columna) {
 
         if (condicion == null || "error".equals(condicion.tipo)) {
@@ -497,7 +500,6 @@ non terminal decremento;
 non terminal palabraVal;
 non terminal palabraBreak;
 non terminal palabraReturn;
-non terminal palabraPrint;
 non terminal Principal;
 non terminal palabraIf;
 non terminal palabraElif;
@@ -516,7 +518,6 @@ non terminal asignacion_variable;
 non terminal lectura;
 non terminal escritura;
 non terminal impresion;
-non terminal lista_valores;
 non terminal valor_escritura;
 
 /* Arreglos */
@@ -676,8 +677,6 @@ palabraBreak ::= BREAK ;
 
 palabraReturn ::= RETURN ;
 
-palabraPrint ::= PRINT ;
-
 /* TS: cada palabra le pone nombre al ámbito de su bloque */
 /* TS: principal se registra como procedimiento sin parámetros */
 Principal   ::= PRINCIPAL:p  {: parser.tabla.declararFuncion("principal", "void", null, pleft, pright); :} ;
@@ -754,18 +753,11 @@ lista_globales ::= /* vacío */
                     ENTRADA Y SALIDA
    ============================================================ */
 
-lectura ::= leer identificador:id fin_sentencia                  {: parser.tabla.usar(id, idleft, idright); :}
-          | leer acceso_arreglo fin_sentencia
-          | leer PARENOP identificador:id PARENCL fin_sentencia  {: parser.tabla.usar(id, idleft, idright); :}
-          | leer PARENOP acceso_arreglo PARENCL fin_sentencia
+lectura ::= leer PARENOP identificador:id PARENCL fin_sentencia {: parser.tabla.validarLectura(id, idleft, idright); :}
+          | leer PARENOP acceso_arreglo:a PARENCL fin_sentencia {: parser.tabla.validarLectura(a, aleft, aright); :}
           ;
 
-escritura ::= escribir valor_escritura fin_sentencia
-            | escribir PARENOP expresion PARENCL fin_sentencia ;
-
-impresion ::= palabraPrint PARENOP lista_valores PARENCL fin_sentencia ;
-
-lista_valores ::= valor_escritura | valor_escritura coma lista_valores ;
+escritura ::= escribir PARENOP valor_escritura PARENCL fin_sentencia;
 
 valor_escritura ::= entero | flotante | bool | cadena_texto | caracter_literal
                   | identificador:id  {: parser.tabla.usar(id, idleft, idright); :}
@@ -998,16 +990,25 @@ cadena_elif ::= elif | elif cadena_elif ;
 else ::= palabraElse abrir_bloque bloque cerrar_bloque
       | palabraElse error abrir_bloque bloque cerrar_bloque ;
 
-while ::= palabraWhile PARENOP condicion_control:c PARENCL {: parser.validarCondicion(c, cleft, cright); :} abrir_bloque bloque cerrar_bloque
-        | palabraWhile error abrir_bloque bloque cerrar_bloque ;
+while ::= palabraWhile PARENOP condicion_control PARENCL
+          {: parser.tabla.entrarCiclo(); :}
+          abrir_bloque bloque cerrar_bloque
+          {: parser.tabla.salirCiclo(); :}
+        | palabraWhile error
+          {: parser.tabla.entrarCiclo(); :}
+          abrir_bloque bloque cerrar_bloque
+          {: parser.tabla.salirCiclo(); :}
+        ;
 
 /* TS: al terminar el for se cierra el ámbito que abrió palabraFor */
-for ::= palabraFor PARENOP inicio_for fin_sentencia condicion_for:c
-        {: if (c != null) parser.validarCondicion(c, cleft, cright); :}
-        fin_sentencia incremento_for PARENCL abrir_bloque bloque cerrar_bloque
-        {: parser.tabla.cerrarAmbito(); :}
-      | palabraFor error abrir_bloque bloque cerrar_bloque
-        {: parser.tabla.cerrarAmbito(); :}
+for ::= palabraFor PARENOP inicio_for fin_sentencia condicion_for fin_sentencia incremento_for PARENCL
+        {: parser.tabla.entrarCiclo(); :}
+        abrir_bloque bloque cerrar_bloque
+        {: parser.tabla.salirCiclo(); parser.tabla.cerrarAmbito(); :}
+      | palabraFor error
+        {: parser.tabla.entrarCiclo(); :}
+        abrir_bloque bloque cerrar_bloque
+        {: parser.tabla.salirCiclo(); parser.tabla.cerrarAmbito(); :}
       ;
 
 inicio_for ::= /* vacío */
@@ -1043,7 +1044,7 @@ estructura_control ::= if | while | for ;
                 SENTENCIAS Y BLOQUES
    ============================================================ */
 
-break ::= palabraBreak ;
+break ::= palabraBreak:b {: parser.tabla.validarBreak(bleft, bright); :} ;
 
 return ::= palabraReturn:r fin_sentencia
            {: parser.tabla.validarRetorno(null, rleft, rright); :} 
