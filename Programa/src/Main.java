@@ -2010,10 +2010,25 @@ public class Main {
 
             e.linea = linea;
             e.columna = columna;
-            e.token = "TERMINATOR";
             e.lexema = null;
-            e.mensaje = "Falta el terminador " + token + " al final de la sentencia. "
-                    + "Se insertó y se siguió leyendo.";
+
+            String que;
+
+            switch (token) {
+                case ":э":
+                    e.token = "PARENCL";
+                    que = "Falta el paréntesis de cierre :э.";
+                    break;
+                case ":?":
+                    e.token = "CLBLOCK";
+                    que = "Falta el cierre de bloque :? de la función.";
+                    break;
+                default:
+                    e.token = "TERMINATOR";
+                    que = "Falta el terminador » al final de la sentencia.";
+            }
+
+            e.mensaje = que + " Se insertó y se siguió leyendo.";
             e.esperados.add(token);
 
             errores.add(e);

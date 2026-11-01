@@ -370,11 +370,17 @@ parser code {:
     /* El » que falta va justo después del último token de la sentencia, es decir,
        antes del token que el parser acaba de leer (el que sigue). */
     public void faltaTerminador() {
+        faltaToken("»");
+    }
+
+    /* Avisa que falta un token (», :э o :?). Va justo después del último token de la frase,
+       o sea, antes del token que el parser acaba de leer. */
+    public void faltaToken(String token) {
         int n = leidos.size();
         if (n >= 2) {
             Symbol previo = leidos.get(n - 2);
             int largo = previo.value == null ? 1 : Math.max(1, String.valueOf(previo.value).length());
-            tokenFaltante("»", previo.left, previo.right + largo);
+            tokenFaltante(token, previo.left, previo.right + largo);
         }
     }
 
@@ -720,6 +726,8 @@ non terminal cerrar_corcheteCuadrados;
 non terminal coma;
 non terminal fin_sentencia;
 non terminal fin_o_falta;
+non terminal cierra_paren;
+non terminal cierra_bloque_fn;
 non terminal asignacion;
 non terminal incremento;
 non terminal decremento;
@@ -896,6 +904,16 @@ fin_sentencia ::= TERMINATOR ;
    sin descartar código. El modo pánico (error fin_sentencia) queda para los demás casos. */
 fin_o_falta ::= TERMINATOR
               | /* falta » */  {: parser.faltaTerminador(); :} ;
+
+/* Lo mismo para el paréntesis de cierre que va justo antes de un bloque (¿:), y para el
+   cierre :? de una función. Solo se hace donde no hay ambigüedad: dentro de una expresión,
+   o en un bloque anidado, el parser no puede saber si el cierre falta o si la expresión
+   o el bloque siguen. */
+cierra_paren ::= PARENCL
+               | /* falta :э */  {: parser.faltaToken(":э"); :} ;
+
+cierra_bloque_fn ::= cerrar_bloque
+                   | /* falta :? */  {: parser.faltaToken(":?"); parser.tabla.cerrarAmbito(); :} ;
 
 asignacion ::= ASIGN ;
 
@@ -1215,7 +1233,7 @@ llamada_funcion ::= identificador:id PARENOP lista_expresiones:args PARENCL
    ============================================================ */
 
 /* SEM: la condición de un if y de un elif va entre paréntesis y debe ser bool */
-condicion_if ::= PARENOP condicion_control:c PARENCL
+condicion_if ::= PARENOP condicion_control:c cierra_paren
                  {: parser.condicion("CON-1", c, cleft, cright); :} ;
 
 if ::= palabraIf condicion_if abrir_bloque bloque cerrar_bloque demas_if
@@ -1236,7 +1254,7 @@ else ::= palabraElse abrir_bloque bloque cerrar_bloque
 
 /* SEM: while y for cuentan los ciclos activos (para validar break) y
    revisan que su condición sea bool */
-condicion_while ::= PARENOP condicion_control:c PARENCL
+condicion_while ::= PARENOP condicion_control:c cierra_paren
                     {: parser.condicion("CON-2", c, cleft, cright); parser.entrarCiclo(); :} ;
 
 ciclo_con_error ::= error {: parser.entrarCiclo(); :} ;
@@ -1247,7 +1265,7 @@ while ::= palabraWhile condicion_while abrir_bloque bloque cerrar_bloque
           {: parser.salirCiclo(); :}
         ;
 
-cabecera_for ::= PARENOP inicio_for fin_sentencia condicion_for:c fin_sentencia incremento_for PARENCL
+cabecera_for ::= PARENOP inicio_for fin_sentencia condicion_for:c fin_sentencia incremento_for cierra_paren
                  {: parser.condicion("CON-3", c, cleft, cright); parser.entrarCiclo(); :} ;
 
 /* TS: al terminar el for se cierra el ámbito que abrió palabraFor */
@@ -1341,10 +1359,10 @@ parametros ::= parametro:p
 /* Las funciones devuelven int, float, char o bool y reciben parámetros con tipo.
    El encabezado se reduce ANTES del cuerpo, así la función ya existe
    (permite recursión) y sus parámetros entran al ámbito del cuerpo. */
-encabezado_funcion ::= tipo:t identificador:id PARENOP lista_parametros:p PARENCL
+encabezado_funcion ::= tipo:t identificador:id PARENOP lista_parametros:p cierra_paren
                        {: parser.declararFuncion(id, t, p, idleft, idright); :} ;
 
-funcion_no_void ::= encabezado_funcion abrir_bloque bloque cerrar_bloque
+funcion_no_void ::= encabezado_funcion abrir_bloque bloque cierra_bloque_fn
                     {: parser.finFuncion(); :}
                   | tipo error abrir_bloque bloque cerrar_bloque ;
 
@@ -1357,7 +1375,7 @@ funcion_void_invalida ::= VOID error abrir_bloque bloque cerrar_bloque ;
                         PRINCIPAL
    ============================================================ */
 
-principal ::= VOID Principal PARENOP PARENCL abrir_bloque bloque cerrar_bloque ;
+principal ::= VOID Principal PARENOP cierra_paren abrir_bloque bloque cierra_bloque_fn ;
 
 
 /* ============================================================
