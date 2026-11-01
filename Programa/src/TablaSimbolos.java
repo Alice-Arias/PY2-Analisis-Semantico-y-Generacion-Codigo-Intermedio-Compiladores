@@ -197,6 +197,22 @@ public class TablaSimbolos {
         validarTipoLectura(elemento.tipo, linea, columna);
     }
 
+    /* Valida el print */
+    public void validarEscritura(Atrib valor, int linea, int columna) {
+        if (valor == null || "error".equals(valor.tipo)) {
+            return;
+        }
+
+        if (!"int".equals(valor.tipo)
+                && !"float".equals(valor.tipo)
+                && !"bool".equals(valor.tipo)
+                && !"string".equals(valor.tipo)) {
+
+            error(linea, columna,
+                "write no permite valores de tipo " + valor.tipo);
+        }
+    }
+
     /* ======================== ÁMBITOS ======================== */
 
     /* Indico el nombre del próximo ámbito (if, while, else...). */

@@ -54,7 +54,8 @@ bool _func2_  є: bool _b1_, int _i1_ :э   ¿:
 
 void principal є:  :э  ¿: | semantico tipo void
     val int filasʃ:5:ʅ »
-    read є: filasʃ:10:ʅ :э »
-	_arr_ʃ:67+_i_:ʅ  Ͱ -1 + 1010»  | semantico
+    read є: filasʃ:0:ʅ :э »
+	_arr_ʃ:67+_i_:ʅ  Ͱ -1 + 5»  | semantico
     _func2_ є: true, 5 :э »
+    write є: _funcionInt_ є:  :э  :э »
 :?

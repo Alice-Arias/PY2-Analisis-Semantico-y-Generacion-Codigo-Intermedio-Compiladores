@@ -517,8 +517,7 @@ non terminal asignacion_variable;
 /* Entrada y salida */
 non terminal lectura;
 non terminal escritura;
-non terminal impresion;
-non terminal valor_escritura;
+non terminal Atrib valor_escritura;
 
 /* Arreglos */
 non terminal Atrib indice;
@@ -754,14 +753,35 @@ lista_globales ::= /* vacío */
    ============================================================ */
 
 lectura ::= leer PARENOP identificador:id PARENCL fin_sentencia {: parser.tabla.validarLectura(id, idleft, idright); :}
-          | leer PARENOP acceso_arreglo:a PARENCL fin_sentencia {: parser.tabla.validarLectura(a, aleft, aright); :}
-          ;
+            | leer PARENOP acceso_arreglo:a PARENCL fin_sentencia {: parser.tabla.validarLectura(a, aleft, aright); :}
+            ;
 
-escritura ::= escribir PARENOP valor_escritura PARENCL fin_sentencia;
+escritura ::= escribir PARENOP valor_escritura:v PARENCL fin_sentencia
+              {: parser.tabla.validarEscritura(v, vleft, vright); :};
 
-valor_escritura ::= entero | flotante | bool | cadena_texto | caracter_literal
-                  | identificador:id  {: parser.tabla.usar(id, idleft, idright); :}
-                  | acceso_arreglo ;
+valor_escritura ::= entero:e
+                    {: RESULT = e; :}
+                  | flotante:f
+                    {: RESULT = f; :}
+                  | bool:b
+                    {: RESULT = b; :}
+                  | cadena_texto:c
+                    {: RESULT = c; :}
+                  | identificador:id
+                    {:
+                        Simbolo s = parser.tabla.usar(id, idleft, idright);
+
+                        if (s != null && !s.esFuncion()) {
+                            RESULT = new Atrib(s.tipo, id);
+                        } else {
+                            RESULT = new Atrib("error", id);
+                        }
+                    :}
+                  | acceso_arreglo:a
+                    {: RESULT = a; :}
+                  | llamada_funcion:l
+                    {: RESULT = l; :}
+                  ;
 
 /* ============================================================
                 ARREGLOS
@@ -1060,7 +1080,6 @@ sentencia_simple ::=
     | modificacion_arreglo
     | lectura
     | escritura
-    | impresion
     | operacion_incremento
     | llamada_funcion fin_sentencia
     | break fin_sentencia
