@@ -2,8 +2,8 @@
   TABLA DE SÍMBOLOS
 ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-  Archivo fuente : pruebasX.cmm
-  Generado       : 01/11/2026 21:10:04
+  Archivo fuente : pruebasx.cmm
+  Generado       : 02/11/2026 11:29:16
   Ámbitos        : 11
   Símbolos       : 16
   Errores        : 0
