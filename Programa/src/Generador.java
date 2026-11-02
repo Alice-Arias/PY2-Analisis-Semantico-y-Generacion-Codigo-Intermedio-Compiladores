@@ -140,18 +140,69 @@ public class Generador {
         return validado;
     }
     /* Operación de un solo operando: t = not e */
-public Atrib unaria(Atrib validado, String op, Atrib e) {
+    public Atrib unaria(Atrib validado, String op, Atrib e) {
 
-    if (validado.tipo.equals("error")) {
+        if (validado.tipo.equals("error")) {
+            return validado;
+        }
+
+        String temporal = nuevoTemporal();
+
+        emitir(temporal + " = " + op + " " + e.lugar);
+
+        validado.lugar = temporal;
+
         return validado;
     }
 
-    String temporal = nuevoTemporal();
+    /* Instrucción de lectura: read destino */
+    public void leer(String destino) {
+        emitir("read " + destino);
+    }
 
-    emitir(temporal + " = " + op + " " + e.lugar);
+    /* Instrucción de escritura: write valor */
+    public void escribir(String valor) {
+        emitir("write " + valor);
+    }
 
-    validado.lugar = temporal;
+    /* x++ y x--: se escriben como x = x + 1 y x = x - 1 */
+    public void incremento(String id, String op) {
+        emitir(id + " = " + id + (op.equals("++") ? " + 1" : " - 1"));
+    }
 
-    return validado;
-}
+    private boolean hayFuncion = false;
+
+    /* Etiqueta con el nombre de la función. Antes de la primera función (si no es principal)
+    se escribe un salto a principal: así las variables globales se inicializan primero
+    y la ejecución empieza en main. */
+    public void etiquetaFuncion(String nombre) {
+        if (!hayFuncion && !nombre.equals("principal")) {
+            emitir("goto principal");
+        }
+        hayFuncion = true;
+        emitir(nombre + ":");
+    }
+
+    /* Llamada: un param por cada argumento y luego el call. Devuelve el temporal donde queda
+    el resultado, o null si la función no devuelve valor. */
+    public String llamar(String nombre, java.util.ArrayList args, boolean devuelve) {
+        for (Object o : args) {
+            emitir("param " + ((Atrib) o).lugar);
+        }
+
+        if (!devuelve) {
+            emitir("call " + nombre + ", " + args.size());
+            return null;
+
+        }
+
+        String temporal = nuevoTemporal();
+        emitir(temporal + " = call " + nombre + ", " + args.size());
+        return temporal;
+    }
+    
+    /* return con valor (lugar) o sin valor (null) */
+    public void retorno(String lugar) {
+        emitir(lugar == null ? "return" : "return " + lugar);
+    }
 }

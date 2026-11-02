@@ -517,7 +517,6 @@ Estado utilizado para procesar un string incompleto.
 "for"       { return symbol(sym.FOR); }
 "return"    { return symbol(sym.RETURN); }
 "break"     { return symbol(sym.BREAK); }
-"print"     { return symbol(sym.PRINT); }
 "read"      { return symbol(sym.READ); }
 "write"     { return symbol(sym.WRITE); }
 
