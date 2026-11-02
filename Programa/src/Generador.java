@@ -140,18 +140,28 @@ public class Generador {
         return validado;
     }
     /* Operación de un solo operando: t = not e */
-public Atrib unaria(Atrib validado, String op, Atrib e) {
+    public Atrib unaria(Atrib validado, String op, Atrib e) {
 
-    if (validado.tipo.equals("error")) {
+        if (validado.tipo.equals("error")) {
+            return validado;
+        }
+
+        String temporal = nuevoTemporal();
+
+        emitir(temporal + " = " + op + " " + e.lugar);
+
+        validado.lugar = temporal;
+
         return validado;
     }
 
-    String temporal = nuevoTemporal();
+    /* Instrucción de lectura: read destino */
+    public void leer(String destino) {
+        emitir("read " + destino);
+    }
 
-    emitir(temporal + " = " + op + " " + e.lugar);
-
-    validado.lugar = temporal;
-
-    return validado;
-}
+    /* Instrucción de escritura: write valor */
+    public void escribir(String valor) {
+        emitir("write " + valor);
+    }
 }

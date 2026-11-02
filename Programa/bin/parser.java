@@ -2161,7 +2161,9 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
         if (!destino.tipo.equals("int") && !destino.tipo.equals("float") && !destino.tipo.equals("char")) {
             reportar("ES-1", linea, columna,
                     "read solo permite valores de tipo int, float o char; se recibió " + destino.tipo);
+            return;
         }
+        gen.leer(destino.lugar);
     }
 
     /* SEM: write solo escribe valores de tipo int, float o string
@@ -2174,7 +2176,9 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
 
         if (!valor.tipo.equals("int") && !valor.tipo.equals("float") && !valor.tipo.equals("string")) {
             reportar("ES-2", linea, columna, "write no permite valores de tipo " + valor.tipo);
+            return;
         }
+        gen.escribir(valor.lugar);
     }
 
 
