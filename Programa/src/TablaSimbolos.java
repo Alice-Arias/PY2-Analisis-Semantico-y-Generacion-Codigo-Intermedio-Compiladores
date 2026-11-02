@@ -27,22 +27,25 @@ import java.util.Map;
  *                           referencia a la tabla hija (funciones).
  *
  * Entrada:
- * Las acciones semánticas de la gramática (parser.cup) llaman a
- * estos métodos mientras el parser reconoce el programa:
+ * Las acciones de la gramática (Parser.cup) llaman a estos métodos
+ * mientras el parser reconoce el programa:
  *   ¿:  -> abrirAmbito()      :?  -> cerrarAmbito()
  *   val tipo id               -> declararVariable / declararArreglo
  *   tipo id є: params :э      -> declararFuncion
- *   uso de id                 -> usar / usarArreglo / usarFuncion
+ *   uso de id                 -> buscar
  *
  * Salida:
- * Los ámbitos con sus símbolos y los errores semánticos encontrados.
+ * Los ámbitos con sus símbolos y la lista de errores semánticos.
  *
  * Restricciones:
- * Un identificador no puede declararse dos veces en el mismo ámbito
- * y debe estar declarado antes de usarse.
+ * Esta clase SOLO ALMACENA Y BUSCA: no decide qué es un error.
+ * Todas las reglas semánticas (nombre repetido, nombre no declarado,
+ * tipos, return, break, read, write...) están en Parser.cup, que usa
+ * errorSemantico() para dejar sus mensajes en la lista de errores.
  *
  * Objetivo:
- * Pasar la información de las declaraciones a los usos.
+ * Pasar la información de las declaraciones a los usos, y que todas
+ * las reglas queden en un solo lugar.
  */
 public class TablaSimbolos {
 
@@ -133,17 +136,17 @@ public class TablaSimbolos {
      * acceso y dirección.
      * Si ya existe en ESE ámbito se reporta error.
      */
-    public void declarar(Simbolo s) {
+    public Simbolo declarar(Simbolo s) {
         if (s == null || s.nombre == null) {
-            return;
+            return null;
         }
 
+        /* Si el nombre ya existe en ESTE ámbito, no se inserta y se devuelve
+           el símbolo anterior: Parser.cup decide que eso es un error. */
         Simbolo previo = top.getLocal(s.nombre);
 
         if (previo != null) {
-            error(s.linea, s.columna, "'" + s.nombre
-                    + "' ya fue declarado en este ámbito (línea " + previo.linea + ")");
-            return;
+            return previo;
         }
 
         s.ambito = top;
@@ -159,20 +162,21 @@ public class TablaSimbolos {
         }
 
         top.put(s.nombre, s);
+        return null;
     }
 
-    public void declararVariable(String nombre, String tipo, String valorInicial,
+    public Simbolo declararVariable(String nombre, String tipo, String valorInicial,
                                  int linea, int columna) {
         Simbolo s = new Simbolo(nombre, tipo, Simbolo.VARIABLE, linea, columna);
         s.valorInicial = limpiar(valorInicial);
-        declarar(s);
+        return declarar(s);
     }
 
     /*
      * tamanio: texto entre ʃ: y :ʅ (null si no se indicó).
      * elementos: cantidad de valores de la lista ¿: ... :? (0 si no hay lista).
      */
-    public void declararArreglo(String nombre, String tipo, String tamanio, int elementos,
+    public Simbolo declararArreglo(String nombre, String tipo, String tamanio, int elementos,
                                 String valorInicial, int linea, int columna) {
 
         Simbolo s = new Simbolo(nombre, tipo, Simbolo.ARREGLO, linea, columna);
@@ -191,14 +195,14 @@ public class TablaSimbolos {
         }
 
         s.bytes = s.elementos > 0 ? s.elementos * bytesDe(tipo) : 0;
-        declarar(s);
+        return declarar(s);
     }
 
     /*
      * Declaro una función (o procedimiento si es void) en el ámbito
      * actual y dejo sus parámetros listos para el ámbito de su cuerpo.
      */
-    public void declararFuncion(String nombre, String tipo, List<Simbolo> parametros,
+    public Simbolo declararFuncion(String nombre, String tipo, List<Simbolo> parametros,
                                 int linea, int columna) {
 
         String categoria = "void".equals(tipo) ? Simbolo.PROCEDIMIENTO : Simbolo.FUNCION;
@@ -209,7 +213,7 @@ public class TablaSimbolos {
             f.parametros.addAll(parametros);
         }
 
-        declarar(f);
+        Simbolo previo = declarar(f);
 
         siguienteAmbito((Simbolo.PROCEDIMIENTO.equals(categoria) ? "procedimiento " : "funcion ") + nombre);
         funcionSiguiente = f;
@@ -217,6 +221,8 @@ public class TablaSimbolos {
         if (parametros != null) {
             pendientes.addAll(parametros);
         }
+
+        return previo;
     }
 
     /*
@@ -232,50 +238,23 @@ public class TablaSimbolos {
 
     /* ========================== USOS ========================== */
 
-    /* Busco un identificador usado como variable (factor -> id). */
-    public Simbolo usar(String nombre, int linea, int columna) {
-        if (nombre == null) {
-            return null;
-        }
-        Simbolo s = top.get(nombre);
-        if (s == null) {
-            error(linea, columna, "'" + nombre + "' no ha sido declarado");
-        } else if (s.esFuncion()) {
-            error(linea, columna, "'" + nombre + "' es una función y se usa como variable");
-        }
-        return s;
-    }
-
-    public Simbolo usarArreglo(String nombre, int linea, int columna) {
-        if (nombre == null) {
-            return null;
-        }
-        Simbolo s = top.get(nombre);
-        if (s == null) {
-            error(linea, columna, "el arreglo '" + nombre + "' no ha sido declarado");
-        } else if (!Simbolo.ARREGLO.equals(s.categoria)) {
-            error(linea, columna, "'" + nombre + "' no es un arreglo");
-        }
-        return s;
-    }
-
-    public Simbolo usarFuncion(String nombre, int linea, int columna) {
-        if (nombre == null) {
-            return null;
-        }
-        Simbolo s = top.get(nombre);
-        if (s == null) {
-            error(linea, columna, "la función '" + nombre + "' no ha sido declarada");
-        } else if (!s.esFuncion()) {
-            error(linea, columna, "'" + nombre + "' no es una función");
-        }
-        return s;
+    /*
+     * Busco un nombre desde el ámbito actual hacia los que lo contienen.
+     * Devuelve null si no existe. No reporta nada: Parser.cup decide
+     * qué hacer con el resultado.
+     */
+    public Simbolo buscar(String nombre) {
+        return nombre == null ? null : top.get(nombre);
     }
 
     /* ========================= ERRORES ========================= */
 
-    /* Mismo formato que los errores léxicos, para que Main los muestre igual. */
-    private void error(int linea, int columna, String mensaje) {
+    /*
+     * Guardo un error semántico. Lo llama Parser.cup cada vez que una regla
+     * se incumple. Mismo formato que los errores léxicos, para que Main
+     * los muestre igual.
+     */
+    public void errorSemantico(int linea, int columna, String mensaje) {
         errores.add("Error semántico en línea " + linea + ", columna " + columna + ": " + mensaje);
     }
 

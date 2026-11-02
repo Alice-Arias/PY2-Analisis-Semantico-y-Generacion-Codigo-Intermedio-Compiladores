@@ -1,0 +1,7 @@
+void principal є: :э ¿:
+    val int a Ͱ 1»
+    val int b Ͱ 2»
+    val int c Ͱ 0»
+    c Ͱ a + b * 2»
+    c Ͱ a mod b»
+:?

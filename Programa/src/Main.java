@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -661,6 +662,8 @@ public class Main {
 
         } else {
 
+            mostrarCorreccionGlobal(analizador);
+
             estado(false, "El archivo contiene errores sintácticos.");
         }
 
@@ -687,8 +690,41 @@ public class Main {
 
         } else {
 
-            mostrarTablaLexica(erroresSemanticos);
+            mostrarErroresSemanticos(erroresSemanticos);
             estado(false, "El archivo contiene errores semánticos.");
+        }
+
+        /* ----------------- FASE 4: CÓDIGO INTERMEDIO ----------------- */
+
+        seccion("FASE 4 · CÓDIGO INTERMEDIO");
+
+        int erroresPrevios = erroresLexicos.size() + analizador.errores.size() + erroresSemanticos.size();
+
+        if (erroresPrevios > 0) {
+
+            /* Con errores el código no tendría sentido: no se genera ni se guarda */
+            estado(false, "No se generó código intermedio: el archivo tiene errores.");
+
+        } else {
+
+            String codigo = analizador.gen.obtenerCodigo();
+
+            File archivoTac = analizador.gen.guardar(archivoFuente);
+
+            int instrucciones = codigo.isEmpty() ? 0 : codigo.split("\n").length;
+
+            contador("Instrucciones", instrucciones);
+
+            kv("Archivo", archivoTac.getName());
+
+            kv("Carpeta", archivoTac.getParentFile().getParentFile().getName()
+                    + File.separator + archivoTac.getParentFile().getName());
+
+            estado(true, "Código intermedio generado.");
+
+            if (preguntarSiNo("¿Desea ver el código intermedio? (s/n): ")) {
+                mostrarCodigoIntermedio(codigo);
+            }
         }
 
         /* ----------------- RESULTADO FINAL ----------------- */
@@ -720,10 +756,14 @@ public class Main {
 
         if (erroresTotales == 0) {
 
-            caja(true, "  ARCHIVO CORRECTO", "No se encontraron errores léxicos, sintácticos ni semánticos.");
+            caja(true, "  ARCHIVO CORRECTO",
+                    "El archivo SÍ puede ser generado por la gramática.",
+                    "No se encontraron errores léxicos, sintácticos ni semánticos.");
 
         } else {
-            caja(false, "  ARCHIVO CON ERRORES", "Corrige los errores indicados y vuelve a ejecutar.");
+            caja(false, "  ARCHIVO CON ERRORES",
+                    "El archivo NO puede ser generado por la gramática.",
+                    "Corrige los errores indicados y vuelve a ejecutar.");
         }
 
         /* ----------------- TABLA DE SÍMBOLOS ----------------- */
@@ -738,7 +778,7 @@ public class Main {
 
             seccion("TABLA DE SÍMBOLOS");
 
-            mostrarTablaSimbolos(tabla);
+            mostrarTablaSimbolosCompleta(tabla);
 
         } else {
 
@@ -771,9 +811,16 @@ public class Main {
      * Objetivo:
      * Dejar que el usuario decida si ver la tabla.
      */
+    /* Se crea una sola vez: dos Scanner sobre System.in se robarían la entrada */
+    private static java.util.Scanner teclado = null;
+
     private static boolean preguntarSiNo(String pregunta) {
 
-        java.util.Scanner lector = new java.util.Scanner(System.in, StandardCharsets.UTF_8);
+        if (teclado == null) {
+            teclado = new java.util.Scanner(System.in, StandardCharsets.UTF_8);
+        }
+
+        java.util.Scanner lector = teclado;
 
         while (true) {
 
@@ -1029,6 +1076,200 @@ public class Main {
         System.out.println(sb);
     }
 
+    /* ============================================================
+     * TABLA DE SÍMBOLOS COMPLETA (una sola tabla con todas las columnas)
+     * ============================================================ */
+
+    /* Nº, NOMBRE, CATEGORÍA, TIPO, ÁMBITO, BYTES, DIMENSIÓN, DIRECCIÓN, VALOR INICIAL, ACCESO, LÍNEA, COL */
+    private static final String[] TITULOS_TS = {
+        "Nº", "NOMBRE", "CATEGORÍA", "TIPO", "ÁMBITO", "BYTES",
+        "DIMENSIÓN", "DIRECCIÓN", "VALOR INICIAL", "ACCESO", "LÍNEA", "COL"};
+
+    private static final int[] ANCHOS_TS = {3, 18, 13, 7, 24, 5, 10, 11, 22, 8, 5, 3};
+
+    /*
+     * Descripcion:
+     * Imprimo la tabla de símbolos con todas sus columnas. Cada ámbito
+     * (global, cada función, cada if, while...) es un grupo de filas
+     * separado de los demás por una línea.
+     *
+     * Entrada:  la tabla de símbolos ya llena.
+     * Salida:   la tabla en la consola.
+     * Restricciones:
+     * Es ancha (unos 166 caracteres): conviene una terminal grande.
+     * Los textos largos pasan a la línea de abajo dentro de su celda.
+     */
+    private static void mostrarTablaSimbolosCompleta(TablaSimbolos tabla) {
+
+        /* ---- Árbol de ámbitos: muestra quién es hijo de quién ---- */
+
+        System.out.println(col("1", "  Árbol de ámbitos (cada ámbito es una tabla; los de abajo son sus hijos)"));
+        System.out.println();
+
+        for (String l : tabla.arbolDeAmbitos().split("\n")) {
+            System.out.println(col("36", l));
+        }
+
+        System.out.println();
+
+        /* ---- Leyenda ---- */
+
+        System.out.println("  " + col("1", "Categorías: ")
+                + col("32", "variable") + "  "
+                + col("33", "arreglo") + "  "
+                + col("35", "parámetro") + "  "
+                + col("34;1", "función") + "  "
+                + col("36;1", "procedimiento"));
+
+        System.out.println(col("90", "  Dirección: global+n = zona estática · pila+n = registro de activación"));
+        System.out.println(col("90", "  Acceso:    público = declarado en el ámbito global · privado = dentro de una función o bloque"));
+        System.out.println();
+
+        /* ---- La tabla ---- */
+
+        System.out.println(col("90", "  " + bordeTS('┌', '┬', '┐')));
+
+        String[] colTitulos = new String[TITULOS_TS.length];
+        java.util.Arrays.fill(colTitulos, "1;36");
+        filaTS(TITULOS_TS, colTitulos);
+
+        System.out.println(col("90", "  " + bordeTS('├', '┼', '┤')));
+
+        int numero = 1;
+        boolean primero = true;
+
+        for (Ambito a : tabla.getAmbitos()) {
+
+            /* Un ámbito sin símbolos no tiene filas: aparece solo en el árbol */
+            if (a.cantidad() == 0) {
+                continue;
+            }
+
+            /* Línea que separa un ámbito (una tabla) del siguiente */
+            if (!primero) {
+                System.out.println(col("90", "  " + bordeTS('├', '┼', '┤')));
+            }
+            primero = false;
+
+            String ambito = nombreAmbito(a);
+
+            for (Simbolo s : a.simbolos()) {
+
+                String[] celdas = {
+                    String.valueOf(numero++),
+                    s.nombre,
+                    s.categoria,
+                    s.tipo,
+                    ambito,
+                    s.esFuncion() ? "—" : (s.bytes > 0 ? String.valueOf(s.bytes) : "?"),
+                    s.esFuncion() ? "—" : s.textoDimensionCorta(),
+                    s.direccion(),
+                    s.esFuncion() || s.valorInicial == null ? "—" : s.valorInicial,
+                    s.acceso,
+                    String.valueOf(s.linea),
+                    String.valueOf(s.columna)
+                };
+
+                String[] colores = {
+                    "0", "1", colorCategoria(s.categoria), "0", "36", "0",
+                    "arreglo".equals(s.categoria) ? "33" : "90", "0", "0",
+                    "público".equals(s.acceso) ? "32" : "90", "0", "0"
+                };
+
+                filaTS(celdas, colores);
+            }
+        }
+
+        System.out.println(col("90", "  " + bordeTS('└', '┴', '┘')));
+        System.out.println();
+    }
+
+    /* "global › funcion func1 › if"  →  "función func1 › if" (el global se queda como "global") */
+    private static String nombreAmbito(Ambito a) {
+        String ruta = a.ruta();
+        if (a.nivel > 0 && ruta.startsWith("global › ")) {
+            ruta = ruta.substring("global › ".length());
+        }
+        return ruta.replace("funcion ", "función ");
+    }
+
+    /* Línea de borde de la tabla completa */
+    private static String bordeTS(char izq, char medio, char der) {
+
+        StringBuilder sb = new StringBuilder().append(izq);
+
+        for (int i = 0; i < ANCHOS_TS.length; i++) {
+            sb.append("─".repeat(ANCHOS_TS[i] + 2));
+            sb.append(i < ANCHOS_TS.length - 1 ? medio : der);
+        }
+        return sb.toString();
+    }
+
+    /* Una fila de la tabla completa; si una celda es larga, la fila ocupa varias líneas */
+    private static void filaTS(String[] celdas, String[] colores) {
+
+        List<List<String>> partes = new ArrayList<>();
+        int alto = 1;
+
+        for (int i = 0; i < ANCHOS_TS.length; i++) {
+            List<String> l = partirTexto(celdas[i], ANCHOS_TS[i]);
+            partes.add(l);
+            alto = Math.max(alto, l.size());
+        }
+
+        for (int r = 0; r < alto; r++) {
+
+            StringBuilder sb = new StringBuilder("  " + col("90", "│"));
+
+            for (int i = 0; i < ANCHOS_TS.length; i++) {
+
+                String t = r < partes.get(i).size() ? partes.get(i).get(r) : "";
+                String texto = String.format("%-" + ANCHOS_TS[i] + "s", t);
+
+                sb.append(" ")
+                  .append("0".equals(colores[i]) ? texto : col(colores[i], texto))
+                  .append(" ")
+                  .append(col("90", "│"));
+            }
+
+            System.out.println(sb);
+        }
+    }
+
+    /* Corta un texto en líneas de máximo "ancho" caracteres, sin partir palabras si se puede */
+    private static List<String> partirTexto(String texto, int ancho) {
+
+        List<String> lineas = new ArrayList<>();
+        StringBuilder actual = new StringBuilder();
+
+        for (String palabra : texto.split(" ")) {
+
+            while (palabra.length() > ancho) {
+                if (actual.length() > 0) {
+                    lineas.add(actual.toString());
+                    actual.setLength(0);
+                }
+                lineas.add(palabra.substring(0, ancho));
+                palabra = palabra.substring(ancho);
+            }
+
+            if (actual.length() > 0 && actual.length() + 1 + palabra.length() > ancho) {
+                lineas.add(actual.toString());
+                actual.setLength(0);
+            }
+
+            if (actual.length() > 0) {
+                actual.append(' ');
+            }
+            actual.append(palabra);
+        }
+
+        if (actual.length() > 0 || lineas.isEmpty()) {
+            lineas.add(actual.toString());
+        }
+        return lineas;
+    }
+
     private static String colorCategoria(String categoria) {
         switch (categoria) {
             case "variable":      return "32";
@@ -1184,6 +1425,192 @@ public class Main {
 
             numero++;
         }
+    }
+
+    /*
+     * ========================================================
+     * ERRORES SEMÁNTICOS (una línea por error, con colores)
+     * ========================================================
+     */
+
+    /* Ancho máximo de esta sección: cada error cabe en una sola línea.
+       El ancho que se usa de verdad se ajusta a la descripción más larga. */
+    private static final int ANCHO_ERR = 170;
+
+    /* Largo del prefijo de cada línea: Nº, LÍNEA, COL y VALIDACIÓN */
+    private static final int PREFIJO_ERR = 37;
+
+    /* El parser entrega cada error como "[ARI-3] mensaje": grupo 1 = ARI, 2 = 3, 3 = mensaje */
+    private static final Pattern PATRON_REGLA = Pattern.compile("^\\[([A-Z]+)-(\\d+)\\]\\s*(.*)$");
+
+    /* Familia de reglas -> nombre de la validación */
+    private static final Map<String, String> FAMILIAS = new HashMap<>();
+
+    static {
+        FAMILIAS.put("TS",  "Nombres");
+        FAMILIAS.put("ARI", "Aritmética");
+        FAMILIAS.put("REL", "Comparación");
+        FAMILIAS.put("LOG", "Lógica");
+        FAMILIAS.put("ASG", "Asignación");
+        FAMILIAS.put("ARR", "Arreglos");
+        FAMILIAS.put("FUN", "Funciones");
+        FAMILIAS.put("RET", "Return");
+        FAMILIAS.put("CON", "Control");
+        FAMILIAS.put("INC", "Incremento");
+        FAMILIAS.put("ES",  "Entrada/Salida");
+        FAMILIAS.put("PRG", "Programa");
+    }
+
+    /* Un solo color para la validación, para que la lista se lea sin ruido */
+    private static final String COLOR_VALIDACION = "36";    /* cian: como los encabezados */
+
+    /*
+     * Descripcion:
+     * Muestro los errores semánticos. Cada error ocupa una línea con el
+     * número, la línea y la columna del código, la regla, el tipo de
+     * validación (con su color) y la descripción.
+     *
+     * Entrada:
+     * La lista de errores ("Error ... en línea L, columna C: [REGLA] detalle").
+     *
+     * Salida:
+     * Los errores en la consola, y al final un resumen por tipo de validación.
+     *
+     * Restricciones:
+     * Si una descripción no cabe en el ancho, continúa en la línea siguiente.
+     *
+     * Objetivo:
+     * Que cada error se entienda de un vistazo.
+     */
+    private static void mostrarErroresSemanticos(List<String> errores) {
+
+        /* ---- 1. Se analiza cada error para saber cuánto mide la descripción más larga ---- */
+
+        List<String[]> filas = new ArrayList<>();   /* {línea, columna, validación, detalle} */
+
+        int masLarga = 0;
+
+        for (String error : errores) {
+
+            String texto = error == null ? "" : error.trim().replace("\r", " ").replace("\n", " ");
+
+            String linea = "-";
+            String columna = "-";
+            String detalle = texto;
+
+            Matcher m = PATRON_ERROR.matcher(texto);
+
+            if (m.matches()) {
+                linea = m.group(1);
+                columna = m.group(2);
+                detalle = m.group(3);
+            }
+
+            /* Tipo de validación (sale del código de la regla: [ARI-3] -> Aritmética) */
+            String validacion = "Semántico";
+
+            Matcher r = PATRON_REGLA.matcher(detalle);
+
+            if (r.matches()) {
+                detalle = r.group(3);
+                validacion = FAMILIAS.getOrDefault(r.group(1), validacion);
+            }
+
+            filas.add(new String[]{linea, columna, validacion, detalle});
+
+            masLarga = Math.max(masLarga, detalle.length());
+        }
+
+        /* Ancho de la sección: lo que pide la descripción más larga, sin pasar de ANCHO_ERR */
+        int ancho = Math.min(ANCHO_ERR, Math.max(100, PREFIJO_ERR + masLarga));
+
+        /* ---- 2. Se muestra ---- */
+
+        System.out.println();
+
+        System.out.println(col("1;36", String.format("  %-4s %6s %5s  %-15s %s",
+                "Nº", "LÍNEA", "COL", "VALIDACIÓN", "DESCRIPCIÓN")));
+
+        System.out.println(col("90", "  " + "─".repeat(ancho - 2)));
+
+        /* validación -> cantidad (en orden de aparición) */
+        Map<String, Integer> conteo = new LinkedHashMap<>();
+
+        int numero = 1;
+
+        for (String[] f : filas) {
+
+            conteo.merge(f[2], 1, Integer::sum);
+
+            String num = String.format("%02d", numero++);
+
+            String prefijoColor = "  "
+                    + col("90", String.format("%-4s", num)) + " "
+                    + col("33", String.format("%6s", f[0])) + " "
+                    + col("33", String.format("%5s", f[1])) + "  "
+                    + col(COLOR_VALIDACION, String.format("%-15s", f[2])) + " ";
+
+            List<String> partes = ajustar(f[3], ancho - PREFIJO_ERR);
+
+            for (int i = 0; i < partes.size(); i++) {
+                System.out.println((i == 0 ? prefijoColor : " ".repeat(PREFIJO_ERR)) + partes.get(i));
+            }
+        }
+
+        /* ---- 3. Resumen por tipo de validación ---- */
+
+        System.out.println(col("90", "  " + "─".repeat(ancho - 2)));
+
+        StringBuilder plano = new StringBuilder("  Por validación: ");
+        StringBuilder color = new StringBuilder("  " + col("1", "Por validación: "));
+
+        for (Map.Entry<String, Integer> e : conteo.entrySet()) {
+
+            String item = e.getKey() + " " + e.getValue();
+
+            if (plano.length() + item.length() + 5 > ancho) {
+                System.out.println(color);
+                plano = new StringBuilder("    ");
+                color = new StringBuilder("    ");
+            }
+
+            plano.append(item).append("   ");
+            color.append(col(COLOR_VALIDACION, e.getKey())).append(" ")
+                 .append(col("1;33", String.valueOf(e.getValue()))).append("   ");
+        }
+
+        System.out.println(color);
+    }
+
+    /*
+     * Descripcion:
+     * Muestro el código intermedio en la consola, numerado.
+     * Las etiquetas (L1:) se resaltan para ver dónde empiezan los saltos.
+     *
+     * Entrada: el texto del código intermedio.
+     * Salida : el código en la consola.
+     */
+    private static void mostrarCodigoIntermedio(String codigo) {
+
+        seccion("CÓDIGO INTERMEDIO");
+
+        if (codigo.isEmpty()) {
+            System.out.println(col("90", "  (el generador todavía no produjo instrucciones)"));
+            System.out.println();
+            return;
+        }
+
+        int n = 1;
+
+        for (String linea : codigo.split("\n")) {
+
+            boolean etiqueta = linea.endsWith(":");
+
+            System.out.println(col("90", String.format("  %3d  ", n++))
+                    + (etiqueta ? col("1;33", linea) : linea));
+        }
+
+        System.out.println();
     }
 
     /*
@@ -1346,55 +1773,69 @@ public class Main {
             fila("", "");
         }
 
-        /* ---- Qué se encontró ---- */
+        if (e.mensaje != null) {
 
-        if (e.fin) {
+            /* El parser lo corrigió por su cuenta: se muestra con qué técnica */
+            detalle("Técnica", e.tecnica, "36");
 
-            detalle("Se encontró", "fin de archivo", "1;33");
+            if (!e.esperados.isEmpty()) {
+                detalle("Se esperaba", String.join(", ", e.esperados), "32");
+            }
+
+            detalle("Detalle", e.mensaje, "1;33");
 
         } else {
 
-            String lexema = e.lexema == null ? "" : e.lexema;
+            /* ---- Qué se encontró ---- */
 
-            if (lexema.length() > 40) {
+            if (e.fin) {
 
-                lexema = lexema.substring(0, 39) + "…";
+                detalle("Se encontró", "fin de archivo", "1;33");
+
+            } else {
+
+                String lexema = e.lexema == null ? "" : e.lexema;
+
+                if (lexema.length() > 40) {
+
+                    lexema = lexema.substring(0, 39) + "…";
+                }
+
+                String hallado = "'" + lexema + "'";
+
+                String token = "(" + e.token + ")";
+
+                String prefijo = String.format("%-11s : ", "Se encontró");
+
+                fila(prefijo + hallado + "  " + token,
+                        col("1", prefijo)
+                                + col("1;33", hallado)
+                                + "  " + col("90", token));
             }
 
-            String hallado = "'" + lexema + "'";
+            /* ---- Qué se esperaba (máximo 6 opciones) ---- */
 
-            String token = "(" + e.token + ")";
+            if (!e.esperados.isEmpty()) {
 
-            String prefijo = String.format("%-11s : ", "Se encontró");
+                List<String> lista = new ArrayList<>(e.esperados);
 
-            fila(prefijo + hallado + "  " + token,
-                    col("1", prefijo)
-                            + col("1;33", hallado)
-                            + "  " + col("90", token));
-        }
+                boolean hayMas = lista.remove("…");
 
-        /* ---- Qué se esperaba (máximo 6 opciones) ---- */
+                if (lista.size() > 6) {
+                    lista = new ArrayList<>(lista.subList(0, 6));
+                    hayMas = true;
+                }
 
-        if (!e.esperados.isEmpty()) {
-
-            List<String> lista = new ArrayList<>(e.esperados);
-
-            boolean hayMas = lista.remove("…");
-
-            if (lista.size() > 6) {
-                lista = new ArrayList<>(lista.subList(0, 6));
-                hayMas = true;
+                detalle("Se esperaba",
+                        String.join(", ", lista) + (hayMas ? ", …" : ""),
+                        "32");
             }
 
-            detalle("Se esperaba",
-                    String.join(", ", lista) + (hayMas ? ", …" : ""),
-                    "32");
-        }
-
-        if (e.fin) {
-            detalle("Sugerencia",
-                    "Puede faltar un cierre de bloque o un terminador.",
-                    "36");
+            if (e.fin) {
+                detalle("Sugerencia",
+                        "Puede faltar un cierre de bloque o un terminador.",
+                        "36");
+            }
         }
 
         /* ---- Borde inferior y espacio entre errores ---- */
@@ -1429,6 +1870,337 @@ public class Main {
         String token;
         String lexema;
         List<String> esperados = new ArrayList<>();
+
+        /* Técnica de recuperación que lo produjo y qué dice (null en un error normal) */
+        String tecnica;
+        String mensaje;
+
+        /* Para la corrección global: dónde está en el flujo de tokens y qué tokens se esperaban */
+        int indice = -1;
+        List<Integer> ids = new ArrayList<>();
+    }
+
+    /*
+     * ========================================================
+     * CORRECCIÓN GLOBAL
+     * ========================================================
+     */
+
+    /* Una edición del archivo: insertar, reemplazar o eliminar un token */
+    private static class Edicion {
+        String tipo;
+        String sobra;
+        String nuevo;
+        int linea;
+        int columna;
+        List<Symbol> flujo;
+        int errores;
+    }
+
+    /* Entrega al parser los tokens de una lista, en vez de leerlos del archivo */
+    private static class ListaDeTokens implements java_cup.runtime.Scanner {
+
+        private final List<Symbol> tokens;
+        private int pos = 0;
+
+        ListaDeTokens(List<Symbol> tokens) {
+            this.tokens = tokens;
+        }
+
+        @Override
+        public Symbol next_token() {
+            Symbol s = tokens.get(Math.min(pos, tokens.size() - 1));
+            pos++;
+            return new Symbol(s.sym, s.left, s.right, s.value);
+        }
+    }
+
+    /*
+     * Descripcion:
+     * Corrección global: busca el menor número de ediciones (insertar, reemplazar o
+     * eliminar un token) que dejan el archivo con menos errores sintácticos.
+     * Cada edición posible se prueba volviendo a analizar el archivo COMPLETO, y se
+     * queda con la que más errores elimina.
+     *
+     * Entrada:
+     * El parser que ya analizó el archivo (con sus errores y su flujo de tokens).
+     *
+     * Salida:
+     * Una sugerencia en pantalla con las ediciones. No cambia el archivo ni los
+     * conteos de errores.
+     *
+     * Restricciones:
+     * Solo se usa si el modo pánico tuvo que intervenir. Prueba como máximo 6
+     * ediciones y solo con tokens estructurales (no inventa identificadores ni números).
+     *
+     * Objetivo:
+     * Decirle al programador qué cambiar para que el archivo sea sintácticamente válido.
+     */
+    private static void mostrarCorreccionGlobal(ParserConErrores base) {
+
+        boolean hayPanico = false;
+
+        for (ErrorSintactico e : base.errores) {
+            if (e.mensaje == null) {
+                hayPanico = true;
+            }
+        }
+
+        if (!hayPanico) {
+            return;
+        }
+
+        List<Symbol> flujo = completarFlujo(base.flujo);
+        ParserConErrores actual = base;
+        int inicial = costo(base);
+        List<Edicion> aplicadas = new ArrayList<>();
+
+        for (int ronda = 0; ronda < 6 && costo(actual) > 0; ronda++) {
+
+            ErrorSintactico objetivo = null;
+
+            for (ErrorSintactico e : actual.errores) {
+                if (e.mensaje == null && e.indice >= 0) {
+                    objetivo = e;
+                    break;
+                }
+            }
+
+            if (objetivo == null) {
+                break;
+            }
+
+            Edicion mejor = null;
+
+            for (Edicion c : edicionesPosibles(flujo, objetivo)) {
+
+                ParserConErrores p = analizarFlujo(c.flujo);
+
+                c.errores = costo(p);
+
+                if (c.errores < costo(actual) && (mejor == null || c.errores < mejor.errores)) {
+                    mejor = c;
+                }
+            }
+
+            if (mejor == null) {
+                break;
+            }
+
+            aplicadas.add(mejor);
+            flujo = mejor.flujo;
+            actual = analizarFlujo(flujo);
+        }
+
+        if (aplicadas.isEmpty()) {
+            return;
+        }
+
+        String cian = "36";
+
+        System.out.println(col(cian, "┌─ CORRECCIÓN GLOBAL (sugerencia) "
+                + "─".repeat(Math.max(1, ANCHO - 35)) + "┐"));
+
+        filaCuadro("", "", cian);
+
+        List<String> lineas = new ArrayList<>();
+
+        lineas.add("Se buscó el menor número de ediciones (insertar, reemplazar o eliminar un token) "
+                + "que deja el archivo con menos errores sintácticos. Cada edición se probó "
+                + "volviendo a analizar el archivo completo.");
+        lineas.add("");
+
+        int antes = inicial;
+        int numero = 1;
+
+        for (Edicion c : aplicadas) {
+
+            String que;
+
+            if (c.tipo.equals("insertar")) {
+                que = "Insertar '" + c.nuevo + "' antes de '" + c.sobra + "'";
+            } else if (c.tipo.equals("reemplazar")) {
+                que = "Reemplazar '" + c.sobra + "' por '" + c.nuevo + "'";
+            } else {
+                que = "Eliminar '" + c.sobra + "'";
+            }
+
+            lineas.add(numero++ + ". " + que + " (línea " + c.linea + ", columna " + c.columna
+                    + "): errores sintácticos " + cuenta(antes) + " → " + cuenta(c.errores));
+
+            antes = c.errores;
+        }
+
+        lineas.add("");
+        lineas.add(costo(actual) == 0
+                ? "Con " + aplicadas.size() + " edición(es) el archivo queda sin errores sintácticos."
+                : "Con " + aplicadas.size() + " edición(es) los errores sintácticos pasan de "
+                        + cuenta(inicial) + " a " + cuenta(costo(actual)) + ".");
+
+        for (String texto : lineas) {
+            if (texto.isEmpty()) {
+                filaCuadro("", "", cian);
+                continue;
+            }
+            for (String parte : ajustar(texto, ANCHO - 4)) {
+                filaCuadro(parte, parte, cian);
+            }
+        }
+
+        filaCuadro("", "", cian);
+
+        System.out.println(col(cian, "└" + "─".repeat(ANCHO - 2) + "┘"));
+        System.out.println();
+    }
+
+    /* Qué tan malo es un análisis: sus errores, o muchísimo más si el parser tuvo que rendirse */
+    private static int costo(ParserConErrores p) {
+        return p.abortado ? 1_000_000 + p.errores.size() : p.errores.size();
+    }
+
+    private static String cuenta(int costo) {
+        return costo >= 1_000_000
+                ? (costo - 1_000_000) + " (se interrumpe)"
+                : String.valueOf(costo);
+    }
+
+    /* Analiza una lista de tokens con un parser nuevo y silencioso */
+    private static ParserConErrores analizarFlujo(List<Symbol> tokens) {
+
+        PrintStream original = System.out;
+
+        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+
+        ParserConErrores p = new ParserConErrores(new ListaDeTokens(tokens));
+
+        try {
+            p.parse();
+        } catch (Exception e) {
+            p.abortado = true;
+        } finally {
+            System.setOut(original);
+        }
+
+        return p;
+    }
+
+    /* Copia del flujo, asegurando que termine con EOF */
+    private static List<Symbol> completarFlujo(List<Symbol> original) {
+
+        List<Symbol> copia = new ArrayList<>(original);
+
+        if (copia.isEmpty() || copia.get(copia.size() - 1).sym != sym.EOF) {
+
+            Symbol ultimo = copia.isEmpty() ? null : copia.get(copia.size() - 1);
+
+            copia.add(new Symbol(sym.EOF, ultimo == null ? 1 : ultimo.left,
+                    ultimo == null ? 1 : ultimo.right, null));
+        }
+
+        return copia;
+    }
+
+    /* Solo se insertan o usan tokens estructurales: no se inventan identificadores ni números */
+    private static boolean esEstructural(int id) {
+
+        String nombre = nombreToken(id);
+
+        return id != 1
+                && !nombre.equals("ID")
+                && !nombre.startsWith("LITERAL_")
+                && !nombre.equals("EOF")
+                && !nombre.equals("DESCONOCIDO");
+    }
+
+    /* Texto con el que se muestra un token */
+    private static String textoDe(Symbol s) {
+
+        if (s.sym != sym.EOF && s.value != null && !String.valueOf(s.value).isEmpty()) {
+            return String.valueOf(s.value);
+        }
+
+        return s.sym == sym.EOF ? "fin de archivo" : legible(nombreToken(s.sym));
+    }
+
+    /* Las ediciones que se prueban en el lugar del error. Si dos arreglan lo mismo,
+       gana la primera: eliminar, después insertar y por último reemplazar. */
+    private static List<Edicion> edicionesPosibles(List<Symbol> flujo, ErrorSintactico e) {
+
+        List<Edicion> lista = new ArrayList<>();
+
+        int k = e.indice;
+
+        if (k < 0 || k >= flujo.size()) {
+            return lista;
+        }
+
+        Symbol actual = flujo.get(k);
+
+        /* Eliminar el token del error y, si hay, el que lo precede (un operador de más, por ejemplo) */
+        for (int i = k; i >= Math.max(0, k - 1); i--) {
+
+            Symbol t = flujo.get(i);
+
+            if (t.sym == sym.EOF) {
+                continue;
+            }
+
+            Edicion ed = new Edicion();
+            ed.tipo = "eliminar";
+            ed.sobra = textoDe(t);
+            ed.linea = t.left;
+            ed.columna = t.right;
+            ed.flujo = new ArrayList<>(flujo);
+            ed.flujo.remove(i);
+            lista.add(ed);
+        }
+
+        Set<Integer> esperados = new LinkedHashSet<>(e.ids);
+
+        /* Insertar un token que se esperaba, justo antes del token del error */
+        for (int id : esperados) {
+
+            if (!esEstructural(id)) {
+                continue;
+            }
+
+            String nuevo = legible(nombreToken(id));
+
+            Edicion ed = new Edicion();
+            ed.tipo = "insertar";
+            ed.sobra = textoDe(actual);
+            ed.nuevo = nuevo;
+            ed.linea = actual.left;
+            ed.columna = actual.right;
+            ed.flujo = new ArrayList<>(flujo);
+            ed.flujo.add(k, new Symbol(id, actual.left, actual.right, nuevo));
+            lista.add(ed);
+        }
+
+        /* Reemplazar el token del error por uno que se esperaba */
+        if (actual.sym != sym.EOF) {
+
+            for (int id : esperados) {
+
+                if (!esEstructural(id)) {
+                    continue;
+                }
+
+                String nuevo = legible(nombreToken(id));
+
+                Edicion ed = new Edicion();
+                ed.tipo = "reemplazar";
+                ed.sobra = textoDe(actual);
+                ed.nuevo = nuevo;
+                ed.linea = actual.left;
+                ed.columna = actual.right;
+                ed.flujo = new ArrayList<>(flujo);
+                ed.flujo.set(k, new Symbol(id, actual.left, actual.right, nuevo));
+                lista.add(ed);
+            }
+        }
+
+        return lista;
     }
 
     /*
@@ -1478,8 +2250,21 @@ public class Main {
          * Objetivo:
          * Conectar el lexer con el parser.
          */
-        public ParserConErrores(Lexer lexer) {
+        public ParserConErrores(java_cup.runtime.Scanner lexer) {
             super(lexer);
+        }
+
+        /* Todos los tokens que el parser leyó, en orden (la corrección global los vuelve a analizar) */
+        private final List<Symbol> flujo = new ArrayList<>();
+
+        /* Posición de un token dentro del flujo (-1 si no está) */
+        private int indiceDe(Symbol t) {
+            for (int i = flujo.size() - 1; i >= 0; i--) {
+                if (flujo.get(i) == t) {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         /*
@@ -1523,6 +2308,10 @@ public class Main {
         public Symbol scan() throws Exception {
 
             Symbol s = super.scan();
+
+            if (s != null) {
+                flujo.add(s);
+            }
 
             if (s != null && s.sym != sym.EOF) {
                 ultimoReal = s;
@@ -1576,6 +2365,16 @@ public class Main {
 
             e.esperados = esperados();
 
+            e.indice = indiceDe(t);
+
+            try {
+                for (int id : expected_token_ids()) {
+                    e.ids.add(id);
+                }
+            } catch (Throwable ex) {
+                /* sin tokens esperados */
+            }
+
             errores.add(e);
         }
 
@@ -1618,6 +2417,70 @@ public class Main {
         @Override
         public void report_fatal_error(String message, Object info) {
             abortado = true;
+        }
+
+        /*
+         * Descripcion:
+         * Registro un token que faltaba y que el parser insertó por su cuenta
+         * (recuperación a nivel de frase).
+         *
+         * Entrada:
+         * El token que faltaba y el lugar donde debía ir.
+         *
+         * Salida:
+         * Un error sintáctico con un mensaje específico.
+         *
+         * Restricciones:
+         * Solo lo llama el parser, desde la regla fin_o_falta.
+         *
+         * Objetivo:
+         * Informar el error exacto y seguir leyendo sin descartar código.
+         */
+        @Override
+        public void errorProduccion(int linea, int columna, String mensaje) {
+
+            ErrorSintactico e = new ErrorSintactico();
+
+            e.linea = linea;
+            e.columna = columna;
+            e.token = "ERROR";
+            e.lexema = null;
+            e.tecnica = "Producción de error";
+            e.mensaje = Character.toUpperCase(mensaje.charAt(0)) + mensaje.substring(1) + ".";
+
+            errores.add(e);
+        }
+
+        @Override
+        public void tokenFaltante(String token, int linea, int columna) {
+
+            ErrorSintactico e = new ErrorSintactico();
+
+            e.linea = linea;
+            e.columna = columna;
+            e.lexema = null;
+
+            String que;
+
+            switch (token) {
+                case ":э":
+                    e.token = "PARENCL";
+                    que = "Falta el paréntesis de cierre :э.";
+                    break;
+                case ":?":
+                    e.token = "CLBLOCK";
+                    que = "Falta el cierre de bloque :? de la función.";
+                    break;
+                default:
+                    e.token = "TERMINATOR";
+                    que = "Falta el terminador » al final de la sentencia.";
+            }
+
+            e.tecnica = "Recuperación a nivel de frase";
+            e.mensaje = que + " Se insertó y se siguió leyendo.";
+            e.esperados.add(token);
+
+            errores.add(e);
         }
 
         /*

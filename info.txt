@@ -1,0 +1,13 @@
+Nombre del curso: Compiladores e Intérpretes
+
+Número de semestre y año lectivo: II Semestre, 2026
+
+Nombre de los Estudiantes y número de carnet:
+                                                Heldyis Agüero Espinoza: 2023296812
+                                                Alice Arias Salazar:     2023104639
+
+d. Número de proyecto programado: Proyecto #2 - Análisis Semántico y Generación de Código Intermedio
+
+e. Fecha de entrega: 9 de noviembre de 2026
+
+f. Estatus de la entrega: Superior
