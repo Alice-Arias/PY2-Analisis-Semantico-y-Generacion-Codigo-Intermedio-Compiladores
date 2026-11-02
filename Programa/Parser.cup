@@ -198,6 +198,27 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
         gen.cabeceraFor(lugarDeCondicion(c));
     }
 
+    /* Un elemento usado como VALOR (a la derecha, dentro de una expresión): se copia a untemporal.
+    Si se usa como DESTINO (a la izquierda, o en read) se deja como nombre[indice]. */
+    public Atrib valorElemento(Atrib a) {
+        if (a.tipo.equals("error")) {
+            return a;
+        }
+        String t = gen.nuevoTemporal();
+        gen.emitir(t + " = " + a.lugar);
+
+        return new Atrib(a.tipo, t);
+    }
+    /* Valores iniciales de un arreglo: nombre[0] = v0, nombre[1] = v1, ... */
+    public void generarListaArreglo(String id, String tipo, ArrayList valores) {
+        for (int k = 0; k < valores.size(); k++) {
+            Atrib v = (Atrib) valores.get(k);
+            if (v.tipo.equals(tipo)) {
+                gen.emitir(id + "[" + k + "] = " + v.lugar);
+            }
+        }
+    }
+
     /* SEM: convierte un texto en entero (null si no cabe en un int). */
     public Integer aEntero(String texto) {
         try {
@@ -388,7 +409,7 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
         }
 
         /* Regla 4: el elemento tiene el tipo del arreglo (el lugar guarda el nombre) */
-        return new Atrib(s.tipo, id);
+        return new Atrib(s.tipo, id + "[" + indice.lugar + "]");
     }
 
     /* SEM: comprueba los tipos de una operación lógica (and, or).
@@ -1206,19 +1227,19 @@ arreglo_con_tamano ::=
 arreglo_con_tamano_valores ::=
       palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
       {: parser.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "int", i, n, idleft, idright); :}
+         parser.arreglo(id, "int", i, n, idleft, idright); parser.generarListaArreglo(id, "int", n); :}
     | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
       {: parser.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "float", i, n, idleft, idright); :}
+         parser.arreglo(id, "float", i, n, idleft, idright); parser.generarListaArreglo(id, "float", n); :}
     ;
 
 arreglo_sin_tamano_valores ::=
       palabraVal INT   identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
       {: parser.declararArreglo(id, "int", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "int", null, n, idleft, idright); :}
+         parser.arreglo(id, "int", null, n, idleft, idright); parser.generarListaArreglo(id, "int", n); :}
     | palabraVal FLOAT identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
       {: parser.declararArreglo(id, "float", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "float", null, n, idleft, idright); :}
+         parser.arreglo(id, "float", null, n, idleft, idright); parser.generarListaArreglo(id, "float", n); :}
     ;
 
 
@@ -1233,7 +1254,8 @@ continuacion_lista_arreglo ::= coma expresion_aritmetica:e continuacion_lista_ar
                              | /* vacío */  {: RESULT = new ArrayList(); :} ;
 
 modificacion_arreglo ::= acceso_arreglo:a asignacion expresion:e fin_o_falta
-                         {: parser.asignar("ARR-8", a.lugar, a.tipo, e, aleft, aright); :} ;
+                        {: parser.asignar("ARR-8", a.lugar, a.tipo, e, aleft, aright);
+                        parser.generarAsignacion(a.lugar, a.tipo, e); :} ;
 
 
 /* ============================================================
@@ -1277,7 +1299,7 @@ valor_aritmetico ::= valor_numerico:v   {: RESULT = v; :}
                     {: Simbolo s = parser.usar(id, idleft, idright);
                         if (s == null) { RESULT = new Atrib("error", id); }
                         else           { RESULT = new Atrib(s.tipo, id); } :}
-                   | acceso_arreglo:a     {: RESULT = a; :}
+                   | acceso_arreglo:a     {: RESULT = parser.valorElemento(a); :}
                    | llamada_funcion:c    {: RESULT = c; :}
                    | cadena_texto:c       {: RESULT = c; :}
                    | caracter_literal:c   {: RESULT = c; :}
