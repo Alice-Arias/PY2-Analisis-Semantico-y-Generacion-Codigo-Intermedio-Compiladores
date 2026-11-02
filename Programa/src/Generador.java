@@ -169,4 +169,40 @@ public class Generador {
     public void incremento(String id, String op) {
         emitir(id + " = " + id + (op.equals("++") ? " + 1" : " - 1"));
     }
+
+    private boolean hayFuncion = false;
+
+    /* Etiqueta con el nombre de la función. Antes de la primera función (si no es principal)
+    se escribe un salto a principal: así las variables globales se inicializan primero
+    y la ejecución empieza en main. */
+    public void etiquetaFuncion(String nombre) {
+        if (!hayFuncion && !nombre.equals("principal")) {
+            emitir("goto principal");
+        }
+        hayFuncion = true;
+        emitir(nombre + ":");
+    }
+
+    /* Llamada: un param por cada argumento y luego el call. Devuelve el temporal donde queda
+    el resultado, o null si la función no devuelve valor. */
+    public String llamar(String nombre, java.util.ArrayList args, boolean devuelve) {
+        for (Object o : args) {
+            emitir("param " + ((Atrib) o).lugar);
+        }
+
+        if (!devuelve) {
+            emitir("call " + nombre + ", " + args.size());
+            return null;
+
+        }
+
+        String temporal = nuevoTemporal();
+        emitir(temporal + " = call " + nombre + ", " + args.size());
+        return temporal;
+    }
+    
+    /* return con valor (lugar) o sin valor (null) */
+    public void retorno(String lugar) {
+        emitir(lugar == null ? "return" : "return " + lugar);
+    }
 }

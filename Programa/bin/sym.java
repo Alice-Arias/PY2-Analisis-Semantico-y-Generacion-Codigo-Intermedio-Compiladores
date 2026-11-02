@@ -17,7 +17,7 @@ public class sym {
   public static final int FOR = 43;
   public static final int MINUS = 5;
   public static final int DECREMENT = 4;
-  public static final int WRITE = 48;
+  public static final int WRITE = 47;
   public static final int PRINCIPAL = 30;
   public static final int NOT = 19;
   public static final int AND = 17;
@@ -27,7 +27,7 @@ public class sym {
   public static final int PLUS = 3;
   public static final int MULTIPLY = 6;
   public static final int IF = 39;
-  public static final int ID = 53;
+  public static final int ID = 52;
   public static final int EOF = 0;
   public static final int RETURN = 44;
   public static final int EQUAL = 13;
@@ -35,20 +35,20 @@ public class sym {
   public static final int FLOATDIV = 8;
   public static final int error = 1;
   public static final int COMA = 28;
-  public static final int LITERAL_CHAR = 52;
+  public static final int LITERAL_CHAR = 51;
   public static final int MOD = 9;
   public static final int NEQ = 14;
   public static final int CLBRACKET = 25;
   public static final int BREAK = 45;
   public static final int VOID = 36;
-  public static final int LITERAL_FLOAT = 50;
+  public static final int LITERAL_FLOAT = 49;
   public static final int GTE = 12;
   public static final int ENTIREDIV = 7;
-  public static final int LITERAL_INT = 49;
+  public static final int LITERAL_INT = 48;
   public static final int ELSE = 41;
   public static final int CLBLOCK = 21;
-  public static final int READ = 47;
-  public static final int LITERAL_STRING = 51;
+  public static final int READ = 46;
+  public static final int LITERAL_STRING = 50;
   public static final int WHILE = 42;
   public static final int FLOAT = 32;
   public static final int OPBLOCK = 20;
@@ -59,7 +59,6 @@ public class sym {
   public static final int GT = 16;
   public static final int PARENOP = 22;
   public static final int ELIF = 40;
-  public static final int PRINT = 46;
   public static final String[] terminalNames = new String[] {
   "EOF",
   "error",
@@ -107,7 +106,6 @@ public class sym {
   "FOR",
   "RETURN",
   "BREAK",
-  "PRINT",
   "READ",
   "WRITE",
   "LITERAL_INT",

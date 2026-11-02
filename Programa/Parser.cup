@@ -149,6 +149,32 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
         }
     }
 
+    /* Llamada a función: se valida (llamada) y, si no hubo ningún error, el generador escribe los
+    param y el call. El resultado de la llamada queda en el temporal del call. */
+    public Atrib generarLlamada(Simbolo f, String id, ArrayList args, int linea, int columna) {
+
+        int antes = tabla.getErrores().size();
+        Atrib r = llamada(f, id, args, linea, columna);
+        boolean bien = tabla.getErrores().size() == antes && f != null && f.esFuncion();
+
+        for (Object o : args) {
+
+            if (((Atrib) o).tipo.equals("error")) {
+                bien = false;
+            }
+        }
+
+        if (bien) {
+            String t = gen.llamar(id, args, !f.tipo.equals("void"));
+
+            if (t != null) {
+                r.lugar = t;
+            }
+        }
+
+        return r;
+    }
+
     /* SEM: convierte un texto en entero (null si no cabe en un int). */
     public Integer aEntero(String texto) {
         try {
@@ -599,7 +625,11 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
 
         hayReturn = true;
 
-        if (funTipo == null || valor == null) {
+        if (funTipo == null) {
+            return;
+        }
+        if (valor == null) {
+            gen.retorno(null);
             return;
         }
 
@@ -620,7 +650,9 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
             reportar("RET-2", linea, columna, "la función '" + funNombre
                     + "' debe retornar un valor de tipo " + funTipo
                     + ", pero se recibió " + valor.tipo);
+                    return;
         }
+        gen.retorno(valor.lugar);
     }
 
     /* SEM: break solo puede estar dentro de un while o de un for. */
@@ -734,7 +766,7 @@ terminal WHILE, FOR;
 terminal RETURN, BREAK;
 
 /* Entrada y salida */
-terminal PRINT, READ, WRITE;
+terminal READ, WRITE;
 
 /* Literales e identificadores */
 terminal LITERAL_INT;
@@ -981,7 +1013,8 @@ palabraBreak ::= BREAK ;
 palabraReturn ::= RETURN ;
 
 /* principal se registra como procedimiento sin parámetros (parser.declararFuncion) */
-Principal   ::= PRINCIPAL:p  {: parser.declararFuncion("principal", "void", null, pleft, pright); :} ;
+Principal ::= PRINCIPAL:p {: parser.declararFuncion("principal", "void", null, pleft, pright);
+                parser.gen.etiquetaFuncion("principal"); :} ;
 
 /* TS: cada palabra le pone nombre al ámbito de su bloque */
 palabraIf   ::= IF         {: parser.tabla.siguienteAmbito("if");    :} ;
@@ -1315,7 +1348,7 @@ expresiones ::= expresion:e
 
 llamada_funcion ::= identificador:id PARENOP lista_expresiones:args PARENCL
                     {: Simbolo f = parser.usarFuncion(id, idleft, idright);
-                       RESULT = parser.llamada(f, id, args, idleft, idright); :} ;
+                    RESULT = parser.generarLlamada(f, id, args, idleft, idright); :} ;
 
 
 /* ============================================================
@@ -1458,7 +1491,8 @@ parametros ::= parametro:p
    El encabezado se reduce ANTES del cuerpo, así la función ya existe
    (permite recursión) y sus parámetros entran al ámbito del cuerpo. */
 encabezado_funcion ::= tipo:t identificador:id PARENOP lista_parametros:p cierra_paren
-                       {: parser.declararFuncion(id, t, p, idleft, idright); :} ;
+                        {: parser.declararFuncion(id, t, p, idleft, idright);
+                        parser.gen.etiquetaFuncion(id); :} ;
 
 funcion_no_void ::= encabezado_funcion abrir_bloque bloque cierra_bloque_fn
                     {: parser.finFuncion(); :}
@@ -1473,7 +1507,8 @@ funcion_void_invalida ::= VOID error abrir_bloque bloque cerrar_bloque ;
                         PRINCIPAL
    ============================================================ */
 
-principal ::= VOID Principal PARENOP cierra_paren abrir_bloque bloque cierra_bloque_fn ;
+principal ::= VOID Principal PARENOP cierra_paren abrir_bloque bloque cierra_bloque_fn
+                {: parser.gen.retorno(null); :} ;
 
 
 /* ============================================================
