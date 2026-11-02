@@ -665,7 +665,9 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
         if (!s.tipo.equals("int") && !s.tipo.equals("float")) {
             reportar("INC-1", linea, columna, "el operador '" + op
                     + "' solo se aplica a variables int o float y '" + id + "' es de tipo " + s.tipo);
+            return;
         }
+        gen.incremento(id, op);
     }
 
     /* SEM: read recibe una variable o un elemento de arreglo de tipo int, float o char. */

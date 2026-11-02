@@ -164,4 +164,9 @@ public class Generador {
     public void escribir(String valor) {
         emitir("write " + valor);
     }
+
+    /* x++ y x--: se escriben como x = x + 1 y x = x - 1 */
+    public void incremento(String id, String op) {
+        emitir(id + " = " + id + (op.equals("++") ? " + 1" : " - 1"));
+    }
 }
