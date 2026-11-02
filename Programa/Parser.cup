@@ -175,6 +175,29 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
         return r;
     }
 
+    /* Condición de un if/elif/while/for: solo tiene salto si es bool y no falló */
+    private String lugarDeCondicion(Atrib c) {
+        return (c != null && c.tipo.equals("bool")) ? c.lugar : null;
+    }
+
+    public void generarSaltoIf(Atrib c) {
+        String lugar = lugarDeCondicion(c);
+        if (lugar != null) {
+            gen.condicionIf(lugar);
+        }
+    }
+
+    public void generarSaltoWhile(Atrib c) {
+        String lugar = lugarDeCondicion(c);
+        if (lugar != null) {
+            gen.saltoSiFalsoCiclo(lugar);
+        }
+    }
+
+    public void generarCabeceraFor(Atrib c) {
+        gen.cabeceraFor(lugarDeCondicion(c));
+    }
+
     /* SEM: convierte un texto en entero (null si no cabe en un int). */
     public Integer aEntero(String texto) {
         try {
@@ -671,7 +694,9 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
     public void validarBreak(int linea, int columna) {
         if (ciclosActivos == 0) {
             reportar("CON-5", linea, columna, "break solo puede utilizarse dentro de un ciclo");
+            return;
         }
+        gen.saltoBreak();
     }
 
     /* SEM: la condición de un if, elif, while o for debe ser bool. */
@@ -894,6 +919,7 @@ non terminal Atrib condicion_for;
 non terminal incremento_for;
 non terminal estructura_control;
 non terminal condicion_if;
+non terminal condicion_neg;
 non terminal condicion_while;
 non terminal cabecera_for;
 non terminal ciclo_con_error;
@@ -1017,18 +1043,23 @@ Principal ::= PRINCIPAL:p {: parser.declararFuncion("principal", "void", null, p
                 parser.gen.etiquetaFuncion("principal"); :} ;
 
 /* TS: cada palabra le pone nombre al ámbito de su bloque */
-palabraIf   ::= IF         {: parser.tabla.siguienteAmbito("if");    :} ;
+palabraIf   ::= IF         {: parser.tabla.siguienteAmbito("if"); 
+                            parser.gen.iniciarIf(); :} ;
 
-palabraElif ::= ELIF       {: parser.tabla.siguienteAmbito("elif");  :} ;
+palabraElif ::= ELIF       {: parser.tabla.siguienteAmbito("elif");
+                            parser.gen.otraRama(); :} ;
 
-palabraElse ::= ELSE       {: parser.tabla.siguienteAmbito("else");  :} ;
+palabraElse ::= ELSE       {: parser.tabla.siguienteAmbito("else");
+                            parser.gen.otraRama(); :} ;
 
-palabraWhile ::= WHILE     {: parser.tabla.siguienteAmbito("while"); :} ;
+palabraWhile ::= WHILE     {: parser.tabla.siguienteAmbito("while");
+                            parser.gen.iniciarWhile(); :} ;
 
 /* TS: el for abre su ámbito desde el inicio, porque la variable de
    control (val int x Ͱ 9) se declara antes del ¿: */
 palabraFor  ::= FOR        {: parser.tabla.abrirAmbito("for");
-                              parser.tabla.siguienteAmbito("cuerpo for"); :} ;
+                            parser.tabla.siguienteAmbito("cuerpo for");
+                            parser.gen.iniciarFor(); :} ;
 
 operadorPotencia ::= POT ;
 
@@ -1357,11 +1388,17 @@ llamada_funcion ::= identificador:id PARENOP lista_expresiones:args PARENCL
 
 /* SEM: la condición de un if y de un elif va entre paréntesis y debe ser bool */
 condicion_if ::= PARENOP condicion_control:c cierra_paren
-                 {: parser.condicion("CON-1", c, cleft, cright); :} ;
+                {: parser.condicion("CON-1", c, cleft, cright);
+                parser.generarSaltoIf(c); :} ;
+
+condicion_neg ::= negacion:n {: parser.generarSaltoIf(n); :} ;
 
 if ::= palabraIf condicion_if abrir_bloque bloque cerrar_bloque demas_if
-     | palabraIf negacion abrir_bloque bloque cerrar_bloque demas_if
-     | palabraIf error abrir_bloque bloque cerrar_bloque demas_if ;
+        {: parser.gen.finIf(); :}
+        | palabraIf condicion_neg abrir_bloque bloque cerrar_bloque demas_if
+        {: parser.gen.finIf(); :}
+        | palabraIf error abrir_bloque bloque cerrar_bloque demas_if
+        {: parser.gen.finIf(); :} ;
 
 demas_if ::= cadena_elif fin_if | fin_if ;
 
@@ -1378,52 +1415,74 @@ else ::= palabraElse abrir_bloque bloque cerrar_bloque
 /* SEM: while y for cuentan los ciclos activos (para validar break) y
    revisan que su condición sea bool */
 condicion_while ::= PARENOP condicion_control:c cierra_paren
-                    {: parser.condicion("CON-2", c, cleft, cright); parser.entrarCiclo(); :} ;
+                    {: parser.condicion("CON-2", c, cleft, cright);
+                    parser.entrarCiclo();
+                    parser.generarSaltoWhile(c); :} ;
 
 ciclo_con_error ::= error {: parser.entrarCiclo(); :} ;
 
 while ::= palabraWhile condicion_while abrir_bloque bloque cerrar_bloque
-          {: parser.salirCiclo(); :}
-        | palabraWhile ciclo_con_error abrir_bloque bloque cerrar_bloque
-          {: parser.salirCiclo(); :}
-        ;
+            {: parser.salirCiclo(); parser.gen.finCiclo(); :}
+            | palabraWhile ciclo_con_error abrir_bloque bloque cerrar_bloque
+            {: parser.salirCiclo(); parser.gen.finCiclo(); :};
 
 cabecera_for ::= PARENOP inicio_for fin_sentencia condicion_for:c fin_sentencia incremento_for cierra_paren
-                 {: parser.condicion("CON-3", c, cleft, cright); parser.entrarCiclo(); :} ;
+                {: parser.condicion("CON-3", c, cleft, cright);
+                parser.entrarCiclo();
+                parser.generarCabeceraFor(c); :} ;
 
 /* TS: al terminar el for se cierra el ámbito que abrió palabraFor */
 for ::= palabraFor cabecera_for abrir_bloque bloque cerrar_bloque
-        {: parser.salirCiclo(); parser.tabla.cerrarAmbito(); :}
-      | palabraFor ciclo_con_error abrir_bloque bloque cerrar_bloque
-        {: parser.salirCiclo(); parser.tabla.cerrarAmbito(); :}
-      ;
+        {: parser.salirCiclo(); parser.gen.finCiclo(); parser.tabla.cerrarAmbito(); :}
+        | palabraFor ciclo_con_error abrir_bloque bloque cerrar_bloque
+        {: parser.salirCiclo(); parser.gen.finCiclo(); parser.tabla.cerrarAmbito(); :}
+        ;
 
 /* SEM: el valor inicial y el incremento con asignación deben tener el tipo de la variable */
 inicio_for ::= /* vacío */
-             | identificador:id asignacion expresion:e
-               {: Simbolo s = parser.usar(id, idleft, idright);
-                  if (s != null) { parser.asignar("CON-4", id, s.tipo, e, idleft, idright); } :}
-             | palabraVal tipo:t identificador:id asignacion:a expresion:e
-               {: parser.declararVariable(id, t, parser.textoDesde(aleft, aright), idleft, idright);
-                  parser.asignar("CON-4", id, t, e, idleft, idright); :}
-             ;
+                    {: parser.gen.inicioCondicionFor(); :}
+                | identificador:id asignacion expresion:e
+                    {: Simbolo s = parser.usar(id, idleft, idright);
+                    if (s != null) {
+                    parser.asignar("CON-4", id, s.tipo, e, idleft, idright);
+                    parser.generarAsignacion(id, s.tipo, e);
+                    }
+                    parser.gen.inicioCondicionFor(); :}
+                | palabraVal tipo:t identificador:id asignacion:a expresion:e
+                    {: parser.declararVariable(id, t, parser.textoDesde(aleft, aright), idleft,
+                    idright);
+                    parser.asignar("CON-4", id, t, e, idleft, idright);
+                    parser.generarAsignacion(id, t, e);
+                    parser.gen.inicioCondicionFor(); :}
+                ;
 
-condicion_for ::= operacion_relacional:e                  {: RESULT = e; :}
-                | expresion_logica:e                      {: RESULT = e; :}
-                | bool:e                                  {: RESULT = e; :}
-                | valor_aritmetico:e                      {: RESULT = e; :}
-                | PARENOP operacion_relacional:e PARENCL  {: RESULT = e; :}
-                | PARENOP bool:e PARENCL                  {: RESULT = e; :}
-                | /* Vacío */                             {: RESULT = null; :}
+condicion_for ::= operacion_relacional:e {: RESULT = e;
+                    parser.gen.marcaIncremento(); :}
+                | expresion_logica:e {: RESULT = e;
+                    parser.gen.marcaIncremento(); :}
+                | bool:e {: RESULT = e;
+                    parser.gen.marcaIncremento(); :}
+                | valor_aritmetico:e {: RESULT = e;
+                    parser.gen.marcaIncremento(); :}
+                | PARENOP operacion_relacional:e PARENCL {: RESULT = e;
+                    parser.gen.marcaIncremento(); :}
+                | PARENOP bool:e PARENCL {: RESULT = e;
+                    parser.gen.marcaIncremento(); :}
+                | /* Vacío */ {: RESULT = null;
+                    parser.gen.marcaIncremento(); :}
                 ;
 
 incremento_for ::= /* vacío */
-                 | operacion_incremento
-                 | expresion_aritmetica
-                 | identificador:id asignacion expresion:e
-                   {: Simbolo s = parser.usar(id, idleft, idright);
-                      if (s != null) { parser.asignar("CON-4", id, s.tipo, e, idleft, idright); } :}
-                 ;
+                | operacion_incremento
+                | expresion_aritmetica
+                | identificador:id asignacion expresion:e
+                {: Simbolo s = parser.usar(id, idleft, idright);
+                    if (s != null) {
+                        parser.asignar("CON-4", id, s.tipo, e, idleft, idright);
+                        parser.generarAsignacion(id, s.tipo, e);
+                    }
+                :}
+                ;
 
 estructura_control ::= if | while | for ;
 
