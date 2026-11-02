@@ -98,11 +98,11 @@ Desarrollar un analizador semántico y un generador de código intermedio para u
 * [X] Función `principal` en cualquier posición del archivo (exactamente una)
 * [X] Fase 4 en `Main`: guardar el `.tac` y mostrarlo
 * [X] Código intermedio: aritmética, potencia, asignaciones, comparaciones y operaciones lógicas
-* [ ] Código intermedio: `read` y `write`
-* [ ] Código intermedio: `++` y `--`
-* [ ] Código intermedio: funciones (etiquetas, `param`, `call` y `return`)
-* [ ] Código intermedio: `if`, `elif`, `else`, `while`, `for` y `break`
-* [ ] Código intermedio: arreglos
+* [X] Código intermedio: `read` y `write`
+* [X] Código intermedio: `++` y `--`
+* [X] Código intermedio: funciones (etiquetas, `param`, `call` y `return`)
+* [X] Código intermedio: `if`, `elif`, `else`, `while`, `for` y `break`
+* [X] Código intermedio: arreglos
 
 ---
 
