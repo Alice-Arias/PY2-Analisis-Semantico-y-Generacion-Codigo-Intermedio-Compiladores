@@ -205,4 +205,168 @@ public class Generador {
     public void retorno(String lugar) {
         emitir(lugar == null ? "return" : "return " + lugar);
     }
+
+    /* ---------- if / elif / else ---------- */
+    private static class Condicional {
+        String falso; /* etiqueta a la que se salta si la condición es falsa */
+        String fin; /* etiqueta del final de todo el if (solo existe si hay elif o else) */
+    }
+
+    private final java.util.ArrayList<Condicional> condicionales = new java.util.ArrayList<>();
+
+    private Condicional ifActual() {
+        return condicionales.isEmpty() ? null : condicionales.get(condicionales.size() - 1);
+    }
+
+    /* Empieza un if: se apila su "ficha" */
+    public void iniciarIf() {
+        condicionales.add(new Condicional());
+    }
+
+    /* Ya se escribió el código de la condición: salta si es falsa */
+    public void condicionIf(String lugar) {
+        Condicional c = ifActual();
+
+        if (c == null) {
+            return;
+        }
+        
+        c.falso = nuevaEtiqueta();
+        emitir("ifFalse " + lugar + " goto " + c.falso);
+    }
+    
+    /* Empieza un elif o un else: termina la rama anterior (salta al final) y ahí cae la condición falsa */
+    public void otraRama() {
+        Condicional c = ifActual();
+
+        if (c == null) {
+            return;
+        }
+
+        if (c.fin == null) {
+            c.fin = nuevaEtiqueta();
+        }
+
+        emitir("goto " + c.fin);
+
+        if (c.falso != null) {
+            emitir(c.falso + ":");
+            c.falso = null;
+        }
+    }
+
+    /* Termina todo el if: se escriben las etiquetas que quedaron pendientes */
+    public void finIf() {
+        if (condicionales.isEmpty()) {
+            return;
+        }
+
+        Condicional c = condicionales.remove(condicionales.size() - 1);
+
+        if (c.falso != null) {
+            emitir(c.falso + ":");
+        }
+
+        if (c.fin != null) {
+            emitir(c.fin + ":");
+        }
+    }
+
+    /* ---------- while y for ---------- */
+    private static class Ciclo {
+        String inicio; /* donde se vuelve a evaluar la condición */
+        String fin; /* donde se sale del ciclo (también lo usa break) */
+        int marca = -1; /* for: dónde empieza en el código el incremento */
+        String incremento = ""; /* for: el código del incremento, guardado para ponerlo al final */
+    }
+
+    private final java.util.ArrayList<Ciclo> ciclos = new java.util.ArrayList<>();
+
+    private Ciclo nuevoCiclo() {
+        Ciclo c = new Ciclo();
+        c.inicio = nuevaEtiqueta();
+        c.fin = nuevaEtiqueta();
+        ciclos.add(c);
+        return c;
+    }
+
+    private Ciclo cicloActual() {
+        return ciclos.isEmpty() ? null : ciclos.get(ciclos.size() - 1);
+    }
+
+    /* while: la etiqueta de inicio va ANTES del código de la condición */
+    public void iniciarWhile() {
+        emitir(nuevoCiclo().inicio + ":");
+    }
+
+    /* while: ya está el código de la condición */
+    public void saltoSiFalsoCiclo(String lugar) {
+        Ciclo c = cicloActual();
+
+        if (c != null) {
+            emitir("ifFalse " + lugar + " goto " + c.fin);
+        }
+    }
+
+    /* for: se apila el ciclo (su etiqueta de inicio se escribe después de la inicialización) */
+    public void iniciarFor() {
+        nuevoCiclo();
+    }
+
+    /* for: terminó la inicialización, aquí empieza la condición */
+    public void inicioCondicionFor() {
+        Ciclo c = cicloActual();
+
+        if (c != null) {
+            emitir(c.inicio + ":");
+        }
+    }
+
+    /* for: terminó la condición, desde aquí se escribe el incremento */
+    public void marcaIncremento() {
+        Ciclo c = cicloActual();
+
+        if (c != null) {
+            c.marca = codigo.length();
+        }
+    }
+
+    /* for: terminó la cabecera. El incremento ya está escrito, pero debe ir DESPUÉS del cuerpo: se corta del código y se guarda. Luego se escribe el salto de la condición. */
+    public void cabeceraFor(String lugarCondicion) {
+        Ciclo c = cicloActual();
+
+        if (c == null) {
+            return;
+        }
+
+        if (c.marca >= 0) {
+            c.incremento = codigo.substring(c.marca);
+            codigo.setLength(c.marca);
+        }
+
+        if (lugarCondicion != null) {
+            emitir("ifFalse " + lugarCondicion + " goto " + c.fin);
+        }
+    }
+
+    /* Termina un while o un for: incremento (si hay), vuelta al inicio y etiqueta de salida */
+    public void finCiclo() {
+        if (ciclos.isEmpty()) {
+            return;
+        }
+
+        Ciclo c = ciclos.remove(ciclos.size() - 1);
+        codigo.append(c.incremento);
+        emitir("goto " + c.inicio);
+        emitir(c.fin + ":");
+    }
+        /* break: salta a la salida del ciclo más interno */
+    public void saltoBreak() {
+        Ciclo c = cicloActual();
+
+        if (c != null) {
+            emitir("goto " + c.fin);
+        }
+    }
 }
+
