@@ -1419,7 +1419,7 @@ Los archivos que se generan en cada ejecución son:
 * La recuperación a nivel de frase **no cubre** los paréntesis dentro de expresiones, los corchetes de los índices ni los bloques anidados, porque en esos casos CUP reporta conflictos.
 * La **corrección global** es una sugerencia: prueba una edición por error y no inventa identificadores ni números.
 * Las funciones deben estar declaradas **antes** de su primera llamada.
-* Algunas instrucciones del código intermedio siguen en desarrollo (ver [Estado del proyecto](https://claude.ai/chat/f935065b-4f27-4a31-b468-9d40babbcf93#estado-del-proyecto)).
+* Algunas instrucciones del código intermedio siguen en desarrollo 
 
 ---
 
@@ -1453,7 +1453,7 @@ Los archivos que se generan en cada ejecución son:
 * **Bitácora de git** , con el commit de cada usuario y su comentario:
 
 ```powershell
-git log --pretty=format:"%h | %an | %ad | %s" --date=short > bitacora.txt
+[https://github.com/Alice-Arias/PY2-Analisis-Semantico-y-Generacion-Codigo-Intermedio-Compiladores/commits/main/]
 ```
 
 # Conclusión
