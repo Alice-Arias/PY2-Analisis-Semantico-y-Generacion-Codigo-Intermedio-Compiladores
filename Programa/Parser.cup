@@ -2,315 +2,489 @@ import java_cup.runtime.*;
 import java.util.ArrayList;
 
 /* ============================================================
-                 CÓDIGO DEL PARSER: TABLA DE SÍMBOLOS
-   (si ya tienes un bloque "parser code", agrega la línea dentro)
+   PARSER.CUP
+   Revisa que el programa este bien escrito y tenga sentido.
+   Aqui estan las reglas del lenguaje, las validaciones y las
+   llamadas al generador de codigo intermedio.
    ============================================================ */
 
 parser code {:
+
+    /* ============================================================
+       DATOS DEL PARSER
+       ============================================================ */
+
+    /* Tabla de simbolos: guarda las variables, arreglos y funciones, y los errores semanticos. */
     public TablaSimbolos tabla = new TablaSimbolos();
-    /* El código intermedio vive en su propio archivo: src/Generador.java */
+
+    /* Generador: escribe el codigo intermedio. */
     public Generador gen = new Generador();
 
-    /* TS: guardo los tokens leídos para recuperar el texto del valor inicial y del tamaño de los arreglos */
-    private final ArrayList<Symbol> leidos = new ArrayList<Symbol>();
+    /* Todos los tokens que el parser ya leyo, en orden.
+       Sirven para recuperar el texto de un valor o de un tamano. */
+    private final ArrayList<Symbol> tokensLeidos = new ArrayList<Symbol>();
 
+    /* Datos de la funcion que se esta leyendo, para revisar sus return. */
+    public String tipoFuncionActual = null;
+    public String nombreFuncionActual = null;
+    private boolean funcionTieneReturn = false;
+    private int lineaFuncionActual = 0;
+    private int columnaFuncionActual = 0;
+
+    /* Cantidad de while o for abiertos en este momento (para revisar el break). */
+    private int ciclosAbiertos = 0;
+
+
+    /* ============================================================
+       LECTURA DE TOKENS Y TEXTO
+       ============================================================ */
+
+    /* Nombre: scan
+       Descripcion: pide el siguiente token y lo guarda en la lista.
+       Objetivo: recordar todo lo que se ha leido.
+       Salida: el token leido. */
     @Override
     public Symbol scan() throws Exception {
-        Symbol s = super.scan();
-        leidos.add(s);
-        return s;
+        Symbol token = super.scan();
+        tokensLeidos.add(token);
+        return token;
     }
 
-    /* Texto de los tokens que están entre dos tokens (por posición). */
-    public String textoEntre(int l1, int c1, int l2, int c2) {
-        int fin = -1;
-        for (int i = leidos.size() - 1; i >= 0; i--) {
-            Symbol t = leidos.get(i);
-            if (t.left == l2 && t.right == c2) { fin = i; break; }
+    /* Nombre: buscarToken
+       Descripcion: busca un token por su linea y su columna, de atras hacia adelante.
+       Objetivo: saber en que posicion de la lista esta ese token.
+       Salida: la posicion del token, o -1 si no lo encuentra. */
+    private int buscarToken(int linea, int columna, int desdePosicion) {
+        for (int i = desdePosicion; i >= 0; i--) {
+            Symbol token = tokensLeidos.get(i);
+            if (token.left == linea && token.right == columna) {
+                return i;
+            }
         }
-        int ini = -1;
-        for (int i = fin - 1; i >= 0; i--) {
-            Symbol t = leidos.get(i);
-            if (t.left == l1 && t.right == c1) { ini = i; break; }
-        }
-        if (ini < 0 || fin < 0) return null;
-        StringBuilder sb = new StringBuilder();
-        for (int i = ini + 1; i < fin; i++) {
-            String v = String.valueOf(leidos.get(i).value);
-            if (sb.length() > 0 && !v.equals(",")) sb.append(" ");
-            sb.append(v);
-        }
-        return sb.toString();
+        return -1;
     }
 
-    /* Texto desde un token hasta antes del token de anticipación. */
-    public String textoDesde(int l1, int c1) {
-        if (leidos.isEmpty()) return null;
-        Symbol ultimo = leidos.get(leidos.size() - 1);
-        return textoEntre(l1, c1, ultimo.left, ultimo.right);
+    /* Nombre: textoEntre
+       Descripcion: junta el texto de los tokens que hay entre dos posiciones.
+       Objetivo: saber que se escribio entre dos simbolos.
+       Salida: el texto, o null si no encuentra las posiciones. */
+    public String textoEntre(int lineaInicio, int columnaInicio, int lineaFin, int columnaFin) {
+        int posicionFin = buscarToken(lineaFin, columnaFin, tokensLeidos.size() - 1);
+        int posicionInicio = buscarToken(lineaInicio, columnaInicio, posicionFin - 1);
+
+        if (posicionInicio < 0 || posicionFin < 0) {
+            return null;
+        }
+
+        StringBuilder texto = new StringBuilder();
+        for (int i = posicionInicio + 1; i < posicionFin; i++) {
+            String valorToken = String.valueOf(tokensLeidos.get(i).value);
+            boolean esComa = valorToken.equals(",");
+
+            if (texto.length() > 0 && !esComa) {
+                texto.append(" ");
+            }
+            texto.append(valorToken);
+        }
+        return texto.toString();
     }
 
-    /* Texto del valor inicial de una variable (lo que va entre Ͱ y »).
-       Si el parser ya leyó el token que sigue al », el texto trae el » al final: se quita. */
+    /* Nombre: textoDesde
+       Descripcion: junta el texto desde una posicion hasta el ultimo token leido.
+       Objetivo: saber que se escribio desde un simbolo hasta ahora.
+       Salida: el texto, o null si no hay tokens. */
+    public String textoDesde(int linea, int columna) {
+        if (tokensLeidos.isEmpty()) {
+            return null;
+        }
+        Symbol ultimoToken = tokensLeidos.get(tokensLeidos.size() - 1);
+        return textoEntre(linea, columna, ultimoToken.left, ultimoToken.right);
+    }
+
+    /* Nombre: textoValor
+       Descripcion: da el texto del valor inicial de una variable.
+       Objetivo: mostrar ese valor en la tabla de simbolos.
+       Salida: el texto sin el simbolo final de la sentencia. */
     public String textoValor(int linea, int columna) {
-        String t = textoDesde(linea, columna);
-        if (t != null && t.endsWith("»")) {
-            t = t.substring(0, t.length() - 1).trim();
+        String texto = textoDesde(linea, columna);
+        if (texto != null && texto.endsWith("»")) {
+            texto = texto.substring(0, texto.length() - 1).trim();
         }
-        return t;
+        return texto;
     }
 
-    /* SEM: comprueba los tipos de una operación aritmética.
-       Entrada: los dos operandos (con su tipo), el operador y su posición.
-       Salida:  un Atrib con el tipo del resultado, o de tipo "error".
-       Restricción: int y float no se mezclan (tipado fuerte). */
-    public Atrib aritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
+    /* Nombre: aEntero
+       Descripcion: convierte un texto en un numero entero.
+       Objetivo: conocer el valor de las constantes enteras.
+       Salida: el numero, o null si no se puede convertir. */
+    public Integer aEntero(String texto) {
+        try {
+            return Integer.valueOf(texto.trim());
+        } catch (NumberFormatException error) {
+            return null;
+        }
+    }
 
-        /* Regla 1: si alguno ya falló, no repetir el mensaje */
-        if (a.tipo.equals("error") || b.tipo.equals("error")) {
+
+    /* ============================================================
+       AYUDAS PEQUENAS
+       ============================================================ */
+
+    /* Nombre: esNumerico
+       Descripcion: dice si un tipo es int o float.
+       Objetivo: no repetir esta pregunta en cada regla.
+       Salida: true si es int o float. */
+    private boolean esNumerico(String tipo) {
+        return tipo.equals("int") || tipo.equals("float");
+    }
+
+    /* Nombre: tieneError
+       Descripcion: dice si un dato ya fallo antes (su tipo es error).
+       Objetivo: no repetir el mismo mensaje.
+       Salida: true si el dato es de tipo error. */
+    private boolean tieneError(Atrib dato) {
+        return dato.tipo.equals("error");
+    }
+
+    /* Nombre: sinErroresNuevos
+       Descripcion: compara la cantidad de errores de ahora con la de antes.
+       Objetivo: saber si una revision no encontro errores.
+       Salida: true si no se guardo ningun error nuevo. */
+    private boolean sinErroresNuevos(int erroresAntes) {
+        return tabla.getErrores().size() == erroresAntes;
+    }
+
+    /* Nombre: reportar
+       Descripcion: guarda un error semantico con el codigo de su regla.
+       Objetivo: que Main pueda clasificar y mostrar cada error.
+       Salida: ninguna. */
+    private void reportar(String regla, int linea, int columna, String mensaje) {
+        tabla.errorSemantico(linea, columna, "[" + regla + "] " + mensaje);
+    }
+
+
+    /* ============================================================
+       OPERACIONES ARITMETICAS
+       ============================================================ */
+
+    /* Nombre: aritmetica
+       Descripcion: revisa los tipos de una operacion con numeros.
+       Objetivo: que solo se usen int o float y que no se mezclen.
+       Salida: un dato con el tipo del resultado, o de tipo error si algo fallo. */
+    public Atrib aritmetica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
+
+        String tipoIzquierda = izquierda.tipo;
+        String tipoDerecha = derecha.tipo;
+
+        /* Regla 1: si alguno ya fallo, no repetir el mensaje */
+        if (tieneError(izquierda) || tieneError(derecha)) {
             return new Atrib("error", "?");
         }
 
         /* Regla 2: los dos deben ser int o float */
-        boolean aNumerico = a.tipo.equals("int") || a.tipo.equals("float");
-        boolean bNumerico = b.tipo.equals("int") || b.tipo.equals("float");
-        if (!aNumerico || !bNumerico) {
-            reportar("ARI-2", linea, columna, "el operador '" + op + "' no se puede aplicar a '"
-                    + a.tipo + "' y '" + b.tipo + "' (se requieren int o float)");
+        if (!esNumerico(tipoIzquierda) || !esNumerico(tipoDerecha)) {
+            reportar("ARI-2", linea, columna, "el operador '" + operador + "' no se puede aplicar a '"
+                    + tipoIzquierda + "' y '" + tipoDerecha + "' (se requieren int o float)");
             return new Atrib("error", "?");
         }
 
         /* Regla 3: no se mezclan int y float */
-        if (!a.tipo.equals(b.tipo)) {
-            reportar("ARI-3", linea, columna, "no se pueden mezclar '" + a.tipo + "' y '"
-                    + b.tipo + "' con el operador '" + op + "' (tipado fuerte)");
+        if (!tipoIzquierda.equals(tipoDerecha)) {
+            reportar("ARI-3", linea, columna, "no se pueden mezclar '" + tipoIzquierda + "' y '"
+                    + tipoDerecha + "' con el operador '" + operador + "' (tipado fuerte)");
             return new Atrib("error", "?");
         }
 
-        /* Regla 3b: "//" solo trabaja con enteros */
-        if (op.equals("//") && !a.tipo.equals("int")) {
+        /* Regla 4: la division entera solo trabaja con int */
+        if (operador.equals("//") && !tipoIzquierda.equals("int")) {
             reportar("ARI-4", linea, columna, "el operador '//' requiere operandos int y recibió '"
-                    + a.tipo + "'");
+                    + tipoIzquierda + "'");
             return new Atrib("error", "?");
         }
 
-        /* Regla 3c: "/" solo trabaja con float */
-        if (op.equals("/") && !a.tipo.equals("float")) {
+        /* Regla 5: la division decimal solo trabaja con float */
+        if (operador.equals("/") && !tipoIzquierda.equals("float")) {
             reportar("ARI-5", linea, columna, "el operador '/' requiere operandos float y recibió '"
-                    + a.tipo + "'");
+                    + tipoIzquierda + "'");
             return new Atrib("error", "?");
         }
 
-        /* Regla 3d: la potencia solo admite exponente positivo */
-        if (op.equals("pot") && (b.lugar.startsWith("-") || (b.valor != null && b.valor < 0))) {
+        /* Regla 6: la potencia solo acepta exponente positivo */
+        boolean exponenteNegativo = derecha.lugar.startsWith("-") || (derecha.valor != null && derecha.valor < 0);
+        if (operador.equals("pot") && exponenteNegativo) {
             reportar("ARI-7", linea, columna, "el operador 'pot' requiere un exponente positivo");
             return new Atrib("error", "?");
         }
 
-        /* Regla 4: todo bien, el resultado tiene el tipo de los operandos.
-           Si los dos son constantes enteras, también se calcula su valor. */
-        Atrib r = new Atrib(a.tipo, "?");
-        r.valor = plegar(a, op, b);
-        return r;
+        /* Todo bien: el resultado tiene el tipo de los operandos.
+           Si los dos son constantes enteras, tambien se calcula su valor. */
+        Atrib resultado = new Atrib(tipoIzquierda, "?");
+        resultado.valor = calcularConstante(izquierda, operador, derecha);
+        return resultado;
     }
 
-    /* Operación aritmética: primero se validan los tipos (aritmetica) y, si no hay error,
-       el generador crea el temporal y la instrucción. */
-    public Atrib generarAritmetica(Atrib a, String op, Atrib b, int linea, int columna) {
-        return gen.binaria(aritmetica(a, op, b, linea, columna), a, op, b);
+    /* Nombre: generarAritmetica
+       Descripcion: valida una operacion y despues pide escribir su instruccion.
+       Objetivo: que solo se escriba codigo de operaciones correctas.
+       Salida: un dato con el tipo y el lugar del resultado. */
+    public Atrib generarAritmetica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
+        Atrib resultado = aritmetica(izquierda, operador, derecha, linea, columna);
+        return gen.binaria(resultado, izquierda, operador, derecha);
     }
-    public Atrib generarRelacional(Atrib a, String op, Atrib b, int linea, int columna) {
-    int antes = tabla.getErrores().size();
-    Atrib r = relacional(a, op, b, linea, columna);
-    boolean bien = tabla.getErrores().size() == antes
-            && !a.tipo.equals("error") && !b.tipo.equals("error");
-    return bien ? gen.binaria(r, a, op, b) : r;
-}
 
-public Atrib generarLogica(Atrib a, String op, Atrib b, int linea, int columna) {
-    int antes = tabla.getErrores().size();
-    Atrib r = logica(a, op, b, linea, columna);
-    boolean bien = tabla.getErrores().size() == antes
-            && !a.tipo.equals("error") && !b.tipo.equals("error");
-    return bien ? gen.binaria(r, a, op, b) : r;
-}
-
-public Atrib generarNegacion(Atrib e, int linea, int columna) {
-    int antes = tabla.getErrores().size();
-    Atrib r = negacion(e, linea, columna);
-    boolean bien = tabla.getErrores().size() == antes && !e.tipo.equals("error");
-    return bien ? gen.unaria(r, "not", e) : r;
-}
-    /* Código intermedio de una asignación (id = valor). Solo se genera si el valor no falló
-       y su tipo es el de la variable: la validación se queda aquí y el generador solo escribe. */
-    public void generarAsignacion(String id, String tipoVar, Atrib valor) {
-        if (!valor.tipo.equals("error") && valor.tipo.equals(tipoVar)) {
-            gen.asignacion(id, valor);
+    /* Nombre: negativo
+       Descripcion: le pone el signo menos a un numero.
+       Objetivo: manejar numeros negativos y conservar su valor.
+       Salida: un dato con el mismo tipo y el lugar con el signo menos. */
+    public Atrib negativo(Atrib numero) {
+        Atrib resultado = new Atrib(numero.tipo, "-" + numero.lugar);
+        if (numero.valor != null) {
+            resultado.valor = -numero.valor;
         }
+        return resultado;
     }
 
-    /* Llamada a función: se valida (llamada) y, si no hubo ningún error, el generador escribe los
-    param y el call. El resultado de la llamada queda en el temporal del call. */
-    public Atrib generarLlamada(Simbolo f, String id, ArrayList args, int linea, int columna) {
-
-        int antes = tabla.getErrores().size();
-        Atrib r = llamada(f, id, args, linea, columna);
-        boolean bien = tabla.getErrores().size() == antes && f != null && f.esFuncion();
-
-        for (Object o : args) {
-
-            if (((Atrib) o).tipo.equals("error")) {
-                bien = false;
-            }
-        }
-
-        if (bien) {
-            String t = gen.llamar(id, args, !f.tipo.equals("void"));
-
-            if (t != null) {
-                r.lugar = t;
-            }
-        }
-
-        return r;
-    }
-
-    /* Condición de un if/elif/while/for: solo tiene salto si es bool y no falló */
-    private String lugarDeCondicion(Atrib c) {
-        return (c != null && c.tipo.equals("bool")) ? c.lugar : null;
-    }
-
-    public void generarSaltoIf(Atrib c) {
-        String lugar = lugarDeCondicion(c);
-        if (lugar != null) {
-            gen.condicionIf(lugar);
-        }
-    }
-
-    public void generarSaltoWhile(Atrib c) {
-        String lugar = lugarDeCondicion(c);
-        if (lugar != null) {
-            gen.saltoSiFalsoCiclo(lugar);
-        }
-    }
-
-    public void generarCabeceraFor(Atrib c) {
-        gen.cabeceraFor(lugarDeCondicion(c));
-    }
-
-    /* Un elemento usado como VALOR (a la derecha, dentro de una expresión): se copia a untemporal.
-    Si se usa como DESTINO (a la izquierda, o en read) se deja como nombre[indice]. */
-    public Atrib valorElemento(Atrib a) {
-        if (a.tipo.equals("error")) {
-            return a;
-        }
-        String t = gen.nuevoTemporal();
-        gen.emitir(t + " = " + a.lugar);
-
-        return new Atrib(a.tipo, t);
-    }
-    /* Valores iniciales de un arreglo: nombre[0] = v0, nombre[1] = v1, ... */
-    public void generarListaArreglo(String id, String tipo, ArrayList valores) {
-        for (int k = 0; k < valores.size(); k++) {
-            Atrib v = (Atrib) valores.get(k);
-            if (v.tipo.equals(tipo)) {
-                gen.emitir(id + "[" + k + "] = " + v.lugar);
-            }
-        }
-    }
-
-    /* SEM: convierte un texto en entero (null si no cabe en un int). */
-    public Integer aEntero(String texto) {
-        try {
-            return Integer.valueOf(texto.trim());
-        } catch (NumberFormatException e) {
+    /* Nombre: calcularConstante
+       Descripcion: calcula una operacion cuando los dos lados son enteros constantes.
+       Objetivo: conocer el valor para revisar tamanos y posiciones de arreglos.
+       Salida: el resultado, o null si no se puede calcular. */
+    private Integer calcularConstante(Atrib izquierda, String operador, Atrib derecha) {
+        if (!izquierda.tipo.equals("int") || izquierda.valor == null || derecha.valor == null) {
             return null;
         }
-    }
 
-    /* SEM: el signo menos delante de un número; conserva el valor constante. */
-    public Atrib negativo(Atrib v) {
-        Atrib r = new Atrib(v.tipo, "-" + v.lugar);
-        if (v.valor != null) {
-            r.valor = -v.valor;
-        }
-        return r;
-    }
+        long valorIzquierda = izquierda.valor;
+        long valorDerecha = derecha.valor;
+        long resultado;
 
-    /* SEM: calcula "a op b" cuando los dos son constantes enteras (null si no se puede).
-       La división entera // trunca hacia cero. */
-    private Integer plegar(Atrib a, String op, Atrib b) {
-        if (!a.tipo.equals("int") || a.valor == null || b.valor == null) {
-            return null;
-        }
-        long x = a.valor;
-        long y = b.valor;
-        long r;
-        switch (op) {
-            case "+":   r = x + y; break;
-            case "-":   r = x - y; break;
-            case "*":   r = x * y; break;
-            case "//":  if (y == 0) return null; r = x / y; break;
-            case "mod": if (y == 0) return null; r = x % y; break;
+        switch (operador) {
+            case "+":
+                resultado = valorIzquierda + valorDerecha;
+                break;
+            case "-":
+                resultado = valorIzquierda - valorDerecha;
+                break;
+            case "*":
+                resultado = valorIzquierda * valorDerecha;
+                break;
+            case "//":
+                if (valorDerecha == 0) return null;
+                resultado = valorIzquierda / valorDerecha;
+                break;
+            case "mod":
+                if (valorDerecha == 0) return null;
+                resultado = valorIzquierda % valorDerecha;
+                break;
             case "pot":
-                if (y < 0 || y > 30) return null;
-                r = 1;
-                for (long k = 0; k < y; k++) {
-                    r *= x;
-                    if (Math.abs(r) > Integer.MAX_VALUE) return null;
+                if (valorDerecha < 0 || valorDerecha > 30) return null;
+                resultado = 1;
+                for (long vuelta = 0; vuelta < valorDerecha; vuelta++) {
+                    resultado *= valorIzquierda;
+                    if (Math.abs(resultado) > Integer.MAX_VALUE) return null;
                 }
                 break;
-            default:    return null;
+            default:
+                return null;
         }
-        if (r > Integer.MAX_VALUE || r < Integer.MIN_VALUE) {
+
+        if (resultado > Integer.MAX_VALUE || resultado < Integer.MIN_VALUE) {
             return null;
         }
-        return (int) r;
+        return (int) resultado;
     }
 
-    /* SEM: texto del tamaño de un arreglo para la tabla de símbolos:
-       el valor calculado si es constante (1 + 1 -> "2") o el texto original. */
-    public String tamanoTexto(Atrib tam, String crudo) {
-        return (tam != null && tam.valor != null) ? String.valueOf(tam.valor) : crudo;
+
+    /* ============================================================
+       COMPARACIONES Y OPERACIONES LOGICAS
+       ============================================================ */
+
+    /* Nombre: codigoComparacion
+       Descripcion: elige el codigo de una comparacion fallida.
+       Objetivo: separar los errores de igualdad, de orden y de textos.
+       Salida: REL-1, REL-2 o REL-3. */
+    private String codigoComparacion(String operador, Atrib izquierda, Atrib derecha) {
+        if (izquierda.tipo.equals("string") || derecha.tipo.equals("string")) {
+            return "REL-3";
+        }
+        boolean esIgualdad = operador.equals("==") || operador.equals("!=");
+        return esIgualdad ? "REL-1" : "REL-2";
     }
 
-    /* SEM: comprueba que el valor tenga el mismo tipo que la variable.
-       Entrada: nombre y tipo de la variable, el valor (con su tipo) y la posición.
-       Salida:  ninguna; si no coinciden, reporta un error semántico. */
-    public void asignar(String regla, String nombre, String tipoVar, Atrib valor, int linea, int columna) {
+    /* Nombre: relacional
+       Descripcion: revisa una comparacion (< > <= >= == !=).
+       Objetivo: que los dos lados sean del mismo tipo y que no sean texto.
+       Salida: siempre un dato de tipo bool. */
+    public Atrib relacional(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
+
+        /* Regla 1: si alguno ya fallo, no repetir el mensaje */
+        if (tieneError(izquierda) || tieneError(derecha)) {
+            return new Atrib("bool", "?");
+        }
+
+        boolean izquierdaNumerica = esNumerico(izquierda.tipo);
+        boolean derechaNumerica = esNumerico(derecha.tipo);
+        boolean mismoTipo = izquierda.tipo.equals(derecha.tipo);
+        boolean comparacionValida;
+
+        if (operador.equals("==") || operador.equals("!=")) {
+            /* Regla 2: igualdad con int, float, bool o char del mismo tipo */
+            boolean tipoPermitido = izquierdaNumerica || izquierda.tipo.equals("bool") || izquierda.tipo.equals("char");
+            comparacionValida = tipoPermitido && (mismoTipo || (izquierdaNumerica && derechaNumerica));
+        } else {
+            /* Regla 3: orden solo con numeros del mismo tipo */
+            comparacionValida = izquierdaNumerica && mismoTipo;
+        }
+
+        if (!comparacionValida) {
+            reportar(codigoComparacion(operador, izquierda, derecha), linea, columna, "no se puede comparar '"
+                    + izquierda.tipo + "' con '" + derecha.tipo + "' usando '" + operador + "'");
+        }
+
+        /* Regla 4: una comparacion siempre da bool, aunque haya fallado */
+        return new Atrib("bool", "?");
+    }
+
+    /* Nombre: generarRelacional
+       Descripcion: valida una comparacion y despues pide escribir su instruccion.
+       Objetivo: que solo se escriba codigo de comparaciones correctas.
+       Salida: un dato de tipo bool. */
+    public Atrib generarRelacional(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
+        int erroresAntes = tabla.getErrores().size();
+        Atrib resultado = relacional(izquierda, operador, derecha, linea, columna);
+
+        boolean todoBien = sinErroresNuevos(erroresAntes) && !tieneError(izquierda) && !tieneError(derecha);
+        return todoBien ? gen.binaria(resultado, izquierda, operador, derecha) : resultado;
+    }
+
+    /* Nombre: logica
+       Descripcion: revisa una operacion logica (and, or).
+       Objetivo: que los dos lados sean bool.
+       Salida: siempre un dato de tipo bool. */
+    public Atrib logica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
+
+        /* Regla 1: si alguno ya fallo, no repetir el mensaje */
+        if (tieneError(izquierda) || tieneError(derecha)) {
+            return new Atrib("bool", "?");
+        }
+
+        /* Regla 2: los dos lados deben ser bool */
+        if (!izquierda.tipo.equals("bool") || !derecha.tipo.equals("bool")) {
+            reportar("LOG-1", linea, columna, "el operador lógico '" + operador
+                    + "' requiere operandos bool y recibió '" + izquierda.tipo + "' y '" + derecha.tipo + "'");
+        }
+
+        /* Regla 3: el resultado siempre es bool, aunque haya fallado */
+        return new Atrib("bool", "?");
+    }
+
+    /* Nombre: generarLogica
+       Descripcion: valida una operacion logica (and, or) y escribe su instruccion.
+       Objetivo: que solo se escriba codigo de operaciones logicas correctas.
+       Salida: un dato de tipo bool. */
+    public Atrib generarLogica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
+        int erroresAntes = tabla.getErrores().size();
+        Atrib resultado = logica(izquierda, operador, derecha, linea, columna);
+
+        boolean todoBien = sinErroresNuevos(erroresAntes) && !tieneError(izquierda) && !tieneError(derecha);
+        return todoBien ? gen.binaria(resultado, izquierda, operador, derecha) : resultado;
+    }
+
+    /* Nombre: negacion
+       Descripcion: revisa una negacion (not).
+       Objetivo: que el valor sea bool.
+       Salida: siempre un dato de tipo bool. */
+    public Atrib negacion(Atrib valor, int linea, int columna) {
+
+        if (tieneError(valor)) {
+            return new Atrib("bool", "?");
+        }
+
+        if (!valor.tipo.equals("bool")) {
+            reportar("LOG-2", linea, columna, "el operador 'not' requiere un operando bool y recibió '"
+                    + valor.tipo + "'");
+        }
+
+        return new Atrib("bool", "?");
+    }
+
+    /* Nombre: generarNegacion
+       Descripcion: valida una negacion (not) y escribe su instruccion.
+       Objetivo: que solo se escriba codigo de negaciones correctas.
+       Salida: un dato de tipo bool. */
+    public Atrib generarNegacion(Atrib valor, int linea, int columna) {
+        int erroresAntes = tabla.getErrores().size();
+        Atrib resultado = negacion(valor, linea, columna);
+
+        boolean todoBien = sinErroresNuevos(erroresAntes) && !tieneError(valor);
+        return todoBien ? gen.unaria(resultado, "not", valor) : resultado;
+    }
+
+
+    /* ============================================================
+       ASIGNACIONES
+       ============================================================ */
+
+    /* Nombre: asignar
+       Descripcion: revisa que el valor tenga el mismo tipo que la variable.
+       Objetivo: no guardar un valor de un tipo en una variable de otro tipo.
+       Salida: ninguna (si no coinciden, guarda un error). */
+    public void asignar(String regla, String nombre, String tipoVariable, Atrib valor, int linea, int columna) {
 
         /* Regla 1: si el valor o la variable ya fallaron, no repetir el mensaje */
-        if (valor.tipo.equals("error") || tipoVar.equals("error")) {
+        if (tieneError(valor) || tipoVariable.equals("error")) {
             return;
         }
 
         /* Regla 2: el tipo del valor debe ser igual al de la variable */
-        if (!tipoVar.equals(valor.tipo)) {
+        if (!tipoVariable.equals(valor.tipo)) {
             reportar(regla, linea, columna, "la variable '" + nombre + "' es de tipo '"
-                    + tipoVar + "' y se le da un valor de tipo '" + valor.tipo + "'");
+                    + tipoVariable + "' y se le da un valor de tipo '" + valor.tipo + "'");
         }
     }
 
-    /* SEM: comprueba la declaración de un arreglo.
-       Entrada: nombre, tipo de los elementos, el tamaño (puede ser null), la lista de
-                valores iniciales (puede ser null) y la posición.
-       Reglas:  el tamaño debe ser una expresión int y mayor que cero;
-                cada valor debe tener el tipo del arreglo;
-                no pueden darse más valores que el tamaño (si el tamaño se conoce). */
-    public void arreglo(String id, String tipo, Atrib tam, ArrayList valores, int linea, int columna) {
+    /* Nombre: generarAsignacion
+       Descripcion: escribe la instruccion de guardar un valor en una variable.
+       Objetivo: que el codigo intermedio tenga cada asignacion.
+       Salida: ninguna (solo escribe si el valor no fallo y el tipo coincide). */
+    public void generarAsignacion(String nombre, String tipoVariable, Atrib valor) {
+        if (!tieneError(valor) && valor.tipo.equals(tipoVariable)) {
+            gen.asignacion(nombre, valor);
+        }
+    }
 
-        /* Regla 1: el tamaño debe ser int (si ya falló, no repetir el mensaje) */
-        Integer tamano = null;
-        if (tam != null && !tam.tipo.equals("error")) {
-            if (!tam.tipo.equals("int")) {
-                reportar("ARR-1", linea, columna, "el tamaño del arreglo '" + id
-                        + "' debe ser int y se encontró '" + tam.tipo + "'");
-            } else if (tam.valor != null) {
-                tamano = tam.valor;
-                if (tamano <= 0) {
-                    reportar("ARR-2", linea, columna, "el tamaño del arreglo '" + id
-                            + "' debe ser mayor que 0 y es " + tamano);
-                    tamano = null;
+
+    /* ============================================================
+       ARREGLOS
+       ============================================================ */
+
+    /* Nombre: tamanoTexto
+       Descripcion: da el texto del tamano de un arreglo.
+       Objetivo: mostrar el tamano en la tabla de simbolos.
+       Salida: el valor calculado si es constante, o el texto original. */
+    public String tamanoTexto(Atrib tamano, String textoOriginal) {
+        boolean tamanoConocido = tamano != null && tamano.valor != null;
+        return tamanoConocido ? String.valueOf(tamano.valor) : textoOriginal;
+    }
+
+    /* Nombre: arreglo
+       Descripcion: revisa la declaracion de un arreglo.
+       Objetivo: que el tamano sea int y mayor que cero, y que los valores sean del tipo
+                 del arreglo y no sobren.
+       Salida: ninguna (si algo falla, guarda un error). */
+    public void arreglo(String nombre, String tipoElementos, Atrib tamano, ArrayList valores, int linea, int columna) {
+
+        /* Regla 1: el tamano debe ser int (si ya fallo, no repetir el mensaje) */
+        Integer tamanoConocido = null;
+        if (tamano != null && !tieneError(tamano)) {
+            if (!tamano.tipo.equals("int")) {
+                reportar("ARR-1", linea, columna, "el tamaño del arreglo '" + nombre
+                        + "' debe ser int y se encontró '" + tamano.tipo + "'");
+            } else if (tamano.valor != null) {
+                tamanoConocido = tamano.valor;
+                if (tamanoConocido <= 0) {
+                    reportar("ARR-2", linea, columna, "el tamaño del arreglo '" + nombre
+                            + "' debe ser mayor que 0 y es " + tamanoConocido);
+                    tamanoConocido = null;
                 }
             }
         }
@@ -320,356 +494,186 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
         }
 
         /* Regla 2: todos los valores deben tener el tipo del arreglo (un solo mensaje) */
-        int malos = 0;
-        int primero = -1;
-        String tipoPrimero = null;
-        for (int k = 0; k < valores.size(); k++) {
-            Atrib v = (Atrib) valores.get(k);
-            if (!v.tipo.equals("error") && !v.tipo.equals(tipo)) {
-                malos++;
-                if (primero < 0) { primero = k; tipoPrimero = v.tipo; }
+        int cantidadIncorrectos = 0;
+        int posicionPrimerIncorrecto = -1;
+        String tipoPrimerIncorrecto = null;
+        for (int posicion = 0; posicion < valores.size(); posicion++) {
+            Atrib valor = (Atrib) valores.get(posicion);
+            if (!tieneError(valor) && !valor.tipo.equals(tipoElementos)) {
+                cantidadIncorrectos++;
+                if (posicionPrimerIncorrecto < 0) {
+                    posicionPrimerIncorrecto = posicion;
+                    tipoPrimerIncorrecto = valor.tipo;
+                }
             }
         }
-        if (malos > 0) {
-            reportar("ARR-3", linea, columna, "el arreglo '" + id + "' es de tipo '" + tipo + "' pero "
-                    + malos + " de sus " + valores.size() + " valores no lo son (el primero es el elemento "
-                    + primero + ", de tipo '" + tipoPrimero + "')");
+        if (cantidadIncorrectos > 0) {
+            reportar("ARR-3", linea, columna, "el arreglo '" + nombre + "' es de tipo '" + tipoElementos + "' pero "
+                    + cantidadIncorrectos + " de sus " + valores.size() + " valores no lo son (el primero es el elemento "
+                    + posicionPrimerIncorrecto + ", de tipo '" + tipoPrimerIncorrecto + "')");
         }
 
-        /* Regla 3: no pueden sobrar valores si el tamaño se conoce */
-        if (tamano != null && valores.size() > tamano) {
-            reportar("ARR-4", linea, columna, "el arreglo '" + id + "' tiene tamaño " + tamano
+        /* Regla 3: no pueden sobrar valores si el tamano se conoce */
+        if (tamanoConocido != null && valores.size() > tamanoConocido) {
+            reportar("ARR-4", linea, columna, "el arreglo '" + nombre + "' tiene tamaño " + tamanoConocido
                     + " pero se dieron " + valores.size() + " valores");
         }
     }
 
-    /* SEM: función en la que estamos (para comprobar el return) */
-    public String funTipo = null;
-    public String funNombre = null;
+    /* Nombre: elemento
+       Descripcion: revisa el uso de una posicion de un arreglo, por ejemplo notas[0].
+       Objetivo: que el arreglo exista, que la posicion sea int y que no se salga del arreglo.
+       Salida: un dato con el tipo de los elementos, o de tipo error. */
+    public Atrib elemento(Simbolo arreglo, String nombre, Atrib posicion, int linea, int columna) {
 
-    /* SEM: comprueba una llamada a función: cantidad y tipo de los argumentos.
-       Entrada: la función (puede ser null si no existe), su nombre, la lista de
-                argumentos (cada uno con su tipo) y la posición de la llamada.
-       Salida:  un Atrib con el tipo de retorno de la función (el lugar guarda su nombre). */
-    public Atrib llamada(Simbolo f, String id, ArrayList args, int linea, int columna) {
-
-        /* Regla 1: si no existe o no es una función, usarFuncion ya reportó el error */
-        if (f == null || !f.esFuncion()) {
-            return new Atrib("error", id);
+        /* Regla 1: si no existe o no es arreglo, usarArreglo ya aviso */
+        if (arreglo == null || !arreglo.categoria.equals("arreglo")) {
+            return new Atrib("error", nombre);
         }
 
-        /* Regla 2: la cantidad de argumentos debe coincidir con la de parámetros */
-        int esperados = f.parametros.size();
-        if (args.size() != esperados) {
-            reportar("FUN-1", linea, columna, "la función '" + id + "' espera " + esperados
-                    + " argumento(s) y recibió " + args.size());
-        } else {
-            /* Regla 3: cada argumento debe tener el tipo de su parámetro */
-            for (int k = 0; k < esperados; k++) {
-                Atrib a = (Atrib) args.get(k);
-                Simbolo p = (Simbolo) f.parametros.get(k);
-                if (!a.tipo.equals("error") && !p.tipo.equals("error") && !a.tipo.equals(p.tipo)) {
-                    reportar("FUN-2", linea, columna, "el argumento " + (k + 1) + " de '" + id
-                            + "' debe ser '" + p.tipo + "' y se encontró '" + a.tipo + "'");
-                }
-            }
+        /* Regla 2: la posicion debe ser int (si ya fallo, no repetir el mensaje) */
+        if (!tieneError(posicion) && !posicion.tipo.equals("int")) {
+            reportar("ARR-5", linea, columna, "el índice del arreglo '" + nombre
+                    + "' debe ser int y se encontró '" + posicion.tipo + "'");
         }
 
-        /* Regla 4: el resultado tiene el tipo de retorno de la función */
-        return new Atrib(f.tipo, id);
-    }
-
-    /* SEM: comprueba el acceso a un elemento de arreglo: nombre[indice].
-       Entrada: el símbolo del arreglo (puede ser null), su nombre, el índice y la posición.
-       Salida:  un Atrib con el tipo de los elementos del arreglo, o de tipo "error".
-       Los índices empiezan en 0: un arreglo de tamaño n tiene los índices 0 a n-1. */
-    public Atrib elemento(Simbolo s, String id, Atrib indice, int linea, int columna) {
-
-        /* Regla 1: si no existe o no es un arreglo, usarArreglo ya reportó el error */
-        if (s == null || !s.categoria.equals("arreglo")) {
-            return new Atrib("error", id);
-        }
-
-        /* Regla 2: el índice debe ser int (si ya falló, no repetir el mensaje) */
-        if (!indice.tipo.equals("error") && !indice.tipo.equals("int")) {
-            reportar("ARR-5", linea, columna, "el índice del arreglo '" + id
-                    + "' debe ser int y se encontró '" + indice.tipo + "'");
-        }
-
-        /* Regla 3: si el índice es una constante, debe caer dentro del arreglo */
-        if (indice.valor != null) {
-            int v = indice.valor;
-            if (v < 0) {
-                reportar("ARR-7", linea, columna, "el índice " + v + " del arreglo '" + id
+        /* Regla 3: si la posicion es una constante, debe caer dentro del arreglo */
+        if (posicion.valor != null) {
+            int numeroPosicion = posicion.valor;
+            if (numeroPosicion < 0) {
+                reportar("ARR-7", linea, columna, "el índice " + numeroPosicion + " del arreglo '" + nombre
                         + "' no puede ser negativo");
-            } else if (s.elementos > 0 && v >= s.elementos) {
-                reportar("ARR-6", linea, columna, "el índice " + v + " está fuera del arreglo '" + id
-                        + "' (índices válidos: 0 a " + (s.elementos - 1) + ")");
+            } else if (arreglo.elementos > 0 && numeroPosicion >= arreglo.elementos) {
+                reportar("ARR-6", linea, columna, "el índice " + numeroPosicion + " está fuera del arreglo '" + nombre
+                        + "' (índices válidos: 0 a " + (arreglo.elementos - 1) + ")");
             }
         }
 
-        /* Regla 4: el elemento tiene el tipo del arreglo (el lugar guarda el nombre) */
-        return new Atrib(s.tipo, id + "[" + indice.lugar + "]");
+        /* Regla 4: el elemento tiene el tipo del arreglo */
+        return new Atrib(arreglo.tipo, nombre);
     }
 
-    /* SEM: comprueba los tipos de una operación lógica (and, or).
-       Salida: siempre un Atrib de tipo "bool". */
-    public Atrib logica(Atrib a, String op, Atrib b, int linea, int columna) {
 
-        /* Regla 1: si alguno ya falló, no repetir el mensaje */
-        if (a.tipo.equals("error") || b.tipo.equals("error")) {
-            return new Atrib("bool", "?");
+    /* ============================================================
+       FUNCIONES
+       ============================================================ */
+
+    /* Nombre: llamada
+       Descripcion: revisa una llamada a funcion: cuantos datos y de que tipo.
+       Objetivo: que se den los datos que la funcion pide.
+       Salida: un dato con el tipo que devuelve la funcion, o de tipo error. */
+    public Atrib llamada(Simbolo funcion, String nombre, ArrayList argumentos, int linea, int columna) {
+
+        /* Regla 1: si no existe o no es funcion, usarFuncion ya aviso */
+        if (funcion == null || !funcion.esFuncion()) {
+            return new Atrib("error", nombre);
         }
 
-        /* Regla 2: los dos operandos deben ser bool */
-        if (!a.tipo.equals("bool") || !b.tipo.equals("bool")) {
-            reportar("LOG-1", linea, columna, "el operador lógico '" + op
-                    + "' requiere operandos bool y recibió '" + a.tipo + "' y '" + b.tipo + "'");
-        }
-
-        /* Regla 3: el resultado siempre es bool, aunque haya fallado */
-        return new Atrib("bool", "?");
-    }
-
-    /* SEM: comprueba el tipo de una negación (not). */
-    public Atrib negacion(Atrib e, int linea, int columna) {
-
-        if (e.tipo.equals("error")) {
-            return new Atrib("bool", "?");
-        }
-
-        if (!e.tipo.equals("bool")) {
-            reportar("LOG-2", linea, columna, "el operador 'not' requiere un operando bool y recibió '"
-                    + e.tipo + "'");
-        }
-
-        return new Atrib("bool", "?");
-    }
-
-    /* ====================================================================
-       REGLAS SOBRE LOS NOMBRES: declarar y usar
-       La tabla de símbolos solo guarda y busca; aquí se decide qué es un error.
-       ==================================================================== */
-
-    /* Regla PRG-1: el programa debe tener una función principal.
-       Si se repite, declararFuncion ya reporta el nombre repetido (TS-1). */
-    public void finPrograma() {
-        if (tabla.buscar("principal") == null) {
-            int linea = 1;
-            int columna = 1;
-            for (int i = leidos.size() - 1; i >= 0; i--) {
-                Symbol t = leidos.get(i);
-                if (t.left > 0) {
-                    linea = t.left;
-                    columna = t.right;
-                    break;
+        /* Regla 2: la cantidad de datos debe ser la misma que la de parametros */
+        int cantidadEsperada = funcion.parametros.size();
+        if (argumentos.size() != cantidadEsperada) {
+            reportar("FUN-1", linea, columna, "la función '" + nombre + "' espera " + cantidadEsperada
+                    + " argumento(s) y recibió " + argumentos.size());
+        } else {
+            /* Regla 3: cada dato debe tener el tipo de su parametro */
+            for (int posicion = 0; posicion < cantidadEsperada; posicion++) {
+                Atrib argumento = (Atrib) argumentos.get(posicion);
+                Simbolo parametro = (Simbolo) funcion.parametros.get(posicion);
+                boolean tipoIncorrecto = !tieneError(argumento) && !parametro.tipo.equals("error")
+                        && !argumento.tipo.equals(parametro.tipo);
+                if (tipoIncorrecto) {
+                    reportar("FUN-2", linea, columna, "el argumento " + (posicion + 1) + " de '" + nombre
+                            + "' debe ser '" + parametro.tipo + "' y se encontró '" + argumento.tipo + "'");
                 }
             }
-            reportar("PRG-1", linea, columna, "el programa debe tener una función principal");
         }
+
+        /* Regla 4: el resultado tiene el tipo que devuelve la funcion */
+        return new Atrib(funcion.tipo, nombre);
     }
 
-    /* Producción de error: avisa que el programa trae un error común, con su mensaje.
-       Main lo sobrescribe para registrarlo como error sintáctico; aquí no hace nada. */
-    public void errorProduccion(int linea, int columna, String mensaje) {
-    }
+    /* Nombre: generarLlamada
+       Descripcion: valida una llamada a funcion y escribe sus param y su call.
+       Objetivo: que el codigo intermedio tenga cada llamada correcta.
+       Salida: un dato con el tipo que devuelve la funcion y el lugar del resultado. */
+    public Atrib generarLlamada(Simbolo funcion, String nombre, ArrayList argumentos, int linea, int columna) {
 
-    /* Recuperación a nivel de frase: avisa que falta el terminador. Main lo
-       sobrescribe para registrarlo como error sintáctico; aquí no hace nada. */
-    public void tokenFaltante(String token, int linea, int columna) {
-    }
+        int erroresAntes = tabla.getErrores().size();
+        Atrib resultado = llamada(funcion, nombre, argumentos, linea, columna);
 
-    /* El » que falta va justo después del último token de la sentencia, es decir,
-       antes del token que el parser acaba de leer (el que sigue). */
-    public void faltaTerminador() {
-        faltaToken("»");
-    }
-
-    /* Avisa que falta un token (», :э o :?). Va justo después del último token de la frase,
-       o sea, antes del token que el parser acaba de leer. */
-    public void faltaToken(String token) {
-        int n = leidos.size();
-        if (n >= 2) {
-            Symbol previo = leidos.get(n - 2);
-            int largo = previo.value == null ? 1 : Math.max(1, String.valueOf(previo.value).length());
-            tokenFaltante(token, previo.left, previo.right + largo);
+        boolean todoBien = sinErroresNuevos(erroresAntes) && funcion != null && funcion.esFuncion();
+        for (Object argumento : argumentos) {
+            if (tieneError((Atrib) argumento)) {
+                todoBien = false;
+            }
         }
-    }
 
-    /* Guarda un error semántico con el código de su regla, por ejemplo
-       "[ARI-3] no se pueden mezclar ...". Main usa el código para clasificar
-       el error por tipo de validación y mostrarlo con su color. */
-    private void reportar(String regla, int linea, int columna, String mensaje) {
-        tabla.errorSemantico(linea, columna, "[" + regla + "] " + mensaje);
-    }
-
-    /* Código de una comparación fallida: REL-1 (== y !=), REL-2 (< > <= >=)
-       o REL-3 (alguno de los operandos es string). */
-    private String codigoRel(String op, Atrib a, Atrib b) {
-        if (a.tipo.equals("string") || b.tipo.equals("string")) {
-            return "REL-3";
+        if (todoBien) {
+            boolean devuelveValor = !funcion.tipo.equals("void");
+            String temporal = gen.llamar(nombre, argumentos, devuelveValor);
+            if (temporal != null) {
+                resultado.lugar = temporal;
+            }
         }
-        return (op.equals("==") || op.equals("!=")) ? "REL-1" : "REL-2";
+
+        return resultado;
     }
 
-    /* Regla: un nombre no puede declararse dos veces en el mismo ámbito. */
-    private void repetido(String regla, Simbolo previo, String id, int linea, int columna) {
-        if (previo != null) {
-            reportar(regla, linea, columna, "'" + id
-                    + "' ya fue declarado en este ámbito (línea " + previo.linea + ")");
-        }
-    }
-
-    public void declararVariable(String id, String tipo, String valorInicial, int linea, int columna) {
-        repetido("TS-1", tabla.declararVariable(id, tipo, valorInicial, linea, columna), id, linea, columna);
-    }
-
-    public void declararArreglo(String id, String tipo, String tamano, int elementos,
-                                String valores, int linea, int columna) {
-        repetido("TS-1", tabla.declararArreglo(id, tipo, tamano, elementos, valores, linea, columna),
-                 id, linea, columna);
-    }
-
-    /* Reglas de una función:
-       1. Una función no puede retornar string (solo int, float, char o bool).
-       2. Los parámetros no pueden repetirse.
-       3. Su nombre no puede estar repetido en el ámbito global.
-       Además deja anotada la función actual, para comprobar sus return. */
-    public void declararFuncion(String id, String tipo, ArrayList params, int linea, int columna) {
+    /* Nombre: declararFuncion
+       Descripcion: guarda una funcion en la tabla de simbolos.
+       Objetivo: que no retorne string, que sus parametros no se repitan y que su nombre sea unico.
+                 Ademas deja anotada la funcion actual para revisar sus return.
+       Salida: ninguna. */
+    public void declararFuncion(String nombre, String tipo, ArrayList parametros, int linea, int columna) {
 
         if (tipo.equals("string")) {
-            reportar("FUN-3", linea, columna, "la función '" + id
+            reportar("FUN-3", linea, columna, "la función '" + nombre
                     + "' no puede retornar string (solo int, float, char o bool)");
         }
 
-        if (params != null) {
-            for (int i = 1; i < params.size(); i++) {
-                Simbolo p = (Simbolo) params.get(i);
-                for (int j = 0; j < i; j++) {
-                    Simbolo q = (Simbolo) params.get(j);
-                    if (q.nombre.equals(p.nombre)) {
-                        repetido("FUN-4", q, p.nombre, p.linea, p.columna);
+        if (parametros != null) {
+            for (int posicion = 1; posicion < parametros.size(); posicion++) {
+                Simbolo parametro = (Simbolo) parametros.get(posicion);
+                for (int anterior = 0; anterior < posicion; anterior++) {
+                    Simbolo parametroAnterior = (Simbolo) parametros.get(anterior);
+                    if (parametroAnterior.nombre.equals(parametro.nombre)) {
+                        avisarRepetido("FUN-4", parametroAnterior, parametro.nombre, parametro.linea, parametro.columna);
                         break;
                     }
                 }
             }
         }
 
-        repetido("TS-1", tabla.declararFuncion(id, tipo, params, linea, columna), id, linea, columna);
+        avisarRepetido("TS-1", tabla.declararFuncion(nombre, tipo, parametros, linea, columna), nombre, linea, columna);
 
-        funTipo = tipo;
-        funNombre = id;
-        hayReturn = false;
-        lineaFuncion = linea;
-        columnaFuncion = columna;
+        tipoFuncionActual = tipo;
+        nombreFuncionActual = nombre;
+        funcionTieneReturn = false;
+        lineaFuncionActual = linea;
+        columnaFuncionActual = columna;
     }
 
-    /* Regla: una función con tipo debe tener al menos un return (con o sin valor).
-       Se comprueba al cerrar el cuerpo de la función. */
-    private boolean hayReturn = false;
-    private int lineaFuncion = 0;
-    private int columnaFuncion = 0;
-
+    /* Nombre: finFuncion
+       Descripcion: se llama al cerrar el cuerpo de una funcion.
+       Objetivo: revisar que una funcion con tipo tenga al menos un return.
+       Salida: ninguna (si falta, guarda un error). */
     public void finFuncion() {
-        if (funTipo != null && !funTipo.equals("void") && !hayReturn) {
-            reportar("FUN-7", lineaFuncion, columnaFuncion, "la función '" + funNombre
+        boolean tieneTipo = tipoFuncionActual != null && !tipoFuncionActual.equals("void");
+        if (tieneTipo && !funcionTieneReturn) {
+            reportar("FUN-7", lineaFuncionActual, columnaFuncionActual, "la función '" + nombreFuncionActual
                     + "' debe tener al menos un return");
         }
     }
 
-    /* Reglas de uso de una variable:
-       1. Debe estar declarada.
-       2. No puede ser una función.
-       3. No puede ser un arreglo sin índice.
-       Si alguna falla se reporta y se devuelve null (no se repite el mensaje). */
-    public Simbolo usar(String nombre, int linea, int columna) {
-        Simbolo s = tabla.buscar(nombre);
-        if (s == null) {
-            reportar("TS-2", linea, columna, "'" + nombre + "' no ha sido declarado");
-            return null;
-        }
-        if (s.esFuncion()) {
-            reportar("TS-6", linea, columna, "'" + nombre + "' es una función y se usa como variable");
-            return null;
-        }
-        if (s.categoria.equals(Simbolo.ARREGLO)) {
-            reportar("TS-7", linea, columna, "'" + nombre + "' es un arreglo y debe usarse con un índice");
-            return null;
-        }
-        return s;
-    }
-
-    /* Reglas de uso de un arreglo: debe estar declarado y ser un arreglo. */
-    public Simbolo usarArreglo(String nombre, int linea, int columna) {
-        Simbolo s = tabla.buscar(nombre);
-        if (s == null) {
-            reportar("TS-4", linea, columna, "el arreglo '" + nombre + "' no ha sido declarado");
-        } else if (!s.categoria.equals(Simbolo.ARREGLO)) {
-            reportar("TS-5", linea, columna, "'" + nombre + "' no es un arreglo");
-        }
-        return s;
-    }
-
-    /* Reglas de uso de una función: debe estar declarada y ser una función. */
-    public Simbolo usarFuncion(String nombre, int linea, int columna) {
-        Simbolo s = tabla.buscar(nombre);
-        if (s == null) {
-            reportar("TS-3", linea, columna, "la función '" + nombre + "' no ha sido declarada");
-        } else if (!s.esFuncion()) {
-            reportar("TS-3", linea, columna, "'" + nombre + "' no es una función");
-        }
-        return s;
-    }
-
-    /* ====================================================================
-       COMPARACIONES
-       ==================================================================== */
-
-    /* SEM: comprueba los tipos de una comparación (<, >, <=, >=, ==, !=).
-       Reglas:  < > <= >= : los dos int o los dos float.
-                == y !=   : int, float, bool o char; mismo tipo, o los dos numéricos.
-                Los string no se comparan.
-       Salida:  siempre un Atrib de tipo "bool". */
-    public Atrib relacional(Atrib a, String op, Atrib b, int linea, int columna) {
-
-        /* Regla 1: si alguno ya falló, no repetir el mensaje */
-        if (a.tipo.equals("error") || b.tipo.equals("error")) {
-            return new Atrib("bool", "?");
-        }
-
-        boolean aNumerico = a.tipo.equals("int") || a.tipo.equals("float");
-        boolean bNumerico = b.tipo.equals("int") || b.tipo.equals("float");
-        boolean valida;
-
-        if (op.equals("==") || op.equals("!=")) {
-            /* Regla 2: igualdad: int, float, bool o char; mismo tipo, o los dos numéricos */
-            boolean permitido = aNumerico || a.tipo.equals("bool") || a.tipo.equals("char");
-            valida = permitido && (a.tipo.equals(b.tipo) || (aNumerico && bNumerico));
-        } else {
-            /* Regla 3: orden: solo numéricos y del mismo tipo */
-            valida = aNumerico && a.tipo.equals(b.tipo);
-        }
-
-        if (!valida) {
-            reportar(codigoRel(op, a, b), linea, columna, "no se puede comparar '" + a.tipo
-                    + "' con '" + b.tipo + "' usando '" + op + "'");
-        }
-
-        /* Regla 4: una comparación siempre da bool, aunque haya fallado */
-        return new Atrib("bool", "?");
-    }
-
-    /* ====================================================================
-       RETURN, BREAK, CONDICIONES, ++ y --, READ y WRITE
-       ==================================================================== */
-
-    /* SEM: comprueba un return contra la función en la que está.
-       valor es null cuando el return no lleva expresión (se permite). */
+    /* Nombre: retorno
+       Descripcion: revisa un return contra la funcion donde esta.
+       Objetivo: que el valor devuelto sea del tipo de la funcion.
+       Salida: ninguna (si todo esta bien, escribe el return). */
     public void retorno(Atrib valor, int linea, int columna) {
 
-        hayReturn = true;
+        funcionTieneReturn = true;
 
-        if (funTipo == null) {
+        if (tipoFuncionActual == null) {
             return;
         }
         if (valor == null) {
@@ -677,85 +681,219 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
             return;
         }
 
-        /* Regla 1: un procedimiento void no devuelve nada, sea cual sea el valor */
-        if (funTipo.equals("void")) {
-            reportar("RET-1", linea, columna, "el procedimiento '" + funNombre
+        /* Regla 1: un procedimiento void no devuelve nada */
+        if (tipoFuncionActual.equals("void")) {
+            reportar("RET-1", linea, columna, "el procedimiento '" + nombreFuncionActual
                     + "' no puede retornar un valor");
             return;
         }
 
-        /* Regla 2: si el valor ya falló, no repetir el mensaje */
-        if (valor.tipo.equals("error")) {
+        /* Regla 2: si el valor ya fallo, no repetir el mensaje */
+        if (tieneError(valor)) {
             return;
         }
 
-        /* Regla 3: el valor debe tener el tipo de la función */
-        if (!valor.tipo.equals(funTipo)) {
-            reportar("RET-2", linea, columna, "la función '" + funNombre
-                    + "' debe retornar un valor de tipo " + funTipo
+        /* Regla 3: el valor debe tener el tipo de la funcion */
+        if (!valor.tipo.equals(tipoFuncionActual)) {
+            reportar("RET-2", linea, columna, "la función '" + nombreFuncionActual
+                    + "' debe retornar un valor de tipo " + tipoFuncionActual
                     + ", pero se recibió " + valor.tipo);
-                    return;
+            return;
         }
         gen.retorno(valor.lugar);
     }
 
-    /* SEM: break solo puede estar dentro de un while o de un for. */
-    private int ciclosActivos = 0;
 
+    /* ============================================================
+       NOMBRES: DECLARAR Y USAR
+       La tabla de simbolos solo guarda y busca; aqui se decide que es un error.
+       ============================================================ */
+
+    /* Nombre: avisarRepetido
+       Descripcion: avisa si un nombre ya estaba declarado en el mismo bloque.
+       Objetivo: no permitir dos declaraciones iguales en un bloque.
+       Salida: ninguna (si estaba repetido, guarda un error). */
+    private void avisarRepetido(String regla, Simbolo simboloPrevio, String nombre, int linea, int columna) {
+        if (simboloPrevio != null) {
+            reportar(regla, linea, columna, "'" + nombre
+                    + "' ya fue declarado en este ámbito (línea " + simboloPrevio.linea + ")");
+        }
+    }
+
+    /* Nombre: declararVariable
+       Descripcion: guarda una variable en la tabla de simbolos.
+       Objetivo: que cada variable quede registrada una sola vez por bloque.
+       Salida: ninguna. */
+    public void declararVariable(String nombre, String tipo, String valorInicial, int linea, int columna) {
+        Simbolo simboloPrevio = tabla.declararVariable(nombre, tipo, valorInicial, linea, columna);
+        avisarRepetido("TS-1", simboloPrevio, nombre, linea, columna);
+    }
+
+    /* Nombre: declararArreglo
+       Descripcion: guarda un arreglo en la tabla de simbolos.
+       Objetivo: que cada arreglo quede registrado una sola vez por bloque.
+       Salida: ninguna. */
+    public void declararArreglo(String nombre, String tipo, String tamano, int elementos,
+                                String valores, int linea, int columna) {
+        Simbolo simboloPrevio = tabla.declararArreglo(nombre, tipo, tamano, elementos, valores, linea, columna);
+        avisarRepetido("TS-1", simboloPrevio, nombre, linea, columna);
+    }
+
+    /* Nombre: usar
+       Descripcion: busca una variable que se esta usando.
+       Objetivo: que este declarada, que no sea funcion y que no sea un arreglo sin posicion.
+       Salida: el simbolo, o null si hubo un error (el error ya se guardo). */
+    public Simbolo usar(String nombre, int linea, int columna) {
+        Simbolo simbolo = tabla.buscar(nombre);
+
+        if (simbolo == null) {
+            reportar("TS-2", linea, columna, "'" + nombre + "' no ha sido declarado");
+            return null;
+        }
+        if (simbolo.esFuncion()) {
+            reportar("TS-6", linea, columna, "'" + nombre + "' es una función y se usa como variable");
+            return null;
+        }
+        if (simbolo.categoria.equals(Simbolo.ARREGLO)) {
+            reportar("TS-7", linea, columna, "'" + nombre + "' es un arreglo y debe usarse con un índice");
+            return null;
+        }
+        return simbolo;
+    }
+
+    /* Nombre: usarArreglo
+       Descripcion: busca un arreglo que se esta usando.
+       Objetivo: que este declarado y que de verdad sea un arreglo.
+       Salida: el simbolo (puede ser null o no ser arreglo; el error ya se guardo). */
+    public Simbolo usarArreglo(String nombre, int linea, int columna) {
+        Simbolo simbolo = tabla.buscar(nombre);
+
+        if (simbolo == null) {
+            reportar("TS-4", linea, columna, "el arreglo '" + nombre + "' no ha sido declarado");
+        } else if (!simbolo.categoria.equals(Simbolo.ARREGLO)) {
+            reportar("TS-5", linea, columna, "'" + nombre + "' no es un arreglo");
+        }
+        return simbolo;
+    }
+
+    /* Nombre: usarFuncion
+       Descripcion: busca una funcion que se esta llamando.
+       Objetivo: que este declarada y que de verdad sea una funcion.
+       Salida: el simbolo (puede ser null o no ser funcion; el error ya se guardo). */
+    public Simbolo usarFuncion(String nombre, int linea, int columna) {
+        Simbolo simbolo = tabla.buscar(nombre);
+
+        if (simbolo == null) {
+            reportar("TS-3", linea, columna, "la función '" + nombre + "' no ha sido declarada");
+        } else if (!simbolo.esFuncion()) {
+            reportar("TS-3", linea, columna, "'" + nombre + "' no es una función");
+        }
+        return simbolo;
+    }
+
+    /* Nombre: finPrograma
+       Descripcion: se llama al terminar de leer el programa.
+       Objetivo: revisar que exista la funcion principal.
+       Salida: ninguna (si falta, guarda un error). */
+    public void finPrograma() {
+        if (tabla.buscar("principal") != null) {
+            return;
+        }
+
+        /* El error se marca en el ultimo token que tenga posicion */
+        int linea = 1;
+        int columna = 1;
+        for (int i = tokensLeidos.size() - 1; i >= 0; i--) {
+            Symbol token = tokensLeidos.get(i);
+            if (token.left > 0) {
+                linea = token.left;
+                columna = token.right;
+                break;
+            }
+        }
+        reportar("PRG-1", linea, columna, "el programa debe tener una función principal");
+    }
+
+
+    /* ============================================================
+       CONTROL: CICLOS, BREAK, CONDICIONES Y ++ --
+       ============================================================ */
+
+    /* Nombre: entrarCiclo y salirCiclo
+       Descripcion: cuentan cuantos while o for estan abiertos en este momento.
+       Objetivo: saber si un break esta dentro de un ciclo.
+       Salida: ninguna. */
     public void entrarCiclo() {
-        ciclosActivos++;
+        ciclosAbiertos++;
     }
 
     public void salirCiclo() {
-        if (ciclosActivos > 0) {
-            ciclosActivos--;
+        if (ciclosAbiertos > 0) {
+            ciclosAbiertos--;
         }
     }
 
+    /* Nombre: validarBreak
+       Descripcion: revisa un break.
+       Objetivo: que solo se use dentro de un while o de un for.
+       Salida: ninguna (si esta afuera, guarda un error). */
     public void validarBreak(int linea, int columna) {
-        if (ciclosActivos == 0) {
+        if (ciclosAbiertos == 0) {
             reportar("CON-5", linea, columna, "break solo puede utilizarse dentro de un ciclo");
-            return;
         }
-        gen.saltoBreak();
     }
 
-    /* SEM: la condición de un if, elif, while o for debe ser bool. */
-    public void condicion(String regla, Atrib c, int linea, int columna) {
+    /* Nombre: condicion
+       Descripcion: revisa la condicion de un if, elif, while o for.
+       Objetivo: que la condicion sea de tipo bool.
+       Salida: ninguna (si no es bool, guarda un error). */
+    public void condicion(String regla, Atrib condicion, int linea, int columna) {
 
-        if (c == null || c.tipo.equals("error")) {
+        if (condicion == null || tieneError(condicion)) {
             return;
         }
 
-        if (!c.tipo.equals("bool")) {
+        if (!condicion.tipo.equals("bool")) {
             reportar(regla, linea, columna, "la condición debe ser de tipo bool, pero se recibió "
-                    + c.tipo);
+                    + condicion.tipo);
         }
     }
 
-    /* SEM: ++ y -- solo se aplican a variables int o float. */
-    public void incrementar(Simbolo s, String id, String op, int linea, int columna) {
+    /* Nombre: incrementar
+       Descripcion: revisa un ++ o un --.
+       Objetivo: que solo se use con variables int o float.
+       Salida: ninguna (si esta bien, escribe la instruccion). */
+    public void incrementar(Simbolo variable, String nombre, String operador, int linea, int columna) {
 
-        if (s == null) {
+        if (variable == null) {
             return;
         }
 
-        if (!s.tipo.equals("int") && !s.tipo.equals("float")) {
-            reportar("INC-1", linea, columna, "el operador '" + op
-                    + "' solo se aplica a variables int o float y '" + id + "' es de tipo " + s.tipo);
+        if (!esNumerico(variable.tipo)) {
+            reportar("INC-1", linea, columna, "el operador '" + operador
+                    + "' solo se aplica a variables int o float y '" + nombre + "' es de tipo " + variable.tipo);
             return;
         }
-        gen.incremento(id, op);
+        gen.incremento(nombre, operador);
     }
 
-    /* SEM: read recibe una variable o un elemento de arreglo de tipo int, float o char. */
+
+    /* ============================================================
+       ENTRADA Y SALIDA
+       ============================================================ */
+
+    /* Nombre: leer
+       Descripcion: revisa una instruccion read.
+       Objetivo: que se lea en una variable o posicion de tipo int, float o char.
+       Salida: ninguna (si esta bien, escribe la instruccion). */
     public void leer(Atrib destino, int linea, int columna) {
 
-        if (destino == null || destino.tipo.equals("error")) {
+        if (destino == null || tieneError(destino)) {
             return;
         }
 
-        if (!destino.tipo.equals("int") && !destino.tipo.equals("float") && !destino.tipo.equals("char")) {
+        boolean tipoPermitido = esNumerico(destino.tipo) || destino.tipo.equals("char");
+        if (!tipoPermitido) {
             reportar("ES-1", linea, columna,
                     "read solo permite valores de tipo int, float o char; se recibió " + destino.tipo);
             return;
@@ -763,35 +901,84 @@ public Atrib generarNegacion(Atrib e, int linea, int columna) {
         gen.leer(destino.lugar);
     }
 
-    /* SEM: write solo escribe valores de tipo int, float o string
-       (el ejemplo2 del profe marca como semántico escribir un bool o un char). */
+    /* Nombre: escribir
+       Descripcion: revisa una instruccion write.
+       Objetivo: que solo se escriban valores int, float o string.
+       Salida: ninguna (si esta bien, escribe la instruccion). */
     public void escribir(Atrib valor, int linea, int columna) {
 
-        if (valor == null || valor.tipo.equals("error")) {
+        if (valor == null || tieneError(valor)) {
             return;
         }
 
-        if (!valor.tipo.equals("int") && !valor.tipo.equals("float") && !valor.tipo.equals("string")) {
+        boolean tipoPermitido = esNumerico(valor.tipo) || valor.tipo.equals("string");
+        if (!tipoPermitido) {
             reportar("ES-2", linea, columna, "write no permite valores de tipo " + valor.tipo);
             return;
         }
         gen.escribir(valor.lugar);
     }
 
+
+    /* ============================================================
+       AVISOS DE RECUPERACION DE ERRORES
+       Main reemplaza errorProduccion y tokenFaltante para guardar el aviso.
+       ============================================================ */
+
+    /* Nombre: errorProduccion
+       Descripcion: avisa que el programa trae un error comun, con su mensaje.
+       Objetivo: dar un mensaje exacto. Main lo reemplaza para guardarlo.
+       Salida: ninguna (aqui no hace nada). */
+    public void errorProduccion(int linea, int columna, String mensaje) {
+    }
+
+    /* Nombre: tokenFaltante
+       Descripcion: avisa que falta un simbolo y que el parser lo puso por su cuenta.
+       Objetivo: dar un mensaje exacto. Main lo reemplaza para guardarlo.
+       Salida: ninguna (aqui no hace nada). */
+    public void tokenFaltante(String token, int linea, int columna) {
+    }
+
+    /* Nombre: faltaTerminador
+       Descripcion: avisa que falta el simbolo de fin al final de una sentencia.
+       Objetivo: arreglar el error sin perder codigo.
+       Salida: ninguna. */
+    public void faltaTerminador() {
+        faltaToken("»");
+    }
+
+    /* Nombre: faltaToken
+       Descripcion: calcula donde falta un simbolo (fin de sentencia, parentesis o cierre de bloque) y lo avisa.
+       Objetivo: decir la posicion exacta del simbolo que falta.
+       Salida: ninguna. */
+    public void faltaToken(String token) {
+        int cantidadLeidos = tokensLeidos.size();
+        if (cantidadLeidos < 2) {
+            return;
+        }
+
+        /* El simbolo falta justo despues del penultimo token leido */
+        Symbol tokenAnterior = tokensLeidos.get(cantidadLeidos - 2);
+        int largoTexto = tokenAnterior.value == null ? 1 : Math.max(1, String.valueOf(tokenAnterior.value).length());
+        tokenFaltante(token, tokenAnterior.left, tokenAnterior.right + largoTexto);
+    }
+
 :};
+
 
 /* ============================================================
                         TERMINALES
+   Son las piezas que entrega el analizador lexico.
    ============================================================ */
 
-/* Operadores aritméticos */
+/* Operadores aritmeticos */
 terminal INCREMENT, PLUS, DECREMENT, MINUS, MULTIPLY;
 terminal ENTIREDIV, FLOATDIV, MOD, POT;
 
 /* Operadores relacionales */
 terminal LTE, GTE, EQUAL, NEQ, LT, GT;
 
-/* Operadores lógicos */
+/* Operadores logicos */
 terminal AND, OR, NOT;
 
 /* Delimitadores */
@@ -819,18 +1006,20 @@ terminal LITERAL_INT;
 terminal LITERAL_FLOAT;
 terminal LITERAL_STRING;
 terminal LITERAL_CHAR;
-terminal String ID;                         /* TS: el ID lleva su lexema */
+terminal String ID;                         /* el ID trae el nombre escrito */
 
 
 /* ============================================================
                          NO TERMINALES
+   Son las partes del lenguaje que se arman con reglas.
+   Los que dicen Atrib llevan tipo y lugar del resultado.
    ============================================================ */
 
 non terminal programa;
 non terminal lista_globales;
 non terminal unidades_programa;
 non terminal unidad;
-non terminal String tipo;                   /* TS */
+non terminal String tipo;
 
 /* Valores */
 non terminal Atrib valor_numerico;
@@ -842,7 +1031,7 @@ non terminal Atrib caracter_literal;
 non terminal Atrib condicion_control;
 
 /* Identificadores */
-non terminal String identificador;          /* TS */
+non terminal String identificador;
 
 /* Delimitadores */
 non terminal abrir_bloque;
@@ -893,7 +1082,7 @@ non terminal ArrayList inicio_lista_arreglo;
 non terminal ArrayList continuacion_lista_arreglo;
 non terminal modificacion_arreglo;
 
-/* Operaciones aritméticas */
+/* Operaciones aritmeticas */
 non terminal String operador_suma;
 non terminal String operador_multiplicacion;
 non terminal Atrib expresion_aritmetica;
@@ -911,7 +1100,7 @@ non terminal String operadorRelacional;
 non terminal Atrib operando_relacional;
 non terminal Atrib operacion_relacional;
 
-/* Expresiones lógicas */
+/* Expresiones logicas */
 non terminal Atrib condicion_basica;
 non terminal Atrib operando_logico;
 non terminal Atrib condiciones_and;
@@ -940,7 +1129,6 @@ non terminal Atrib condicion_for;
 non terminal incremento_for;
 non terminal estructura_control;
 non terminal condicion_if;
-non terminal condicion_neg;
 non terminal condicion_while;
 non terminal cabecera_for;
 non terminal ciclo_con_error;
@@ -954,19 +1142,19 @@ non terminal bloque;
 non terminal break;
 non terminal return;
 
-/* Parámetros */
-non terminal Simbolo parametro;             /* TS */
-non terminal ArrayList lista_parametros;    /* TS */
-non terminal ArrayList parametros;          /* TS */
+/* Parametros */
+non terminal Simbolo parametro;
+non terminal ArrayList lista_parametros;
+non terminal ArrayList parametros;
 
 /* Funciones */
-non terminal encabezado_funcion;            /* TS */
+non terminal encabezado_funcion;
 non terminal funcion_no_void;
 non terminal principal;
 
 
 /* ============================================================
-                    SÍMBOLO INICIAL
+                    SIMBOLO INICIAL
    ============================================================ */
 
 start with programa;
@@ -975,9 +1163,17 @@ start with programa;
                         VALORES
    ============================================================ */
 
+/* Nombre: bool
+   Descripcion: los valores true y false.
+   Objetivo: crear un valor de tipo bool.
+   Salida: un dato de tipo bool con su texto. */
 bool ::= TRUE   {: RESULT = new Atrib("bool", "true"); :}
        | FALSE  {: RESULT = new Atrib("bool", "false"); :} ;
 
+/* Nombre: tipo
+   Descripcion: los tipos del lenguaje (int, float, bool, char, string).
+   Objetivo: saber de que tipo se declara algo.
+   Salida: el nombre del tipo como texto. */
 tipo ::= INT     {: RESULT = "int";    :}
        | FLOAT   {: RESULT = "float";  :}
        | BOOL    {: RESULT = "bool";   :}
@@ -985,63 +1181,115 @@ tipo ::= INT     {: RESULT = "int";    :}
        | STRING  {: RESULT = "string"; :}
        ;
 
-valor_numerico ::= entero:e    {: RESULT = e;  :}
-                 | flotante:f  {: RESULT = f;  :} ;
+/* Nombre: valor_numerico
+   Descripcion: un numero entero o decimal.
+   Objetivo: agrupar los dos tipos de numero.
+   Salida: un dato de tipo int o float. */
+valor_numerico ::= entero:numero    {: RESULT = numero;  :}
+                 | flotante:decimal  {: RESULT = decimal;  :} ;
 
-entero ::= LITERAL_INT:v
-        {: Atrib a = new Atrib("int", String.valueOf(v));
-           a.valor = parser.aEntero(a.lugar);
-           RESULT = a; :} ;
+/* Nombre: entero
+   Descripcion: un numero entero escrito en el programa.
+   Objetivo: crear un valor int y guardar su numero.
+   Salida: un dato de tipo int con su valor. */
+entero ::= LITERAL_INT:texto
+        {: Atrib numero = new Atrib("int", String.valueOf(texto));
+           numero.valor = parser.aEntero(numero.lugar);
+           RESULT = numero; :} ;
 
-flotante ::= LITERAL_FLOAT :v
-        {: RESULT = new Atrib("float", String.valueOf(v)); :} ;
+/* Nombre: flotante
+   Descripcion: un numero decimal escrito en el programa.
+   Objetivo: crear un valor float.
+   Salida: un dato de tipo float. */
+flotante ::= LITERAL_FLOAT :texto
+        {: RESULT = new Atrib("float", String.valueOf(texto)); :} ;
 
-cadena_texto ::= LITERAL_STRING :v
-        {: RESULT = new Atrib("string", String.valueOf(v)); :} ;
+/* Nombre: cadena_texto
+   Descripcion: un texto entre comillas.
+   Objetivo: crear un valor string.
+   Salida: un dato de tipo string. */
+cadena_texto ::= LITERAL_STRING :texto
+        {: RESULT = new Atrib("string", String.valueOf(texto)); :} ;
 
-caracter_literal ::= LITERAL_CHAR :v
-        {: RESULT = new Atrib("char", String.valueOf(v)); :} ;
+/* Nombre: caracter_literal
+   Descripcion: una letra o simbolo entre comillas simples.
+   Objetivo: crear un valor char.
+   Salida: un dato de tipo char. */
+caracter_literal ::= LITERAL_CHAR :texto
+        {: RESULT = new Atrib("char", String.valueOf(texto)); :} ;
 
 
 /* ============================================================
                  IDENTIFICADORES
    ============================================================ */
 
-identificador ::= ID:id  {: RESULT = id; :} ;
+/* Nombre: identificador
+   Descripcion: el nombre de una variable, arreglo o funcion.
+   Objetivo: obtener ese nombre.
+   Salida: el nombre como texto. */
+identificador ::= ID:nombre  {: RESULT = nombre; :} ;
 
 /* ============================================================
                 DELIMITADORES Y OPERADORES
    ============================================================ */
 
-/* TS: ¿: abre un ámbito nuevo y :? lo cierra */
+/* Nombre: abrir_bloque
+   Descripcion: el simbolo que abre un bloque.
+   Objetivo: abrir un bloque nuevo en la tabla de simbolos.
+   Salida: ninguna. */
 abrir_bloque  ::= OPBLOCK  {: parser.tabla.abrirAmbito();  :} ;
 
+/* Nombre: cerrar_bloque
+   Descripcion: el simbolo que cierra un bloque.
+   Objetivo: cerrar el bloque actual en la tabla de simbolos.
+   Salida: ninguna. */
 cerrar_bloque ::= CLBLOCK  {: parser.tabla.cerrarAmbito(); :} ;
 
+/* Nombre: abrir y cerrar corchetes
+   Descripcion: los simbolos de corchete usados en arreglos y comparaciones.
+   Objetivo: marcar donde empieza y termina una posicion.
+   Salida: ninguna. */
 abrir_corcheteCuadrados ::= OPBRACKET ;
 
 cerrar_corcheteCuadrados ::= CLBRACKET ;
 
+/* Nombre: coma
+   Descripcion: la coma que separa datos.
+   Objetivo: separar valores y parametros.
+   Salida: ninguna. */
 coma ::= COMA ;
 
+/* Nombre: fin_sentencia
+   Descripcion: el simbolo que termina una sentencia.
+   Objetivo: marcar el final de una sentencia.
+   Salida: ninguna. */
 fin_sentencia ::= TERMINATOR ;
 
-/* Recuperación a nivel de frase: si falta el terminador », el parser lo "inserta",
-   lo reporta con un mensaje específico (parser.faltaTerminador) y sigue leyendo,
-   sin descartar código. El modo pánico (error fin_sentencia) queda para los demás casos. */
+/* Nombre: fin_o_falta
+   Descripcion: el simbolo de fin de sentencia, o nada si se olvido.
+   Objetivo: si falta, ponerlo por su cuenta, avisar y seguir leyendo sin perder codigo.
+   Salida: ninguna (si falta, avisa). */
 fin_o_falta ::= TERMINATOR
-              | /* falta » */  {: parser.faltaTerminador(); :} ;
+              | /* falta el simbolo */  {: parser.faltaTerminador(); :} ;
 
-/* Lo mismo para el paréntesis de cierre que va justo antes de un bloque (¿:), y para el
-   cierre :? de una función. Solo se hace donde no hay ambigüedad: dentro de una expresión,
-   o en un bloque anidado, el parser no puede saber si el cierre falta o si la expresión
-   o el bloque siguen. */
+/* Nombre: cierra_paren
+   Descripcion: el parentesis que cierra, o nada si se olvido.
+   Objetivo: si falta, ponerlo por su cuenta y avisar. Se usa solo antes de abrir un bloque.
+   Salida: ninguna (si falta, avisa). */
 cierra_paren ::= PARENCL
-               | /* falta :э */  {: parser.faltaToken(":э"); :} ;
+               | /* falta el parentesis */  {: parser.faltaToken(":э"); :} ;
 
+/* Nombre: cierra_bloque_fn
+   Descripcion: el simbolo que cierra una funcion, o nada si se olvido.
+   Objetivo: si falta, ponerlo por su cuenta, avisar y cerrar el bloque.
+   Salida: ninguna (si falta, avisa). */
 cierra_bloque_fn ::= cerrar_bloque
-                   | /* falta :? */  {: parser.faltaToken(":?"); parser.tabla.cerrarAmbito(); :} ;
+                   | /* falta el cierre */  {: parser.faltaToken(":?"); parser.tabla.cerrarAmbito(); :} ;
 
+/* Nombre: asignacion, incremento y decremento
+   Descripcion: los simbolos de asignar, de ++ y de --.
+   Objetivo: reconocer esos simbolos.
+   Salida: ninguna. */
 asignacion ::= ASIGN ;
 
 incremento ::= INCREMENT ;
@@ -1053,35 +1301,46 @@ decremento ::= DECREMENT ;
                 PALABRAS RESERVADAS
    ============================================================ */
 
+/* Nombre: palabraVal, palabraBreak y palabraReturn
+   Descripcion: las palabras val, break y return.
+   Objetivo: reconocerlas dentro de otras reglas.
+   Salida: ninguna. */
 palabraVal ::= VAL ;
 
 palabraBreak ::= BREAK ;
 
 palabraReturn ::= RETURN ;
 
-/* principal se registra como procedimiento sin parámetros (parser.declararFuncion) */
-Principal ::= PRINCIPAL:p {: parser.declararFuncion("principal", "void", null, pleft, pright);
+/* Nombre: Principal
+   Descripcion: la palabra principal.
+   Objetivo: guardar la funcion principal y escribir su etiqueta.
+   Salida: ninguna. */
+Principal ::= PRINCIPAL:palabraPrincipal {: parser.declararFuncion("principal", "void", null, palabraPrincipalleft, palabraPrincipalright);
                 parser.gen.etiquetaFuncion("principal"); :} ;
 
-/* TS: cada palabra le pone nombre al ámbito de su bloque */
-palabraIf   ::= IF         {: parser.tabla.siguienteAmbito("if"); 
-                            parser.gen.iniciarIf(); :} ;
+/* Nombre: palabraIf, palabraElif, palabraElse y palabraWhile
+   Descripcion: las palabras if, elif, else y while.
+   Objetivo: ponerle nombre al bloque que viene despues en la tabla de simbolos.
+   Salida: ninguna. */
+palabraIf   ::= IF         {: parser.tabla.siguienteAmbito("if");    :} ;
 
-palabraElif ::= ELIF       {: parser.tabla.siguienteAmbito("elif");
-                            parser.gen.otraRama(); :} ;
+palabraElif ::= ELIF       {: parser.tabla.siguienteAmbito("elif");  :} ;
 
-palabraElse ::= ELSE       {: parser.tabla.siguienteAmbito("else");
-                            parser.gen.otraRama(); :} ;
+palabraElse ::= ELSE       {: parser.tabla.siguienteAmbito("else");  :} ;
 
-palabraWhile ::= WHILE     {: parser.tabla.siguienteAmbito("while");
-                            parser.gen.iniciarWhile(); :} ;
+palabraWhile ::= WHILE     {: parser.tabla.siguienteAmbito("while"); :} ;
 
-/* TS: el for abre su ámbito desde el inicio, porque la variable de
-   control (val int x Ͱ 9) se declara antes del ¿: */
+/* Nombre: palabraFor
+   Descripcion: la palabra for.
+   Objetivo: abrir el bloque del for desde el inicio, porque su variable se declara antes del bloque.
+   Salida: ninguna. */
 palabraFor  ::= FOR        {: parser.tabla.abrirAmbito("for");
-                            parser.tabla.siguienteAmbito("cuerpo for");
-                            parser.gen.iniciarFor(); :} ;
+                              parser.tabla.siguienteAmbito("cuerpo for"); :} ;
 
+/* Nombre: operadorPotencia, leer y escribir
+   Descripcion: las palabras pot, read y write.
+   Objetivo: reconocerlas dentro de otras reglas.
+   Salida: ninguna. */
 operadorPotencia ::= POT ;
 
 leer ::= READ ;
@@ -1091,71 +1350,76 @@ escribir ::= WRITE ;
 
 /* ============================================================
                          VARIABLES
-   TS: se declara la variable.
-   SEM: si lleva valor inicial, se comprueba que el tipo del valor
-        coincida con el tipo de la variable (parser.asignar).
    ============================================================ */
 
-/* PRODUCCIONES DE ERROR: reconocen a propósito errores comunes para dar un mensaje exacto
-   (parser.errorProduccion) y declaran el nombre con tipo "error", para que no aparezcan
-   errores semánticos falsos después. */
+/* Nombre: def_variable
+   Descripcion: crear una variable, con valor inicial o sin el.
+   Objetivo: guardarla en la tabla de simbolos y revisar que el valor sea de su tipo.
+             Tambien reconoce errores comunes (sin tipo o con void) para dar un mensaje exacto.
+   Salida: ninguna (guarda la variable y escribe su asignacion). */
 def_variable ::=
-      palabraVal INT    identificador:id fin_o_falta
-      {: parser.declararVariable(id, "int", null, idleft, idright); :}
-    | palabraVal FLOAT  identificador:id fin_o_falta
-      {: parser.declararVariable(id, "float", null, idleft, idright); :}
-    | palabraVal BOOL   identificador:id fin_o_falta
-      {: parser.declararVariable(id, "bool", null, idleft, idright); :}
-    | palabraVal CHAR   identificador:id fin_o_falta
-      {: parser.declararVariable(id, "char", null, idleft, idright); :}
-    | palabraVal STRING identificador:id fin_o_falta
-      {: parser.declararVariable(id, "string", null, idleft, idright); :}
-    | palabraVal INT    identificador:id asignacion:a expresion:e fin_o_falta
-      {: parser.declararVariable(id, "int", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "int", e, idleft, idright); parser.generarAsignacion(id, "int", e); :}
-    | palabraVal FLOAT  identificador:id asignacion:a expresion:e fin_o_falta
-      {: parser.declararVariable(id, "float", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "float", e, idleft, idright); parser.generarAsignacion(id, "float", e); :}
-    | palabraVal BOOL   identificador:id asignacion:a expresion:e fin_o_falta
-      {: parser.declararVariable(id, "bool", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "bool", e, idleft, idright); parser.generarAsignacion(id, "bool", e); :}
-    | palabraVal CHAR   identificador:id asignacion:a expresion:e fin_o_falta
-      {: parser.declararVariable(id, "char", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "char", e, idleft, idright); parser.generarAsignacion(id, "char", e); :}
-    | palabraVal STRING identificador:id asignacion:a expresion:e fin_o_falta
-      {: parser.declararVariable(id, "string", parser.textoValor(aleft, aright), idleft, idright);
-         parser.asignar("ASG-1", id, "string", e, idleft, idright); parser.generarAsignacion(id, "string", e); :}
-    | palabraVal identificador:id asignacion expresion fin_o_falta
-      {: parser.errorProduccion(idleft, idright, "falta el tipo en la declaración de '" + id + "' (int, float, bool, char o string)");
-         parser.declararVariable(id, "error", null, idleft, idright); :}
-    | palabraVal identificador:id fin_o_falta
-      {: parser.errorProduccion(idleft, idright, "falta el tipo en la declaración de '" + id + "' (int, float, bool, char o string)");
-         parser.declararVariable(id, "error", null, idleft, idright); :}
-    | palabraVal VOID identificador:id asignacion expresion fin_o_falta
-      {: parser.errorProduccion(idleft, idright, "una variable no puede ser de tipo void ('" + id + "'); void solo se usa en principal");
-         parser.declararVariable(id, "error", null, idleft, idright); :}
-    | palabraVal VOID identificador:id fin_o_falta
-      {: parser.errorProduccion(idleft, idright, "una variable no puede ser de tipo void ('" + id + "'); void solo se usa en principal");
-         parser.declararVariable(id, "error", null, idleft, idright); :}
+      palabraVal INT    identificador:nombre fin_o_falta
+      {: parser.declararVariable(nombre, "int", null, nombreleft, nombreright); :}
+    | palabraVal FLOAT  identificador:nombre fin_o_falta
+      {: parser.declararVariable(nombre, "float", null, nombreleft, nombreright); :}
+    | palabraVal BOOL   identificador:nombre fin_o_falta
+      {: parser.declararVariable(nombre, "bool", null, nombreleft, nombreright); :}
+    | palabraVal CHAR   identificador:nombre fin_o_falta
+      {: parser.declararVariable(nombre, "char", null, nombreleft, nombreright); :}
+    | palabraVal STRING identificador:nombre fin_o_falta
+      {: parser.declararVariable(nombre, "string", null, nombreleft, nombreright); :}
+    | palabraVal INT    identificador:nombre asignacion:signoAsigna expresion:valor fin_o_falta
+      {: parser.declararVariable(nombre, "int", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
+         parser.asignar("ASG-1", nombre, "int", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "int", valor); :}
+    | palabraVal FLOAT  identificador:nombre asignacion:signoAsigna expresion:valor fin_o_falta
+      {: parser.declararVariable(nombre, "float", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
+         parser.asignar("ASG-1", nombre, "float", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "float", valor); :}
+    | palabraVal BOOL   identificador:nombre asignacion:signoAsigna expresion:valor fin_o_falta
+      {: parser.declararVariable(nombre, "bool", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
+         parser.asignar("ASG-1", nombre, "bool", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "bool", valor); :}
+    | palabraVal CHAR   identificador:nombre asignacion:signoAsigna expresion:valor fin_o_falta
+      {: parser.declararVariable(nombre, "char", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
+         parser.asignar("ASG-1", nombre, "char", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "char", valor); :}
+    | palabraVal STRING identificador:nombre asignacion:signoAsigna expresion:valor fin_o_falta
+      {: parser.declararVariable(nombre, "string", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
+         parser.asignar("ASG-1", nombre, "string", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "string", valor); :}
+    | palabraVal identificador:nombre asignacion expresion fin_o_falta
+      {: parser.errorProduccion(nombreleft, nombreright, "falta el tipo en la declaración de '" + nombre + "' (int, float, bool, char o string)");
+         parser.declararVariable(nombre, "error", null, nombreleft, nombreright); :}
+    | palabraVal identificador:nombre fin_o_falta
+      {: parser.errorProduccion(nombreleft, nombreright, "falta el tipo en la declaración de '" + nombre + "' (int, float, bool, char o string)");
+         parser.declararVariable(nombre, "error", null, nombreleft, nombreright); :}
+    | palabraVal VOID identificador:nombre asignacion expresion fin_o_falta
+      {: parser.errorProduccion(nombreleft, nombreright, "una variable no puede ser de tipo void ('" + nombre + "'); void solo se usa en principal");
+         parser.declararVariable(nombre, "error", null, nombreleft, nombreright); :}
+    | palabraVal VOID identificador:nombre fin_o_falta
+      {: parser.errorProduccion(nombreleft, nombreright, "una variable no puede ser de tipo void ('" + nombre + "'); void solo se usa en principal");
+         parser.declararVariable(nombre, "error", null, nombreleft, nombreright); :}
     ;
 
-/* SEM: asignar a una variable que ya existe. El tipo de la variable se
-   lee de la tabla de símbolos; si no está declarada, usar() devuelve null. */
+/* Nombre: asignacion_variable
+   Descripcion: guardar un valor en una variable que ya existe.
+   Objetivo: revisar que exista y que el valor sea de su mismo tipo.
+   Salida: ninguna (escribe la asignacion si todo esta bien). */
 asignacion_variable ::=
-    identificador:id asignacion expresion:e fin_o_falta
+    identificador:nombre asignacion expresion:valor fin_o_falta
     {:
-        Simbolo s = parser.usar(id, idleft, idright);
+        Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
 
-        if (s != null) {
-            parser.asignar("ASG-2", id, s.tipo, e,
-                        idleft, idright);
+        if (simbolo != null) {
+            parser.asignar("ASG-2", nombre, simbolo.tipo, valor,
+                        nombreleft, nombreright);
 
-            parser.generarAsignacion(id, s.tipo, e);
+            parser.generarAsignacion(nombre, simbolo.tipo, valor);
         }
     :}
     ;
 
-lista_globales ::= /* vacío */
+/* Nombre: lista_globales
+   Descripcion: las variables y arreglos que se declaran antes de las funciones.
+   Objetivo: permitir datos globales. Si hay un error, salta hasta el fin de la sentencia.
+   Salida: ninguna. */
+lista_globales ::= /* vacio */
     | def_variable lista_globales
     | creacion_arreglo lista_globales
     | error fin_sentencia lista_globales
@@ -1166,103 +1430,142 @@ lista_globales ::= /* vacío */
                      ENTRADA Y SALIDA
    ============================================================ */
 
-/* SEM: read recibe UN solo destino: una variable o un elemento de arreglo
-   de tipo int, float o char (parser.leer). */
-lectura ::= leer PARENOP identificador:id PARENCL fin_o_falta
-            {: Simbolo s = parser.usar(id, idleft, idright);
-               if (s != null) { parser.leer(new Atrib(s.tipo, id), idleft, idright); } :}
-          | leer PARENOP acceso_arreglo:a PARENCL fin_o_falta
-            {: parser.leer(a, aleft, aright); :}
-          | leer identificador:id fin_o_falta
-            {: parser.errorProduccion(idleft, idright, "read necesita su argumento entre paréntesis: read є: " + id + " :э»");
-               Simbolo s = parser.usar(id, idleft, idright);
-               if (s != null) { parser.leer(new Atrib(s.tipo, id), idleft, idright); } :}
+/* Nombre: lectura
+   Descripcion: la instruccion read, con una variable o una posicion de arreglo.
+   Objetivo: revisar el destino. Si faltan los parentesis, da un mensaje exacto.
+   Salida: ninguna (escribe el read si todo esta bien). */
+lectura ::= leer PARENOP identificador:nombre PARENCL fin_o_falta
+            {: Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
+               if (simbolo != null) { parser.leer(new Atrib(simbolo.tipo, nombre), nombreleft, nombreright); } :}
+          | leer PARENOP acceso_arreglo:elemento PARENCL fin_o_falta
+            {: parser.leer(elemento, elementoleft, elementoright); :}
+          | leer identificador:nombre fin_o_falta
+            {: parser.errorProduccion(nombreleft, nombreright, "read necesita su argumento entre paréntesis: read є: " + nombre + " :э»");
+               Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
+               if (simbolo != null) { parser.leer(new Atrib(simbolo.tipo, nombre), nombreleft, nombreright); } :}
           ;
 
-/* SEM: write recibe UN solo valor, que debe ser de tipo int, float o string
-   (parser.escribir). Acepta una expresión aritmética (el ejemplo2 del profe
-   escribe -6//7) o un bool; si el tipo no sirve, escribir() lo reporta. */
-escritura ::= escribir PARENOP valor_escritura:v PARENCL fin_o_falta
-              {: parser.escribir(v, vleft, vright); :}
-            | escribir identificador:id fin_o_falta
-              {: parser.errorProduccion(idleft, idright, "write necesita su argumento entre paréntesis: write є: " + id + " :э»");
-                 Simbolo s = parser.usar(id, idleft, idright);
-                 if (s != null) { parser.escribir(new Atrib(s.tipo, id), idleft, idright); } :} ;
+/* Nombre: escritura
+   Descripcion: la instruccion write, con un solo valor.
+   Objetivo: revisar que el valor sea int, float o string. Si faltan los parentesis, da un mensaje exacto.
+   Salida: ninguna (escribe el write si todo esta bien). */
+escritura ::= escribir PARENOP valor_escritura:valor PARENCL fin_o_falta
+              {: parser.escribir(valor, valorleft, valorright); :}
+            | escribir identificador:nombre fin_o_falta
+              {: parser.errorProduccion(nombreleft, nombreright, "write necesita su argumento entre paréntesis: write є: " + nombre + " :э»");
+                 Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
+                 if (simbolo != null) { parser.escribir(new Atrib(simbolo.tipo, nombre), nombreleft, nombreright); } :} ;
 
-valor_escritura ::= expresion_aritmetica:e  {: RESULT = e; :}
-                  | bool:b                  {: RESULT = b; :} ;
+/* Nombre: valor_escritura
+   Descripcion: lo que se puede escribir con write: una operacion o un bool.
+   Objetivo: dar el valor a escribir.
+   Salida: un dato con su tipo y lugar. */
+valor_escritura ::= expresion_aritmetica:valor  {: RESULT = valor; :}
+                  | bool:valorBool                  {: RESULT = valorBool; :} ;
 
 /* ============================================================
                  ARREGLOS
    ============================================================ */
 
-indice ::= expresion_aritmetica:e  {: RESULT = e; :} ;
+/* Nombre: indice
+   Descripcion: la posicion que se pide en un arreglo.
+   Objetivo: aceptar cualquier operacion con numeros como posicion.
+   Salida: un dato con su tipo y valor. */
+indice ::= expresion_aritmetica:valor  {: RESULT = valor; :} ;
 
-acceso_arreglo ::= identificador:id abrir_corcheteCuadrados indice:i cerrar_corcheteCuadrados
-                   {: Simbolo s = parser.usarArreglo(id, idleft, idright);
-                      RESULT = parser.elemento(s, id, i, idleft, idright); :} ;
+/* Nombre: acceso_arreglo
+   Descripcion: usar una posicion de un arreglo, por ejemplo notas[0].
+   Objetivo: revisar que el arreglo exista y que la posicion sea valida.
+   Salida: un dato con el tipo de los elementos. */
+acceso_arreglo ::= identificador:nombre abrir_corcheteCuadrados indice:posicion cerrar_corcheteCuadrados
+                   {: Simbolo simbolo = parser.usarArreglo(nombre, nombreleft, nombreright);
+                      RESULT = parser.elemento(simbolo, nombre, posicion, nombreleft, nombreright); :} ;
 
+/* Nombre: creacion_arreglo
+   Descripcion: las tres formas de crear un arreglo.
+   Objetivo: agrupar las formas: con tamano, con tamano y valores, y solo con valores.
+   Salida: ninguna. */
 creacion_arreglo ::= arreglo_con_tamano | arreglo_con_tamano_valores | arreglo_sin_tamano_valores ;
 
-/* TS: las llaves de la lista de valores usan OPBLOCK/CLBLOCK directo,
-   para que no abran un ámbito nuevo */
+/* Nombre: arreglo_con_tamano
+   Descripcion: crear un arreglo indicando solo su tamano.
+   Objetivo: guardarlo y revisar su tamano. Un arreglo de bool, char o string da un mensaje exacto.
+   Salida: ninguna. */
 arreglo_con_tamano ::=
-      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c fin_o_falta
-      {: parser.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), 0, null, idleft, idright);
-         parser.arreglo(id, "int", i, null, idleft, idright); :}
-    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c fin_o_falta
-      {: parser.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), 0, null, idleft, idright);
-         parser.arreglo(id, "float", i, null, idleft, idright); :}
-    | palabraVal BOOL identificador:id abrir_corcheteCuadrados indice cerrar_corcheteCuadrados fin_o_falta
-      {: parser.errorProduccion(idleft, idright, "los arreglos solo pueden ser de tipo int o float, no bool ('" + id + "')");
-         parser.declararArreglo(id, "error", null, 0, null, idleft, idright); :}
-    | palabraVal CHAR identificador:id abrir_corcheteCuadrados indice cerrar_corcheteCuadrados fin_o_falta
-      {: parser.errorProduccion(idleft, idright, "los arreglos solo pueden ser de tipo int o float, no char ('" + id + "')");
-         parser.declararArreglo(id, "error", null, 0, null, idleft, idright); :}
-    | palabraVal STRING identificador:id abrir_corcheteCuadrados indice cerrar_corcheteCuadrados fin_o_falta
-      {: parser.errorProduccion(idleft, idright, "los arreglos solo pueden ser de tipo int o float, no string ('" + id + "')");
-         parser.declararArreglo(id, "error", null, 0, null, idleft, idright); :}
+      palabraVal INT   identificador:nombre abrir_corcheteCuadrados:corcheteAbre indice:tamano cerrar_corcheteCuadrados:corcheteCierra fin_o_falta
+      {: parser.declararArreglo(nombre, "int", parser.tamanoTexto(tamano, parser.textoEntre(corcheteAbreleft, corcheteAbreright, corcheteCierraleft, corcheteCierraright)), 0, null, nombreleft, nombreright);
+         parser.arreglo(nombre, "int", tamano, null, nombreleft, nombreright); :}
+    | palabraVal FLOAT identificador:nombre abrir_corcheteCuadrados:corcheteAbre indice:tamano cerrar_corcheteCuadrados:corcheteCierra fin_o_falta
+      {: parser.declararArreglo(nombre, "float", parser.tamanoTexto(tamano, parser.textoEntre(corcheteAbreleft, corcheteAbreright, corcheteCierraleft, corcheteCierraright)), 0, null, nombreleft, nombreright);
+         parser.arreglo(nombre, "float", tamano, null, nombreleft, nombreright); :}
+    | palabraVal BOOL identificador:nombre abrir_corcheteCuadrados indice cerrar_corcheteCuadrados fin_o_falta
+      {: parser.errorProduccion(nombreleft, nombreright, "los arreglos solo pueden ser de tipo int o float, no bool ('" + nombre + "')");
+         parser.declararArreglo(nombre, "error", null, 0, null, nombreleft, nombreright); :}
+    | palabraVal CHAR identificador:nombre abrir_corcheteCuadrados indice cerrar_corcheteCuadrados fin_o_falta
+      {: parser.errorProduccion(nombreleft, nombreright, "los arreglos solo pueden ser de tipo int o float, no char ('" + nombre + "')");
+         parser.declararArreglo(nombre, "error", null, 0, null, nombreleft, nombreright); :}
+    | palabraVal STRING identificador:nombre abrir_corcheteCuadrados indice cerrar_corcheteCuadrados fin_o_falta
+      {: parser.errorProduccion(nombreleft, nombreright, "los arreglos solo pueden ser de tipo int o float, no string ('" + nombre + "')");
+         parser.declararArreglo(nombre, "error", null, 0, null, nombreleft, nombreright); :}
     ;
 
+/* Nombre: arreglo_con_tamano_valores
+   Descripcion: crear un arreglo con su tamano y sus valores iniciales.
+   Objetivo: guardarlo y revisar el tamano y los valores.
+   Salida: ninguna. */
 arreglo_con_tamano_valores ::=
-      palabraVal INT   identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
-      {: parser.declararArreglo(id, "int", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "int", i, n, idleft, idright); parser.generarListaArreglo(id, "int", n); :}
-    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados:a indice:i cerrar_corcheteCuadrados:c asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
-      {: parser.declararArreglo(id, "float", parser.tamanoTexto(i, parser.textoEntre(aleft, aright, cleft, cright)), n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "float", i, n, idleft, idright); parser.generarListaArreglo(id, "float", n); :}
+      palabraVal INT   identificador:nombre abrir_corcheteCuadrados:corcheteAbre indice:tamano cerrar_corcheteCuadrados:corcheteCierra asignacion OPBLOCK:llaveAbre lista_arreglo:valores CLBLOCK:llaveCierra fin_o_falta
+      {: parser.declararArreglo(nombre, "int", parser.tamanoTexto(tamano, parser.textoEntre(corcheteAbreleft, corcheteAbreright, corcheteCierraleft, corcheteCierraright)), valores.size(), "¿: " + parser.textoEntre(llaveAbreleft, llaveAbreright, llaveCierraleft, llaveCierraright) + " :?", nombreleft, nombreright);
+         parser.arreglo(nombre, "int", tamano, valores, nombreleft, nombreright); :}
+    | palabraVal FLOAT identificador:nombre abrir_corcheteCuadrados:corcheteAbre indice:tamano cerrar_corcheteCuadrados:corcheteCierra asignacion OPBLOCK:llaveAbre lista_arreglo:valores CLBLOCK:llaveCierra fin_o_falta
+      {: parser.declararArreglo(nombre, "float", parser.tamanoTexto(tamano, parser.textoEntre(corcheteAbreleft, corcheteAbreright, corcheteCierraleft, corcheteCierraright)), valores.size(), "¿: " + parser.textoEntre(llaveAbreleft, llaveAbreright, llaveCierraleft, llaveCierraright) + " :?", nombreleft, nombreright);
+         parser.arreglo(nombre, "float", tamano, valores, nombreleft, nombreright); :}
     ;
 
+/* Nombre: arreglo_sin_tamano_valores
+   Descripcion: crear un arreglo solo con sus valores iniciales.
+   Objetivo: guardarlo y revisar los valores. El tamano es la cantidad de valores.
+   Salida: ninguna. */
 arreglo_sin_tamano_valores ::=
-      palabraVal INT   identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
-      {: parser.declararArreglo(id, "int", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "int", null, n, idleft, idright); parser.generarListaArreglo(id, "int", n); :}
-    | palabraVal FLOAT identificador:id abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:b lista_arreglo:n CLBLOCK:e fin_o_falta
-      {: parser.declararArreglo(id, "float", null, n.size(), "¿: " + parser.textoEntre(bleft, bright, eleft, eright) + " :?", idleft, idright);
-         parser.arreglo(id, "float", null, n, idleft, idright); parser.generarListaArreglo(id, "float", n); :}
+      palabraVal INT   identificador:nombre abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:llaveAbre lista_arreglo:valores CLBLOCK:llaveCierra fin_o_falta
+      {: parser.declararArreglo(nombre, "int", null, valores.size(), "¿: " + parser.textoEntre(llaveAbreleft, llaveAbreright, llaveCierraleft, llaveCierraright) + " :?", nombreleft, nombreright);
+         parser.arreglo(nombre, "int", null, valores, nombreleft, nombreright); :}
+    | palabraVal FLOAT identificador:nombre abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:llaveAbre lista_arreglo:valores CLBLOCK:llaveCierra fin_o_falta
+      {: parser.declararArreglo(nombre, "float", null, valores.size(), "¿: " + parser.textoEntre(llaveAbreleft, llaveAbreright, llaveCierraleft, llaveCierraright) + " :?", nombreleft, nombreright);
+         parser.arreglo(nombre, "float", null, valores, nombreleft, nombreright); :}
     ;
 
 
-/* SEM: la lista guarda cada valor con su tipo (Atrib). El tamaño de la lista es n.size() */
-lista_arreglo ::= inicio_lista_arreglo:l  {: RESULT = l; :} ;
+/* Nombre: lista_arreglo, inicio_lista_arreglo y continuacion_lista_arreglo
+   Descripcion: la lista de valores de un arreglo, separados por comas.
+   Objetivo: juntar los valores en una lista, cada uno con su tipo.
+   Salida: la lista de valores. */
+lista_arreglo ::= inicio_lista_arreglo:lista  {: RESULT = lista; :} ;
 
-inicio_lista_arreglo ::= expresion_aritmetica:e continuacion_lista_arreglo:l
-                         {: l.add(0, e); RESULT = l; :} ;
+inicio_lista_arreglo ::= expresion_aritmetica:valor continuacion_lista_arreglo:lista
+                         {: lista.add(0, valor); RESULT = lista; :} ;
 
-continuacion_lista_arreglo ::= coma expresion_aritmetica:e continuacion_lista_arreglo:l
-                               {: l.add(0, e); RESULT = l; :}
-                             | /* vacío */  {: RESULT = new ArrayList(); :} ;
+continuacion_lista_arreglo ::= coma expresion_aritmetica:valor continuacion_lista_arreglo:lista
+                               {: lista.add(0, valor); RESULT = lista; :}
+                             | /* vacio */  {: RESULT = new ArrayList(); :} ;
 
-modificacion_arreglo ::= acceso_arreglo:a asignacion expresion:e fin_o_falta
-                        {: parser.asignar("ARR-8", a.lugar, a.tipo, e, aleft, aright);
-                        parser.generarAsignacion(a.lugar, a.tipo, e); :} ;
+/* Nombre: modificacion_arreglo
+   Descripcion: guardar un valor en una posicion de un arreglo, por ejemplo notas[0] = 5.
+   Objetivo: revisar que el valor sea del tipo de los elementos.
+   Salida: ninguna. */
+modificacion_arreglo ::= acceso_arreglo:elemento asignacion expresion:valor fin_o_falta
+                         {: parser.asignar("ARR-8", elemento.lugar, elemento.tipo, valor, elementoleft, elementoright); :} ;
 
 
 /* ============================================================
-                OPERACIONES ARITMÉTICAS
-   Precedencia (mayor a menor): pot, + -, * / //, mod
+                OPERACIONES ARITMETICAS
+   Orden de importancia (de mayor a menor): pot, + -, * / //, mod
    ============================================================ */
 
+/* Nombre: operador_suma y operador_multiplicacion
+   Descripcion: los simbolos + - y * / //.
+   Objetivo: saber cual operador se uso.
+   Salida: el simbolo como texto. */
 operador_suma ::= PLUS   {: RESULT = "+"; :}
                 | MINUS  {: RESULT = "-"; :} ;
 
@@ -1270,52 +1573,76 @@ operador_multiplicacion ::= MULTIPLY   {: RESULT = "*";  :}
                           | FLOATDIV   {: RESULT = "/";  :}
                           | ENTIREDIV  {: RESULT = "//"; :} ;
 
-expresion_aritmetica ::= expresion_mod:e  {: RESULT = e; :} ;
+/* Nombre: expresion_aritmetica y sus niveles (mod, multiplicacion, suma)
+   Descripcion: una operacion con numeros. Cada nivel respeta el orden de importancia.
+   Objetivo: revisar y escribir cada operacion en el orden correcto.
+   Salida: un dato con el tipo y el lugar del resultado. */
+expresion_aritmetica ::= expresion_mod:valor  {: RESULT = valor; :} ;
 
-expresion_mod ::= expresion_mod:a MOD:m expresion_multiplicacion:b
-                  {: RESULT = parser.generarAritmetica(a, "mod", b, mleft, mright); :}
-                | expresion_multiplicacion:e  {: RESULT = e; :} ;
+expresion_mod ::= expresion_mod:izquierda MOD:simboloMod expresion_multiplicacion:derecha
+                  {: RESULT = parser.generarAritmetica(izquierda, "mod", derecha, simboloModleft, simboloModright); :}
+                | expresion_multiplicacion:valor  {: RESULT = valor; :} ;
 
-expresion_multiplicacion ::= expresion_multiplicacion:a operador_multiplicacion:op expresion_suma:b
-                             {: RESULT = parser.generarAritmetica(a, op, b, opleft, opright); :}
-                           | expresion_suma:e  {: RESULT = e; :} ;
+expresion_multiplicacion ::= expresion_multiplicacion:izquierda operador_multiplicacion:operador expresion_suma:derecha
+                             {: RESULT = parser.generarAritmetica(izquierda, operador, derecha, operadorleft, operadorright); :}
+                           | expresion_suma:valor  {: RESULT = valor; :} ;
 
-expresion_suma ::= expresion_suma:a operador_suma:op expresion_unaria:b
-                   {: RESULT = parser.generarAritmetica(a, op, b, opleft, opright); :}
-                 | expresion_unaria:e  {: RESULT = e; :} ;
+expresion_suma ::= expresion_suma:izquierda operador_suma:operador expresion_unaria:derecha
+                   {: RESULT = parser.generarAritmetica(izquierda, operador, derecha, operadorleft, operadorright); :}
+                 | expresion_unaria:valor  {: RESULT = valor; :} ;
 
-expresion_unaria ::= MINUS valor_numerico:v  {: RESULT = parser.negativo(v); :}
-                   | expresion_potencia:e    {: RESULT = e; :} ;
+/* Nombre: expresion_unaria
+   Descripcion: un numero con signo menos, o una potencia.
+   Objetivo: manejar los numeros negativos.
+   Salida: un dato con el tipo y el valor. */
+expresion_unaria ::= MINUS valor_numerico:numero  {: RESULT = parser.negativo(numero); :}
+                   | expresion_potencia:valor    {: RESULT = valor; :} ;
 
-expresion_potencia ::= valor_aritmetico:e  {: RESULT = e; :}
-                     | valor_aritmetico:a operadorPotencia:p exponente:b
-                       {: RESULT = parser.generarAritmetica(a, "pot", b, pleft, pright); :} ;
+/* Nombre: expresion_potencia y exponente
+   Descripcion: una potencia (pot) y su exponente.
+   Objetivo: revisar y escribir la potencia. El exponente puede ser negativo para dar el error.
+   Salida: un dato con el tipo y el lugar del resultado. */
+expresion_potencia ::= valor_aritmetico:valor  {: RESULT = valor; :}
+                     | valor_aritmetico:izquierda operadorPotencia:simboloPot exponente:derecha
+                       {: RESULT = parser.generarAritmetica(izquierda, "pot", derecha, simboloPotleft, simboloPotright); :} ;
 
-exponente ::= valor_aritmetico:e        {: RESULT = e; :}
-            | MINUS valor_numerico:v    {: RESULT = parser.negativo(v); :} ;
+exponente ::= valor_aritmetico:valor        {: RESULT = valor; :}
+            | MINUS valor_numerico:numero    {: RESULT = parser.negativo(numero); :} ;
 
-valor_aritmetico ::= valor_numerico:v   {: RESULT = v; :}
-                   |  identificador:id
-                    {: Simbolo s = parser.usar(id, idleft, idright);
-                        if (s == null) { RESULT = new Atrib("error", id); }
-                        else           { RESULT = new Atrib(s.tipo, id); } :}
-                   | acceso_arreglo:a     {: RESULT = parser.valorElemento(a); :}
-                   | llamada_funcion:c    {: RESULT = c; :}
-                   | cadena_texto:c       {: RESULT = c; :}
-                   | caracter_literal:c   {: RESULT = c; :}
-                   | PARENOP expresion_aritmetica:e PARENCL  {: RESULT = e; :} ;
+/* Nombre: valor_aritmetico
+   Descripcion: lo mas pequeno de una operacion: numero, variable, posicion de arreglo,
+                llamada a funcion, texto, caracter o una operacion entre parentesis.
+   Objetivo: dar el tipo y el lugar de ese valor. Si una variable no existe, queda de tipo error.
+   Salida: un dato con su tipo y lugar. */
+valor_aritmetico ::= valor_numerico:numero   {: RESULT = numero; :}
+                   |  identificador:nombre
+                    {: Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
+                        if (simbolo == null) { RESULT = new Atrib("error", nombre); }
+                        else           { RESULT = new Atrib(simbolo.tipo, nombre); } :}
+                   | acceso_arreglo:elemento     {: RESULT = elemento; :}
+                   | llamada_funcion:llamada    {: RESULT = llamada; :}
+                   | cadena_texto:texto       {: RESULT = texto; :}
+                   | caracter_literal:caracter   {: RESULT = caracter; :}
+                   | PARENOP expresion_aritmetica:valor PARENCL  {: RESULT = valor; :} ;
 
-/* SEM: ++ y -- solo se aplican a variables int o float (parser.incrementar) */
-operacion_incremento ::= identificador:id incremento
-                         {: parser.incrementar(parser.usar(id, idleft, idright), id, "++", idleft, idright); :}
-                       | identificador:id decremento
-                         {: parser.incrementar(parser.usar(id, idleft, idright), id, "--", idleft, idright); :} ;
+/* Nombre: operacion_incremento
+   Descripcion: sumar o restar uno a una variable (x++ o x--).
+   Objetivo: revisar que sea int o float.
+   Salida: ninguna (escribe la instruccion si todo esta bien). */
+operacion_incremento ::= identificador:nombre incremento
+                         {: parser.incrementar(parser.usar(nombre, nombreleft, nombreright), nombre, "++", nombreleft, nombreright); :}
+                       | identificador:nombre decremento
+                         {: parser.incrementar(parser.usar(nombre, nombreleft, nombreright), nombre, "--", nombreleft, nombreright); :} ;
 
 
 /* ============================================================
                 OPERACIONES RELACIONALES
    ============================================================ */
 
+/* Nombre: operadorRelacional
+   Descripcion: los simbolos de comparar: < > <= >= == !=.
+   Objetivo: saber cual comparacion se uso.
+   Salida: el simbolo como texto. */
 operadorRelacional ::= LT     {: RESULT = "<";  :}
                      | GT     {: RESULT = ">";  :}
                      | LTE    {: RESULT = "<="; :}
@@ -1323,108 +1650,152 @@ operadorRelacional ::= LT     {: RESULT = "<";  :}
                      | EQUAL  {: RESULT = "=="; :}
                      | NEQ    {: RESULT = "!="; :} ;
 
-operando_relacional ::= valor_aritmetico:v  {: RESULT = v; :}
-                      | bool:b              {: RESULT = b; :}
-                      | abrir_corcheteCuadrados expresion:e cerrar_corcheteCuadrados  {: RESULT = e; :} ;
+/* Nombre: operando_relacional
+   Descripcion: cada lado de una comparacion. Puede ir con o sin corchetes.
+   Objetivo: dar el tipo y el lugar de ese lado.
+   Salida: un dato con su tipo y lugar. */
+operando_relacional ::= valor_aritmetico:valor  {: RESULT = valor; :}
+                      | bool:valorBool              {: RESULT = valorBool; :}
+                      | abrir_corcheteCuadrados expresion:valor cerrar_corcheteCuadrados  {: RESULT = valor; :} ;
 
-operacion_relacional ::= operando_relacional:a operadorRelacional:op operando_relacional:b
-                         {: RESULT = parser.generarRelacional(a, op, b, opleft, opright); :} ;
+/* Nombre: operacion_relacional
+   Descripcion: una comparacion entre dos valores.
+   Objetivo: revisarla y escribir su instruccion.
+   Salida: un dato de tipo bool. */
+operacion_relacional ::= operando_relacional:izquierda operadorRelacional:operador operando_relacional:derecha
+                         {: RESULT = parser.generarRelacional(izquierda, operador, derecha, operadorleft, operadorright); :} ;
 
 
 /* ============================================================
-                 EXPRESIONES LÓGICAS
+                 EXPRESIONES LOGICAS
    ============================================================ */
 
-condicion_basica ::= PARENOP operacion_relacional:e PARENCL  {: RESULT = e; :}
-                   | PARENOP bool:e PARENCL                  {: RESULT = e; :}
-                   | PARENOP condicion_basica:e PARENCL      {: RESULT = e; :}
-                   | condiciones_logicas:e                   {: RESULT = e; :}
-                   | negacion:e                              {: RESULT = e; :} ;
+/* Nombre: condicion_basica y operando_logico
+   Descripcion: lo que puede ir a cada lado de un and, un or o un not.
+   Objetivo: dar el tipo y el lugar de esa condicion.
+   Salida: un dato con su tipo y lugar. */
+condicion_basica ::= PARENOP operacion_relacional:comparacion PARENCL  {: RESULT = comparacion; :}
+                   | PARENOP bool:valorBool PARENCL                  {: RESULT = valorBool; :}
+                   | PARENOP condicion_basica:condicion PARENCL      {: RESULT = condicion; :}
+                   | condiciones_logicas:condicion                   {: RESULT = condicion; :}
+                   | negacion:negacion                              {: RESULT = negacion; :} ;
 
-operando_logico ::= condicion_basica:e                       {: RESULT = e; :}
-                  | PARENOP expresion_aritmetica:e PARENCL   {: RESULT = e; :} ;
+operando_logico ::= condicion_basica:condicion                       {: RESULT = condicion; :}
+                  | PARENOP expresion_aritmetica:valor PARENCL   {: RESULT = valor; :} ;
 
-condiciones_and ::= operando_logico:a AND:o operando_logico:b
-                    {: RESULT = parser.generarLogica(a, "and", b, oleft, oright); :}
-                  | condiciones_and:a AND:o operando_logico:b
-                    {: RESULT = parser.generarLogica(a, "and", b, oleft, oright); :} ;
+/* Nombre: condiciones_and y condiciones_or
+   Descripcion: varias condiciones unidas con and o con or.
+   Objetivo: revisar cada union y escribir su instruccion.
+   Salida: un dato de tipo bool. */
+condiciones_and ::= operando_logico:izquierda AND:simboloLogico operando_logico:derecha
+                    {: RESULT = parser.generarLogica(izquierda, "and", derecha, simboloLogicoleft, simboloLogicoright); :}
+                  | condiciones_and:izquierda AND:simboloLogico operando_logico:derecha
+                    {: RESULT = parser.generarLogica(izquierda, "and", derecha, simboloLogicoleft, simboloLogicoright); :} ;
 
-condiciones_or ::= operando_logico:a OR:o operando_logico:b
-                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :}
-                 | condiciones_and:a OR:o operando_logico:b
-                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :}
-                 | operando_logico:a OR:o condiciones_and:b
-                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :}
-                 | condiciones_and:a OR:o condiciones_and:b
-                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :}
-                 | condiciones_or:a OR:o operando_logico:b
-                   {: RESULT =parser.generarLogica(a, "or", b, oleft, oright); :}
-                 | condiciones_or:a OR:o condiciones_and:b
-                   {: RESULT = parser.generarLogica(a, "or", b, oleft, oright); :} ;
+condiciones_or ::= operando_logico:izquierda OR:simboloLogico operando_logico:derecha
+                   {: RESULT = parser.generarLogica(izquierda, "or", derecha, simboloLogicoleft, simboloLogicoright); :}
+                 | condiciones_and:izquierda OR:simboloLogico operando_logico:derecha
+                   {: RESULT = parser.generarLogica(izquierda, "or", derecha, simboloLogicoleft, simboloLogicoright); :}
+                 | operando_logico:izquierda OR:simboloLogico condiciones_and:derecha
+                   {: RESULT = parser.generarLogica(izquierda, "or", derecha, simboloLogicoleft, simboloLogicoright); :}
+                 | condiciones_and:izquierda OR:simboloLogico condiciones_and:derecha
+                   {: RESULT = parser.generarLogica(izquierda, "or", derecha, simboloLogicoleft, simboloLogicoright); :}
+                 | condiciones_or:izquierda OR:simboloLogico operando_logico:derecha
+                   {: RESULT = parser.generarLogica(izquierda, "or", derecha, simboloLogicoleft, simboloLogicoright); :}
+                 | condiciones_or:izquierda OR:simboloLogico condiciones_and:derecha
+                   {: RESULT = parser.generarLogica(izquierda, "or", derecha, simboloLogicoleft, simboloLogicoright); :} ;
 
-condiciones_logicas ::= PARENOP condiciones_and:e PARENCL  {: RESULT = e; :}
-                      | PARENOP condiciones_or:e PARENCL   {: RESULT = e; :} ;
+/* Nombre: condiciones_logicas
+   Descripcion: una union de condiciones entre parentesis.
+   Objetivo: poder agrupar condiciones.
+   Salida: un dato de tipo bool. */
+condiciones_logicas ::= PARENOP condiciones_and:condicion PARENCL  {: RESULT = condicion; :}
+                      | PARENOP condiciones_or:condicion PARENCL   {: RESULT = condicion; :} ;
 
-negacion ::= NOT:n condicion_basica:e  {: RESULT = parser.generarNegacion(e, nleft, nright); :} ;
+/* Nombre: negacion
+   Descripcion: el operador not aplicado a una condicion.
+   Objetivo: revisarlo y escribir su instruccion.
+   Salida: un dato de tipo bool. */
+negacion ::= NOT:simboloNot condicion_basica:condicion  {: RESULT = parser.generarNegacion(condicion, simboloNotleft, simboloNotright); :} ;
 
-expresion_logica ::= condiciones_and:e  {: RESULT = e; :}
-                   | condiciones_or:e   {: RESULT = e; :}
-                   | negacion:e         {: RESULT = e; :} ;
+/* Nombre: expresion_logica
+   Descripcion: una condicion con and, or o not.
+   Objetivo: agrupar las expresiones logicas.
+   Salida: un dato de tipo bool. */
+expresion_logica ::= condiciones_and:condicion  {: RESULT = condicion; :}
+                   | condiciones_or:condicion   {: RESULT = condicion; :}
+                   | negacion:negacion         {: RESULT = negacion; :} ;
 
-condicion_control ::= operacion_relacional:e                   {: RESULT = e; :}
-                    | condiciones_and:e                        {: RESULT = e; :}
-                    | condiciones_or:e                         {: RESULT = e; :}
-                    | negacion:e                               {: RESULT = e; :}
-                    | bool:e                                   {: RESULT = e; :}
-                    | valor_aritmetico:e                       {: RESULT = e; :}
-                    | PARENOP operacion_relacional:e PARENCL   {: RESULT = e; :}
-                    | PARENOP bool:e PARENCL                   {: RESULT = e; :} ;
+/* Nombre: condicion_control
+   Descripcion: lo que se acepta como condicion de un if, elif o while.
+   Objetivo: dar el tipo de la condicion. Luego se revisa que sea bool.
+   Salida: un dato con su tipo y lugar. */
+condicion_control ::= operacion_relacional:comparacion                   {: RESULT = comparacion; :}
+                    | condiciones_and:condicion                        {: RESULT = condicion; :}
+                    | condiciones_or:condicion                         {: RESULT = condicion; :}
+                    | negacion:negacion                               {: RESULT = negacion; :}
+                    | bool:valorBool                                   {: RESULT = valorBool; :}
+                    | valor_aritmetico:valor                       {: RESULT = valor; :}
+                    | PARENOP operacion_relacional:comparacion PARENCL   {: RESULT = comparacion; :}
+                    | PARENOP bool:valorBool PARENCL                   {: RESULT = valorBool; :} ;
 
 
 /* ============================================================
                 EXPRESIONES Y FUNCIONES
    ============================================================ */
 
-expresion ::= expresion_aritmetica:e  {: RESULT = e; :}
-            | operacion_relacional:r  {: RESULT = r; :}
-            | expresion_logica:l      {: RESULT = l; :}
-            | bool:b                  {: RESULT = b; :} ;
+/* Nombre: expresion
+   Descripcion: cualquier valor que se pueda calcular: operacion, comparacion, condicion o bool.
+   Objetivo: agrupar todas las formas de expresion.
+   Salida: un dato con su tipo y lugar. */
+expresion ::= expresion_aritmetica:valor  {: RESULT = valor; :}
+            | operacion_relacional:comparacion  {: RESULT = comparacion; :}
+            | expresion_logica:condicion      {: RESULT = condicion; :}
+            | bool:valorBool                  {: RESULT = valorBool; :} ;
 
-/* SEM: los argumentos de una llamada se juntan en una lista, cada uno con su tipo */
-lista_expresiones ::= /* vacío */  {: RESULT = new ArrayList(); :}
-                    | expresiones:l  {: RESULT = l; :} ;
+/* Nombre: lista_expresiones y expresiones
+   Descripcion: los datos que se dan al llamar una funcion, separados por comas.
+   Objetivo: juntarlos en una lista, cada uno con su tipo.
+   Salida: la lista de datos (puede estar vacia). */
+lista_expresiones ::= /* vacio */  {: RESULT = new ArrayList(); :}
+                    | expresiones:lista  {: RESULT = lista; :} ;
 
-expresiones ::= expresion:e
-                {: ArrayList l = new ArrayList(); l.add(e); RESULT = l; :}
-              | expresion:e coma expresiones:l
-                {: l.add(0, e); RESULT = l; :} ;
+expresiones ::= expresion:valor
+                {: ArrayList lista = new ArrayList(); lista.add(valor); RESULT = lista; :}
+              | expresion:valor coma expresiones:lista
+                {: lista.add(0, valor); RESULT = lista; :} ;
 
-llamada_funcion ::= identificador:id PARENOP lista_expresiones:args PARENCL
-                    {: Simbolo f = parser.usarFuncion(id, idleft, idright);
-                    RESULT = parser.generarLlamada(f, id, args, idleft, idright); :} ;
+/* Nombre: llamada_funcion
+   Descripcion: llamar a una funcion con sus datos.
+   Objetivo: revisar que exista y que los datos sean correctos, y escribir la llamada.
+   Salida: un dato con el tipo que devuelve la funcion. */
+llamada_funcion ::= identificador:nombre PARENOP lista_expresiones:argumentos PARENCL
+                    {: Simbolo funcion = parser.usarFuncion(nombre, nombreleft, nombreright);
+                    RESULT = parser.generarLlamada(funcion, nombre, argumentos, nombreleft, nombreright); :} ;
 
 
 /* ============================================================
                 ESTRUCTURAS DE CONTROL
    ============================================================ */
 
-/* SEM: la condición de un if y de un elif va entre paréntesis y debe ser bool */
-condicion_if ::= PARENOP condicion_control:c cierra_paren
-                {: parser.condicion("CON-1", c, cleft, cright);
-                parser.generarSaltoIf(c); :} ;
+/* Nombre: condicion_if
+   Descripcion: la condicion de un if o de un elif, entre parentesis.
+   Objetivo: revisar que sea de tipo bool. Si falta el parentesis final, lo pone y avisa.
+   Salida: ninguna. */
+condicion_if ::= PARENOP condicion_control:condicion cierra_paren
+                 {: parser.condicion("CON-1", condicion, condicionleft, condicionright); :} ;
 
-condicion_neg ::= negacion:n {: parser.generarSaltoIf(n); :} ;
-
+/* Nombre: if, demas_if, fin_if, elif, cadena_elif y else
+   Descripcion: la estructura if con sus elif y su else opcionales.
+   Objetivo: reconocer la estructura. Si la condicion esta mal, salta hasta el bloque y sigue.
+   Salida: ninguna. */
 if ::= palabraIf condicion_if abrir_bloque bloque cerrar_bloque demas_if
-        {: parser.gen.finIf(); :}
-        | palabraIf condicion_neg abrir_bloque bloque cerrar_bloque demas_if
-        {: parser.gen.finIf(); :}
-        | palabraIf error abrir_bloque bloque cerrar_bloque demas_if
-        {: parser.gen.finIf(); :} ;
+     | palabraIf negacion abrir_bloque bloque cerrar_bloque demas_if
+     | palabraIf error abrir_bloque bloque cerrar_bloque demas_if ;
 
 demas_if ::= cadena_elif fin_if | fin_if ;
 
-fin_if ::= else | /* vacío */ ;
+fin_if ::= else | /* vacio */ ;
 
 elif ::= palabraElif condicion_if abrir_bloque bloque cerrar_bloque
        | palabraElif error abrir_bloque bloque cerrar_bloque ;
@@ -1434,78 +1805,88 @@ cadena_elif ::= elif | elif cadena_elif ;
 else ::= palabraElse abrir_bloque bloque cerrar_bloque
        | palabraElse error abrir_bloque bloque cerrar_bloque ;
 
-/* SEM: while y for cuentan los ciclos activos (para validar break) y
-   revisan que su condición sea bool */
-condicion_while ::= PARENOP condicion_control:c cierra_paren
-                    {: parser.condicion("CON-2", c, cleft, cright);
-                    parser.entrarCiclo();
-                    parser.generarSaltoWhile(c); :} ;
+/* Nombre: condicion_while
+   Descripcion: la condicion de un while, entre parentesis.
+   Objetivo: revisar que sea bool y avisar que se entro a un ciclo (para el break).
+   Salida: ninguna. */
+condicion_while ::= PARENOP condicion_control:condicion cierra_paren
+                    {: parser.condicion("CON-2", condicion, condicionleft, condicionright); parser.entrarCiclo(); :} ;
 
+/* Nombre: ciclo_con_error
+   Descripcion: una condicion de ciclo mal escrita.
+   Objetivo: saltar el error y aun asi contar el ciclo.
+   Salida: ninguna. */
 ciclo_con_error ::= error {: parser.entrarCiclo(); :} ;
 
+/* Nombre: while
+   Descripcion: el ciclo while.
+   Objetivo: reconocerlo y avisar cuando termina para el conteo de ciclos.
+   Salida: ninguna. */
 while ::= palabraWhile condicion_while abrir_bloque bloque cerrar_bloque
-            {: parser.salirCiclo(); parser.gen.finCiclo(); :}
-            | palabraWhile ciclo_con_error abrir_bloque bloque cerrar_bloque
-            {: parser.salirCiclo(); parser.gen.finCiclo(); :};
-
-cabecera_for ::= PARENOP inicio_for fin_sentencia condicion_for:c fin_sentencia incremento_for cierra_paren
-                {: parser.condicion("CON-3", c, cleft, cright);
-                parser.entrarCiclo();
-                parser.generarCabeceraFor(c); :} ;
-
-/* TS: al terminar el for se cierra el ámbito que abrió palabraFor */
-for ::= palabraFor cabecera_for abrir_bloque bloque cerrar_bloque
-        {: parser.salirCiclo(); parser.gen.finCiclo(); parser.tabla.cerrarAmbito(); :}
-        | palabraFor ciclo_con_error abrir_bloque bloque cerrar_bloque
-        {: parser.salirCiclo(); parser.gen.finCiclo(); parser.tabla.cerrarAmbito(); :}
+          {: parser.salirCiclo(); :}
+        | palabraWhile ciclo_con_error abrir_bloque bloque cerrar_bloque
+          {: parser.salirCiclo(); :}
         ;
 
-/* SEM: el valor inicial y el incremento con asignación deben tener el tipo de la variable */
-inicio_for ::= /* vacío */
-                    {: parser.gen.inicioCondicionFor(); :}
-                | identificador:id asignacion expresion:e
-                    {: Simbolo s = parser.usar(id, idleft, idright);
-                    if (s != null) {
-                    parser.asignar("CON-4", id, s.tipo, e, idleft, idright);
-                    parser.generarAsignacion(id, s.tipo, e);
-                    }
-                    parser.gen.inicioCondicionFor(); :}
-                | palabraVal tipo:t identificador:id asignacion:a expresion:e
-                    {: parser.declararVariable(id, t, parser.textoDesde(aleft, aright), idleft,
-                    idright);
-                    parser.asignar("CON-4", id, t, e, idleft, idright);
-                    parser.generarAsignacion(id, t, e);
-                    parser.gen.inicioCondicionFor(); :}
+/* Nombre: cabecera_for
+   Descripcion: la parte entre parentesis de un for: inicio, condicion e incremento.
+   Objetivo: revisar que la condicion sea bool y avisar que se entro a un ciclo.
+   Salida: ninguna. */
+cabecera_for ::= PARENOP inicio_for fin_sentencia condicion_for:condicion fin_sentencia incremento_for cierra_paren
+                 {: parser.condicion("CON-3", condicion, condicionleft, condicionright); parser.entrarCiclo(); :} ;
+
+/* Nombre: for
+   Descripcion: el ciclo for.
+   Objetivo: reconocerlo y, al terminar, cerrar el bloque que abrio palabraFor.
+   Salida: ninguna. */
+for ::= palabraFor cabecera_for abrir_bloque bloque cerrar_bloque
+        {: parser.salirCiclo(); parser.tabla.cerrarAmbito(); :}
+      | palabraFor ciclo_con_error abrir_bloque bloque cerrar_bloque
+        {: parser.salirCiclo(); parser.tabla.cerrarAmbito(); :}
+      ;
+
+/* Nombre: inicio_for
+   Descripcion: la primera parte del for: puede crear una variable o asignar una existente.
+   Objetivo: revisar que el valor sea del tipo de la variable.
+   Salida: ninguna. */
+inicio_for ::= /* vacio */
+             | identificador:nombre asignacion expresion:valor
+               {: Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
+                  if (simbolo != null) { parser.asignar("CON-4", nombre, simbolo.tipo, valor, nombreleft, nombreright); } :}
+             | palabraVal tipo:tipo identificador:nombre asignacion:signoAsigna expresion:valor
+               {: parser.declararVariable(nombre, tipo, parser.textoDesde(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
+                  parser.asignar("CON-4", nombre, tipo, valor, nombreleft, nombreright); :}
+             ;
+
+/* Nombre: condicion_for
+   Descripcion: la parte del medio del for: la condicion (puede ir vacia).
+   Objetivo: dar su tipo para revisar que sea bool.
+   Salida: un dato con su tipo, o null si va vacia. */
+condicion_for ::= operacion_relacional:comparacion                  {: RESULT = comparacion; :}
+                | expresion_logica:condicion                      {: RESULT = condicion; :}
+                | bool:valorBool                                  {: RESULT = valorBool; :}
+                | valor_aritmetico:valor                      {: RESULT = valor; :}
+                | PARENOP operacion_relacional:comparacion PARENCL  {: RESULT = comparacion; :}
+                | PARENOP bool:valorBool PARENCL                  {: RESULT = valorBool; :}
+                | /* Vacio */                             {: RESULT = null; :}
                 ;
 
-condicion_for ::= operacion_relacional:e {: RESULT = e;
-                    parser.gen.marcaIncremento(); :}
-                | expresion_logica:e {: RESULT = e;
-                    parser.gen.marcaIncremento(); :}
-                | bool:e {: RESULT = e;
-                    parser.gen.marcaIncremento(); :}
-                | valor_aritmetico:e {: RESULT = e;
-                    parser.gen.marcaIncremento(); :}
-                | PARENOP operacion_relacional:e PARENCL {: RESULT = e;
-                    parser.gen.marcaIncremento(); :}
-                | PARENOP bool:e PARENCL {: RESULT = e;
-                    parser.gen.marcaIncremento(); :}
-                | /* Vacío */ {: RESULT = null;
-                    parser.gen.marcaIncremento(); :}
-                ;
+/* Nombre: incremento_for
+   Descripcion: la ultima parte del for: lo que se hace en cada vuelta.
+   Objetivo: revisar que el valor sea del tipo de la variable.
+   Salida: ninguna. */
+incremento_for ::= /* vacio */
+                 | operacion_incremento
+                 | expresion_aritmetica
+                 | identificador:nombre asignacion expresion:valor
+                   {: Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
+                      if (simbolo != null) { parser.asignar("CON-4", nombre, simbolo.tipo, valor, nombreleft, nombreright); } :}
+                 ;
 
-incremento_for ::= /* vacío */
-                | operacion_incremento
-                | expresion_aritmetica
-                | identificador:id asignacion expresion:e
-                {: Simbolo s = parser.usar(id, idleft, idright);
-                    if (s != null) {
-                        parser.asignar("CON-4", id, s.tipo, e, idleft, idright);
-                        parser.generarAsignacion(id, s.tipo, e);
-                    }
-                :}
-                ;
-
+/* Nombre: estructura_control
+   Descripcion: un if, un while o un for.
+   Objetivo: agrupar las estructuras de control.
+   Salida: ninguna. */
 estructura_control ::= if | while | for ;
 
 
@@ -1513,14 +1894,26 @@ estructura_control ::= if | while | for ;
                  SENTENCIAS Y BLOQUES
    ============================================================ */
 
-/* SEM: break solo dentro de un ciclo (parser.validarBreak) */
-break ::= palabraBreak:b {: parser.validarBreak(bleft, bright); :} ;
+/* Nombre: break
+   Descripcion: la instruccion break.
+   Objetivo: revisar que este dentro de un ciclo.
+   Salida: ninguna. */
+break ::= palabraBreak:palabra {: parser.validarBreak(palabraleft, palabraright); :} ;
 
-return ::= palabraReturn:r fin_sentencia
-           {: parser.retorno(null, rleft, rright); :}
-         | palabraReturn:r expresion:e fin_o_falta
-           {: parser.retorno(e, rleft, rright); :} ;
+/* Nombre: return
+   Descripcion: la instruccion return, con valor o sin valor.
+   Objetivo: revisar que el valor sea del tipo de la funcion.
+   Salida: ninguna (escribe el return si todo esta bien). */
+return ::= palabraReturn:palabraReturn fin_sentencia
+           {: parser.retorno(null, palabraReturnleft, palabraReturnright); :}
+         | palabraReturn:palabraReturn expresion:valor fin_o_falta
+           {: parser.retorno(valor, palabraReturnleft, palabraReturnright); :} ;
 
+/* Nombre: instruccion y sentencia_simple
+   Descripcion: lo que puede ir dentro de un bloque: asignaciones, variables, arreglos,
+                read, write, ++, --, llamadas, break, return o una estructura de control.
+   Objetivo: agrupar todas las instrucciones. Si hay un error, salta hasta el fin de la sentencia.
+   Salida: ninguna. */
 instruccion ::= sentencia_simple | estructura_control ;
 
 sentencia_simple ::=
@@ -1537,50 +1930,70 @@ sentencia_simple ::=
     | error fin_sentencia
     ;
 
+/* Nombre: lista_instrucciones y bloque
+   Descripcion: una o varias instrucciones, y el contenido de un bloque (puede estar vacio).
+   Objetivo: armar el cuerpo de un bloque.
+   Salida: ninguna. */
 lista_instrucciones ::= instruccion | instruccion lista_instrucciones ;
 
-bloque ::= /* vacío */ | lista_instrucciones ;
+bloque ::= /* vacio */ | lista_instrucciones ;
 
 
 /* ============================================================
-                       PARÁMETROS
+                       PARAMETROS
    ============================================================ */
 
-parametro ::= tipo:t identificador:id
-              {: RESULT = new Simbolo(id, t, Simbolo.PARAMETRO, idleft, idright); :}
-            | identificador:id
-              {: parser.errorProduccion(idleft, idright, "falta el tipo del parámetro '" + id + "'");
-                 RESULT = new Simbolo(id, "error", Simbolo.PARAMETRO, idleft, idright); :}
-            | VOID identificador:id
-              {: parser.errorProduccion(idleft, idright, "un parámetro no puede ser de tipo void ('" + id + "')");
-                 RESULT = new Simbolo(id, "error", Simbolo.PARAMETRO, idleft, idright); :} ;
+/* Nombre: parametro
+   Descripcion: un parametro de una funcion, con su tipo y su nombre.
+   Objetivo: crear el simbolo del parametro. Si falta el tipo o es void, da un mensaje exacto.
+   Salida: el simbolo del parametro. */
+parametro ::= tipo:tipo identificador:nombre
+              {: RESULT = new Simbolo(nombre, tipo, Simbolo.PARAMETRO, nombreleft, nombreright); :}
+            | identificador:nombre
+              {: parser.errorProduccion(nombreleft, nombreright, "falta el tipo del parámetro '" + nombre + "'");
+                 RESULT = new Simbolo(nombre, "error", Simbolo.PARAMETRO, nombreleft, nombreright); :}
+            | VOID identificador:nombre
+              {: parser.errorProduccion(nombreleft, nombreright, "un parámetro no puede ser de tipo void ('" + nombre + "')");
+                 RESULT = new Simbolo(nombre, "error", Simbolo.PARAMETRO, nombreleft, nombreright); :} ;
 
-lista_parametros ::= /* vacío */      {: RESULT = new ArrayList(); :}
-                   | parametros:l     {: RESULT = l; :} ;
+/* Nombre: lista_parametros y parametros
+   Descripcion: todos los parametros de una funcion, separados por comas (puede no haber ninguno).
+   Objetivo: juntarlos en una lista.
+   Salida: la lista de parametros. */
+lista_parametros ::= /* vacio */      {: RESULT = new ArrayList(); :}
+                   | parametros:lista     {: RESULT = lista; :} ;
 
-parametros ::= parametro:p
-               {: ArrayList l = new ArrayList(); l.add(p); RESULT = l; :}
-             | parametro:p coma parametros:l
-               {: l.add(0, p); RESULT = l; :} ;
+parametros ::= parametro:parametro
+               {: ArrayList lista = new ArrayList(); lista.add(parametro); RESULT = lista; :}
+             | parametro:parametro coma parametros:lista
+               {: lista.add(0, parametro); RESULT = lista; :} ;
 
 
 /* ============================================================
                         FUNCIONES
    ============================================================ */
 
-/* Las funciones devuelven int, float, char o bool y reciben parámetros con tipo.
-   El encabezado se reduce ANTES del cuerpo, así la función ya existe
-   (permite recursión) y sus parámetros entran al ámbito del cuerpo. */
-encabezado_funcion ::= tipo:t identificador:id PARENOP lista_parametros:p cierra_paren
-                        {: parser.declararFuncion(id, t, p, idleft, idright);
-                        parser.gen.etiquetaFuncion(id); :} ;
+/* Nombre: encabezado_funcion
+   Descripcion: la primera linea de una funcion: tipo, nombre y parametros.
+   Objetivo: guardar la funcion antes de leer su cuerpo (asi puede llamarse a si misma)
+             y escribir su etiqueta.
+   Salida: ninguna. */
+encabezado_funcion ::= tipo:tipo identificador:nombre PARENOP lista_parametros:listaParametros cierra_paren
+                        {: parser.declararFuncion(nombre, tipo, listaParametros, nombreleft, nombreright);
+                        parser.gen.etiquetaFuncion(nombre); :} ;
 
+/* Nombre: funcion_no_void
+   Descripcion: una funcion que devuelve int, float, char o bool.
+   Objetivo: leer su cuerpo y revisar que tenga al menos un return.
+   Salida: ninguna. */
 funcion_no_void ::= encabezado_funcion abrir_bloque bloque cierra_bloque_fn
                     {: parser.finFuncion(); :}
                   | tipo error abrir_bloque bloque cerrar_bloque ;
 
-/* void solo puede ser la función principal: un void con otro nombre es un
-   error sintáctico (modo pánico: se descarta hasta el ¿: y se sigue) */
+/* Nombre: funcion_void_invalida
+   Descripcion: una funcion void con un nombre que no es principal.
+   Objetivo: void solo es para principal, asi que es un error. Salta hasta el bloque y sigue.
+   Salida: ninguna. */
 funcion_void_invalida ::= VOID error abrir_bloque bloque cerrar_bloque ;
 
 
@@ -1588,6 +2001,10 @@ funcion_void_invalida ::= VOID error abrir_bloque bloque cerrar_bloque ;
                         PRINCIPAL
    ============================================================ */
 
+/* Nombre: principal
+   Descripcion: la funcion principal, por donde empieza el programa.
+   Objetivo: reconocerla y escribir su return al final.
+   Salida: ninguna. */
 principal ::= VOID Principal PARENOP cierra_paren abrir_bloque bloque cierra_bloque_fn
                 {: parser.gen.retorno(null); :} ;
 
@@ -1596,10 +2013,11 @@ principal ::= VOID Principal PARENOP cierra_paren abrir_bloque bloque cierra_blo
                   UNIDADES DEL PROGRAMA
    ============================================================ */
 
-/* Las funciones y principal pueden ir en cualquier orden. Que haya exactamente
-   una principal se comprueba al final del programa (parser.finPrograma): si falta
-   se reporta PRG-1, y si se repite, el nombre repetido (TS-1). */
-unidades_programa ::= /* vacío */
+/* Nombre: unidades_programa y unidad
+   Descripcion: las funciones y la principal, en cualquier orden.
+   Objetivo: leer todas las partes del programa. Que exista una sola principal se revisa al final.
+   Salida: ninguna. */
+unidades_programa ::= /* vacio */
                     | unidad unidades_programa ;
 
 unidad ::= funcion_no_void | principal | funcion_void_invalida ;
@@ -1609,5 +2027,9 @@ unidad ::= funcion_no_void | principal | funcion_void_invalida ;
                         PROGRAMA
    ============================================================ */
 
+/* Nombre: programa
+   Descripcion: el programa completo: datos globales y luego funciones.
+   Objetivo: al terminar, revisar que exista la funcion principal.
+   Salida: ninguna. */
 programa ::= lista_globales unidades_programa
             {: parser.finPrograma(); :} ;
