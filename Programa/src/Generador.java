@@ -17,6 +17,10 @@
  * Objetivo:
  * Que el Parser.cup quede solo con la gramática y las reglas semánticas, y que
  * todo lo del código intermedio viva en un solo lugar.
+ *
+ * Formato de las etiquetas:
+ * funcion_estructura_numero_parte, por ejemplo funExc_for_2_cond.
+ * Las funciones usan tipo_nombre: y terminan con tipo_nombre_end.
  */
 public class Generador {
 
@@ -24,18 +28,34 @@ public class Generador {
 
     private int contadorTemporales = 0;
 
+    /* Numera las estructuras de control: for_1, while_2, if_3... */
     private int contadorEtiquetas = 0;
 
-    /* Un temporal nuevo: t1, t2, t3... */
-    public String nuevoTemporal() {
+    /* Función que se está generando: es el prefijo de las etiquetas */
+    private String funcionActual = "global";
+
+    private String tipoFuncionActual = "";
+
+    /* Tipo de la función principal, para el salto inicial (cambiarlo si no es void) */
+    private static final String TIPO_PRINCIPAL = "void";
+
+    /* Un temporal nuevo con el tipo del dato que guarda: int1, float2, bool3...
+    El numero es uno solo para todos los tipos, asi nunca se repite un nombre. */
+    public String nuevoTemporal(String tipo) {
         contadorTemporales++;
-        return "t" + contadorTemporales;
+        return tipo + contadorTemporales;
     }
 
-    /* Una etiqueta nueva para los saltos: L1, L2, L3... */
-    public String nuevaEtiqueta() {
+    /* Prefijo de una estructura nueva: funExc_for_2 */
+    private String prefijo(String estructura) {
         contadorEtiquetas++;
-        return "L" + contadorEtiquetas;
+        return funcionActual + "_" + estructura + "_" + contadorEtiquetas;
+    }
+
+    /* Escribe una etiqueta, con una línea en blanco antes para que se lea mejor */
+    private void etiqueta(String nombre) {
+        emitir("");
+        emitir(nombre + ":");
     }
 
     /* Instrucción de una asignación: destino = lugar del valor */
@@ -53,11 +73,18 @@ public class Generador {
         return codigo.toString();
     }
 
-    /* Borra el código y reinicia los contadores */
+    /* Borra el código y reinicia todo */
     public void limpiar() {
         codigo.setLength(0);
         contadorTemporales = 0;
         contadorEtiquetas = 0;
+        funcionActual = "global";
+        tipoFuncionActual = "";
+        hayFuncion = false;
+        condicionales.clear();
+        ciclos.clear();
+        ultimaCarga = null;
+        marcaAsignacion = 0;
     }
 
     /* Nombre de la carpeta donde se guarda el código intermedio */
@@ -131,7 +158,7 @@ public class Generador {
             return validado;
         }
 
-        String temporal = nuevoTemporal();
+        String temporal = nuevoTemporal(validado.tipo);
 
         emitir(temporal + " = " + a.lugar + " " + op + " " + b.lugar);
 
@@ -139,6 +166,7 @@ public class Generador {
 
         return validado;
     }
+
     /* Operación de un solo operando: t = not e */
     public Atrib unaria(Atrib validado, String op, Atrib e) {
 
@@ -146,13 +174,93 @@ public class Generador {
             return validado;
         }
 
-        String temporal = nuevoTemporal();
+        String temporal = nuevoTemporal(validado.tipo);
 
         emitir(temporal + " = " + op + " " + e.lugar);
 
         validado.lugar = temporal;
 
         return validado;
+    }
+
+    /* Lee una posición de un arreglo en un temporal: t = a[i].
+    Así las operaciones solo reciben direcciones simples (t = t1 + 1, no t = a[i] + 1). */
+    public String cargarElemento(String tipo, String elemento) {
+        String temporal = nuevoTemporal(tipo);
+        emitir(temporal + " = " + elemento);
+        return temporal;
+    }
+
+    /* ---------- cargas y declaraciones (formato del profesor) ---------- */
+
+    /* Datos de la última carga escrita (t5 = 2), para poder deshacerla */
+    private String ultimaCarga = null;
+    private String valorUltimaCarga = null;
+    private int inicioUltimaCarga = -1;
+    private int finUltimaCarga = -1;
+
+    /* Dónde empieza el valor de la última asignación (justo después del =) */
+    private int marcaAsignacion = 0;
+
+    /* Copia un literal o una variable a un temporal: t1 = 5, t2 = x.
+    Conserva el tipo y el valor constante. Si el dato tiene error, no escribe nada. */
+    public Atrib cargar(Atrib dato) {
+        if (dato == null || dato.tipo.equals("error")) {
+            return dato;
+        }
+
+        String temporal = nuevoTemporal(dato.tipo);
+        inicioUltimaCarga = codigo.length();
+        emitir(temporal + " = " + dato.lugar);
+        finUltimaCarga = codigo.length();
+        ultimaCarga = temporal;
+        valorUltimaCarga = dato.lugar;
+
+        Atrib cargado = new Atrib(dato.tipo, temporal);
+        cargado.valor = dato.valor;
+        return cargado;
+    }
+
+    /* Deshace la carga que se acaba de escribir (t5 = 2) y devuelve el valor directo.
+    Se usa en tamaños e índices de arreglos: edades[2] en vez de t5 = 2 y edades[t5].
+    Si después de la carga ya se escribió otra cosa (por ejemplo i + 1), no cambia nada. */
+    public Atrib sinCarga(Atrib dato) {
+        boolean esLaUltima = dato != null && dato.lugar.equals(ultimaCarga)
+                && codigo.length() == finUltimaCarga;
+
+        if (!esLaUltima) {
+            return dato;
+        }
+
+        codigo.setLength(inicioUltimaCarga);
+        contadorTemporales--;
+        ultimaCarga = null;
+
+        Atrib directo = new Atrib(dato.tipo, valorUltimaCarga);
+        directo.valor = dato.valor;
+        return directo;
+    }
+
+    /* Se llama al leer el = de una asignación: ahí empieza el código del valor */
+    public void marcarAsignacion() {
+        marcaAsignacion = codigo.length();
+    }
+
+    /* Declaración sin valor: data#int x */
+    public void declarar(String tipo, String nombre) {
+        emitir("data#" + tipo + " " + nombre);
+    }
+
+    /* Declaración con valor: el data# debe ir ANTES del código del valor,
+    pero el parser lo pide al final de la regla. Se inserta en la marca del =. */
+    public void declararAntesDelValor(String tipo, String nombre) {
+        codigo.insert(marcaAsignacion, "data#" + tipo + " " + nombre + "\n");
+        ultimaCarga = null;
+    }
+
+    /* Parámetro de una función, al inicio de su cuerpo: param_int x */
+    public void parametro(String tipo, String nombre) {
+        emitir("param_" + tipo + " " + nombre);
     }
 
     /* Instrucción de lectura: read destino */
@@ -165,27 +273,49 @@ public class Generador {
         emitir("write " + valor);
     }
 
-    /* x++ y x--: se escriben como x = x + 1 y x = x - 1 */
-    public void incremento(String id, String op) {
-        emitir(id + " = " + id + (op.equals("++") ? " + 1" : " - 1"));
+    /* x++ y x--: int1 = x, int2 = int1 + 1, x = int2 */
+    public void incremento(String tipo, String id, String op) {
+        String valor = nuevoTemporal(tipo);
+        emitir(valor + " = " + id);
+
+        String resultado = nuevoTemporal(tipo);
+        emitir(resultado + " = " + valor + (op.equals("++") ? " + 1" : " - 1"));
+
+        emitir(id + " = " + resultado);
     }
+
+    /* ---------- funciones ---------- */
 
     private boolean hayFuncion = false;
 
-    /* Etiqueta con el nombre de la función. Antes de la primera función (si no es principal)
-    se escribe un salto a principal: así las variables globales se inicializan primero
-    y la ejecución empieza en main. */
-    public void etiquetaFuncion(String nombre) {
+    /* Etiqueta de inicio de la función: int_funExc:
+    Antes de la primera función (si no es principal) se escribe un salto a principal:
+    así las variables globales se inicializan primero y la ejecución empieza en main. */
+    public void etiquetaFuncion(String tipo, String nombre) {
         if (!hayFuncion && !nombre.equals("principal")) {
-            emitir("goto principal");
+            emitir("goto " + TIPO_PRINCIPAL + "_principal");
         }
+
         hayFuncion = true;
-        emitir(nombre + ":");
+        funcionActual = nombre;
+        tipoFuncionActual = tipo;
+
+        if (codigo.length() > 0) {
+            emitir("");
+        }
+        emitir(tipo + "_" + nombre + ":");
+    }
+
+    /* Fin de la función: int_funExc_end */
+    public void finFuncion() {
+        emitir(tipoFuncionActual + "_" + funcionActual + "_end");
+        funcionActual = "global";
+        tipoFuncionActual = "";
     }
 
     /* Llamada: un param por cada argumento y luego el call. Devuelve el temporal donde queda
-    el resultado, o null si la función no devuelve valor. */
-    public String llamar(String nombre, java.util.ArrayList args, boolean devuelve) {
+    el resultado (con el tipo que devuelve la función), o null si no devuelve valor. */
+    public String llamar(String nombre, String tipo, java.util.ArrayList args, boolean devuelve) {
         for (Object o : args) {
             emitir("param " + ((Atrib) o).lugar);
         }
@@ -193,23 +323,24 @@ public class Generador {
         if (!devuelve) {
             emitir("call " + nombre + ", " + args.size());
             return null;
-
         }
 
-        String temporal = nuevoTemporal();
+        String temporal = nuevoTemporal(tipo);
         emitir(temporal + " = call " + nombre + ", " + args.size());
         return temporal;
     }
-    
+
     /* return con valor (lugar) o sin valor (null) */
     public void retorno(String lugar) {
         emitir(lugar == null ? "return" : "return " + lugar);
     }
 
-    /* ---------- if / elif / else ---------- */
+    /* ---------- if / elif / else ----------
+       funExc_if_3_bloque1, funExc_if_3_sig1, ..., funExc_if_3_end */
     private static class Condicional {
-        String falso; /* etiqueta a la que se salta si la condición es falsa */
-        String fin; /* etiqueta del final de todo el if (solo existe si hay elif o else) */
+        String base;      /* prefijo: funExc_if_3 */
+        int rama = 0;     /* número de la rama con condición (if = 1, primer elif = 2...) */
+        String siguiente; /* etiqueta pendiente a la que se salta si la condición es falsa */
     }
 
     private final java.util.ArrayList<Condicional> condicionales = new java.util.ArrayList<>();
@@ -220,22 +351,29 @@ public class Generador {
 
     /* Empieza un if: se apila su "ficha" */
     public void iniciarIf() {
-        condicionales.add(new Condicional());
+        Condicional c = new Condicional();
+        c.base = prefijo("if");
+        condicionales.add(c);
     }
 
-    /* Ya se escribió el código de la condición: salta si es falsa */
+    /* Ya se escribió el código de la condición (del if o de un elif) */
     public void condicionIf(String lugar) {
         Condicional c = ifActual();
 
         if (c == null) {
             return;
         }
-        
-        c.falso = nuevaEtiqueta();
-        emitir("ifFalse " + lugar + " goto " + c.falso);
+
+        c.rama++;
+        String bloque = c.base + "_bloque" + c.rama;
+        c.siguiente = c.base + "_sig" + c.rama;
+
+        emitir("if " + lugar + " goto " + bloque);
+        emitir("goto " + c.siguiente);
+        etiqueta(bloque);
     }
-    
-    /* Empieza un elif o un else: termina la rama anterior (salta al final) y ahí cae la condición falsa */
+
+    /* Empieza un elif o un else: la rama anterior salta al final y aquí cae la condición falsa */
     public void otraRama() {
         Condicional c = ifActual();
 
@@ -243,19 +381,15 @@ public class Generador {
             return;
         }
 
-        if (c.fin == null) {
-            c.fin = nuevaEtiqueta();
-        }
+        emitir("goto " + c.base + "_end");
 
-        emitir("goto " + c.fin);
-
-        if (c.falso != null) {
-            emitir(c.falso + ":");
-            c.falso = null;
+        if (c.siguiente != null) {
+            etiqueta(c.siguiente);
+            c.siguiente = null;
         }
     }
 
-    /* Termina todo el if: se escriben las etiquetas que quedaron pendientes */
+    /* Termina todo el if: se escriben las etiquetas pendientes */
     public void finIf() {
         if (condicionales.isEmpty()) {
             return;
@@ -263,29 +397,28 @@ public class Generador {
 
         Condicional c = condicionales.remove(condicionales.size() - 1);
 
-        if (c.falso != null) {
-            emitir(c.falso + ":");
+        if (c.siguiente != null) {
+            etiqueta(c.siguiente);
         }
 
-        if (c.fin != null) {
-            emitir(c.fin + ":");
-        }
+        etiqueta(c.base + "_end");
     }
 
-    /* ---------- while y for ---------- */
+    /* ---------- while y for ----------
+       for:   funExc_for_2_init / _cond / _inc / _bloque / _end
+       while: funExc_while_4_cond / _bloque / _end */
     private static class Ciclo {
-        String inicio; /* donde se vuelve a evaluar la condición */
-        String fin; /* donde se sale del ciclo (también lo usa break) */
+        String base;    /* prefijo: funExc_for_2 */
+        boolean esFor;
         int marca = -1; /* for: dónde empieza en el código el incremento */
-        String incremento = ""; /* for: el código del incremento, guardado para ponerlo al final */
     }
 
     private final java.util.ArrayList<Ciclo> ciclos = new java.util.ArrayList<>();
 
-    private Ciclo nuevoCiclo() {
+    private Ciclo nuevoCiclo(String estructura) {
         Ciclo c = new Ciclo();
-        c.inicio = nuevaEtiqueta();
-        c.fin = nuevaEtiqueta();
+        c.base = prefijo(estructura);
+        c.esFor = estructura.equals("for");
         ciclos.add(c);
         return c;
     }
@@ -294,23 +427,27 @@ public class Generador {
         return ciclos.isEmpty() ? null : ciclos.get(ciclos.size() - 1);
     }
 
-    /* while: la etiqueta de inicio va ANTES del código de la condición */
+    /* while: la etiqueta _cond va ANTES del código de la condición */
     public void iniciarWhile() {
-        emitir(nuevoCiclo().inicio + ":");
+        etiqueta(nuevoCiclo("while").base + "_cond");
     }
 
     /* while: ya está el código de la condición */
     public void saltoSiFalsoCiclo(String lugar) {
         Ciclo c = cicloActual();
 
-        if (c != null) {
-            emitir("ifFalse " + lugar + " goto " + c.fin);
+        if (c == null) {
+            return;
         }
+
+        emitir("if " + lugar + " goto " + c.base + "_bloque");
+        emitir("goto " + c.base + "_end");
+        etiqueta(c.base + "_bloque");
     }
 
-    /* for: se apila el ciclo (su etiqueta de inicio se escribe después de la inicialización) */
+    /* for: se apila el ciclo y se escribe _init (antes de la inicialización) */
     public void iniciarFor() {
-        nuevoCiclo();
+        etiqueta(nuevoCiclo("for").base + "_init");
     }
 
     /* for: terminó la inicialización, aquí empieza la condición */
@@ -318,7 +455,7 @@ public class Generador {
         Ciclo c = cicloActual();
 
         if (c != null) {
-            emitir(c.inicio + ":");
+            etiqueta(c.base + "_cond");
         }
     }
 
@@ -331,7 +468,9 @@ public class Generador {
         }
     }
 
-    /* for: terminó la cabecera. El incremento ya está escrito, pero debe ir DESPUÉS del cuerpo: se corta del código y se guarda. Luego se escribe el salto de la condición. */
+    /* for: terminó la cabecera. Los saltos de la condición deben ir ANTES del incremento,
+    pero el lugar de la condición llega hasta ahora: se corta el incremento, se escriben
+    los saltos y se vuelve a poner el incremento debajo de su etiqueta _inc. */
     public void cabeceraFor(String lugarCondicion) {
         Ciclo c = cicloActual();
 
@@ -339,34 +478,45 @@ public class Generador {
             return;
         }
 
+        String incremento = "";
+
         if (c.marca >= 0) {
-            c.incremento = codigo.substring(c.marca);
+            incremento = codigo.substring(c.marca);
             codigo.setLength(c.marca);
         }
 
         if (lugarCondicion != null) {
-            emitir("ifFalse " + lugarCondicion + " goto " + c.fin);
+            emitir("if " + lugarCondicion + " goto " + c.base + "_bloque");
+            emitir("goto " + c.base + "_end");
+        } else {
+            emitir("goto " + c.base + "_bloque");
         }
+
+        etiqueta(c.base + "_inc");
+        codigo.append(incremento);
+        emitir("goto " + c.base + "_cond");
+
+        etiqueta(c.base + "_bloque");
     }
 
-    /* Termina un while o un for: incremento (si hay), vuelta al inicio y etiqueta de salida */
+    /* Termina un while o un for: el for vuelve a _inc, el while a _cond */
     public void finCiclo() {
         if (ciclos.isEmpty()) {
             return;
         }
 
         Ciclo c = ciclos.remove(ciclos.size() - 1);
-        codigo.append(c.incremento);
-        emitir("goto " + c.inicio);
-        emitir(c.fin + ":");
+
+        emitir("goto " + c.base + (c.esFor ? "_inc" : "_cond"));
+        etiqueta(c.base + "_end");
     }
-        /* break: salta a la salida del ciclo más interno */
+
+    /* break: salta a la salida del ciclo más interno */
     public void saltoBreak() {
         Ciclo c = cicloActual();
 
         if (c != null) {
-            emitir("goto " + c.fin);
+            emitir("goto " + c.base + "_end");
         }
     }
 }
-

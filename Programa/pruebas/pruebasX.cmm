@@ -1,11 +1,45 @@
+| ===== Globales: variables de cada tipo y las tres formas de arreglo =====
 val char letrica Ͱ '5' »
 val int _arr_ʃ:20:ʅ»
 val int _i_ Ͱ 5»
 val int arrʃ:3:ʅ Ͱ ¿:22, 10, 11:? »
+val float pi Ͱ 3.14 »
+val float notasʃ: :ʅ Ͱ ¿:9.5, 8.0, 7.25:? »
+val bool activo Ͱ true »
+val string saludo Ͱ "hola" »
 
 
 
+| ===== Funcion sin parametros =====
 int f є:  :э ¿:return 1» :?
+
+| ===== Parametros int y todas las operaciones enteras =====
+int suma є: int a, int b :э ¿:
+    val int r Ͱ a + b * 2 »
+    r Ͱ r - є: a // b :э »
+    r Ͱ r mod 3 »
+    r Ͱ r + 2 pot 3 »
+    return r »
+:?
+
+| ===== Parametros float y division decimal =====
+float promedio є: float x, float y :э ¿:
+    val float total Ͱ x + y »
+    return total / 2.0 »
+:?
+
+| ===== Parametros char y bool, if con variable bool, dos return =====
+char inicial є: char c, bool mayus :э ¿:
+    if є: mayus :э ¿:
+        return 'A' »
+    :?
+    return c »
+:?
+
+| ===== Retorno de una comparacion =====
+bool distintos є: int a, int b :э ¿:
+    return ʃ:a:ʅ != ʃ:b:ʅ »
+:?
 
 bool _funcionInt_ є:  :э ¿:
     val bool result Ͱ є:true:э λ Σ є: є:ʃ:12:ʅ >= ʃ:34+35:ʅ:э :э »
@@ -40,5 +74,61 @@ void principal є:  :э ¿:
             break »
         :?
     :?
-:?
 
+    | ===== Llamadas: con valor, como sentencia y sin argumentos =====
+    val int uno Ͱ f є:  :э »
+    val int s Ͱ suma є: 3, 4 :э »
+    suma є: _i_, 2 :э »
+    val float prom Ͱ promedio є: 7.5, pi :э »
+    val char c Ͱ inicial є: letrica, activo :э »
+    val bool dif Ͱ distintos є: s, 7 :э »
+    val bool resultadoBool Ͱ _funcionInt_ є:  :э »
+
+    | ===== Lectura y escritura =====
+    read є: var :э »
+    read є: c :э »
+    read є: _arr_ʃ:0:ʅ :э »
+    write є: s :э »
+    write є: prom :э »
+    write є: saludo :э »
+    write є: -5 :э »
+
+    | ===== while con condicion, if con dos elif y sin else =====
+    val int contador Ͱ 3 »
+    while є: ʃ:contador:ʅ > ʃ:0:ʅ :э ¿:
+        if є: ʃ:contador:ʅ == ʃ:3:ʅ :э ¿:
+            write є: "tres" :э »
+        :?
+        elif є: ʃ:contador:ʅ == ʃ:2:ʅ :э ¿:
+            write є: "dos" :э »
+        :?
+        elif є: ʃ:contador:ʅ <= ʃ:1:ʅ :э ¿:
+            write є: "uno" :э »
+        :?
+        contador Ͱ contador - 1 »
+    :?
+
+    | ===== if con not y sin parentesis externos =====
+    if Σ є: ʃ:c:ʅ == ʃ:'A':ʅ :э ¿:
+        write є: "no es A" :э »
+    :?
+
+    | ===== for que declara su variable, con condicion e indices variables =====
+    for є: val int i Ͱ 0 » ʃ:i:ʅ < ʃ:3:ʅ » i++ :э ¿:
+        arrʃ:i:ʅ Ͱ arrʃ:i:ʅ * 2 »
+        notasʃ:i:ʅ Ͱ notasʃ:i:ʅ / 2.0 »
+        _arr_ʃ:i + 1:ʅ Ͱ arrʃ:i:ʅ »
+    :?
+
+    | ===== for que baja (--), or, y un while anidado con break =====
+    val int j »
+    for є: j Ͱ 10 » ʃ:j:ʅ >= ʃ:0:ʅ » j-- :э ¿:
+        if є: є:ʃ:j:ʅ < ʃ:5:ʅ:э θ є: activo :э :э ¿:
+            while є: ʃ:j:ʅ > ʃ:2:ʅ :э ¿:
+                j Ͱ j - 1 »
+                break »
+            :?
+            break »
+        :?
+    :?
+:?
