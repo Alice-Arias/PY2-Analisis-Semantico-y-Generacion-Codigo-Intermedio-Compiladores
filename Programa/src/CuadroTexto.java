@@ -2,11 +2,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /*
- * ============================================================
- *                       CUADRO DE TEXTO
- * ============================================================
- * Descripcion: dibuja una tabla con bordes. Si un texto no cabe en su
- * columna, continúa en la línea siguiente de la misma fila.
+ * CUADRO DE TEXTO
+ * Descripcion: Crea tablas con bordes y organiza el texto
+ * para que se ajuste al ancho de cada columna.
  */
 public class CuadroTexto {
 
@@ -14,16 +12,33 @@ public class CuadroTexto {
     private final int[] anchos;
     private final List<String[]> filas = new ArrayList<>();
 
+    /*
+     * Descripcion: Crea una tabla.
+     * Entrada: Titulos y anchos de las columnas.
+     * Salida: Una tabla vacia.
+     * Restricciones: Cada titulo tiene su propio ancho.
+     */
     public CuadroTexto(String[] titulos, int[] anchos) {
         this.titulos = titulos;
         this.anchos = anchos;
     }
 
+    /*
+     * Descripcion: Agrega una fila a la tabla.
+     * Entrada: Datos de las celdas.
+     * Salida: Ninguna.
+     * Restricciones: Los datos se guardan en el orden recibido.
+     */
     public void agregarFila(String... celdas) {
         filas.add(celdas);
     }
 
-    /* El cuadro completo; cada linea empieza con el margen indicado */
+    /*
+     * Descripcion: Dibuja la tabla completa.
+     * Entrada: Texto que se coloca al inicio de cada linea.
+     * Salida: Tabla con bordes y contenido.
+     * Restricciones: Respeta los anchos de las columnas.
+     */
     public String dibujar(String margen) {
 
         StringBuilder cuadro = new StringBuilder();
@@ -48,7 +63,12 @@ public class CuadroTexto {
         return cuadro.toString();
     }
 
-    /* Linea de borde: ┌───┬───┐ */
+    /*
+     * Descripcion: Crea una linea de los bordes de la tabla.
+     * Entrada: Caracteres para los extremos y las uniones.
+     * Salida: Una linea de borde.
+     * Restricciones: Usa el ancho definido para cada columna.
+     */
     private String borde(char izquierda, char medio, char derecha) {
 
         StringBuilder borde = new StringBuilder().append(izquierda);
@@ -61,7 +81,12 @@ public class CuadroTexto {
         return borde.toString();
     }
 
-    /* Una fila; si alguna celda es larga, la fila ocupa varias lineas */
+    /*
+     * Descripcion: Dibuja una fila de la tabla.
+     * Entrada: Margen y datos de las celdas.
+     * Salida: Una fila con su contenido.
+     * Restricciones: Si un texto es largo, ocupa varias lineas.
+     */
     private String dibujarFila(String margen, String[] celdas) {
 
         List<List<String>> lineasPorCelda = new ArrayList<>();
@@ -97,8 +122,10 @@ public class CuadroTexto {
     }
 
     /*
-     * Corta un texto en lineas de maximo "ancho" caracteres sin partir palabras.
-     * Si una palabra sola es mas larga que el ancho, esa si se parte.
+     * Descripcion: Divide un texto en varias lineas.
+     * Entrada: Texto y ancho maximo de cada linea.
+     * Salida: Lista de lineas con el texto dividido.
+     * Restricciones: No separa palabras, excepto si son mas largas que el ancho.
      */
     private static List<String> partirEnLineas(String texto, int ancho) {
 

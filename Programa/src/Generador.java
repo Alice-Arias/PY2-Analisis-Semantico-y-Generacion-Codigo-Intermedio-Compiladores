@@ -1,26 +1,23 @@
 /*
  * Descripcion:
- * Genero el código intermedio código de tres direcciones del programa.
- * Cada instrucción tiene como máximo tres direcciones
- * 
+ * Genera el codigo intermedio de tres direcciones.
+ *
  * Entrada:
- * Las instrucciones que le pide el parser (Parser.cup), una por una, mientras
- * analiza el archivo fuente.
+ * Instrucciones que recibe del parser.
  *
  * Salida:
- * El texto del código intermedio, que Main guarda en un archivo.
+ * Codigo intermedio que se guarda en un archivo.
  *
  * Restricciones:
- * Solo tiene sentido guardar el código cuando el programa no tiene errores.
- * Este archivo no valida tipos: eso lo hace el parser antes de pedir el código.
+ * Solo genera codigo si el programa no tiene errores.
+ * La validacion de tipos la realiza el parser.
  *
  * Objetivo:
- * Que el Parser.cup quede solo con la gramática y las reglas semánticas, y que
- * todo lo del código intermedio viva en un solo lugar.
+ * Mantener toda la generacion de codigo en esta clase.
  *
- * Formato de las etiquetas:
+ * Formato de etiquetas:
  * funcion_estructura_numero_parte
- * Las funciones usan tipo_nombre: y terminan con tipo_nombre_final.
+ * Las funciones terminan con la etiqueta _final.
  */
 public class Generador {
 
@@ -36,8 +33,7 @@ public class Generador {
 
     private static final String TIPO_PRINCIPAL = "void";
 
-    /* Partes del nombre de las etiquetas. Cada etiqueta y cada salto hacia ella usan la
-    misma constante, así nunca puede quedar un goto hacia una etiqueta que no existe. */
+    /* Nombres de las partes de las etiquetas. */
     private static final String PARTE_INICIALIZACION = "_inicializacion";
     private static final String PARTE_CONDICION = "_condicion";
     private static final String PARTE_INCREMENTO = "_inc";
@@ -45,40 +41,65 @@ public class Generador {
     private static final String PARTE_SIGUIENTE = "_sig";
     private static final String PARTE_FINAL = "_final";
 
-    /* Un temporal nuevo con el tipo del dato que guarda int1, float2, bool3
-    El numero es uno solo para todos los tipos, asi nunca se repite un nombre. */
+    /*
+     * Descripcion: Crea un nombre temporal.
+     * Entrada: Tipo de dato.
+     * Salida: Nombre del temporal.
+     * Restricciones: El numero no se repite.
+     */
     public String nuevoTemporal(String tipo) {
         contadorTemporales++;
         return tipo + contadorTemporales;
     }
 
-    /* Prefijo de una estructura nueva funExc_for_2 */
+    /* Crea el nombre base de una estructura. */
     private String prefijo(String estructura) {
         contadorEtiquetas++;
         return funcionActual + "_" + estructura + "_" + contadorEtiquetas;
     }
 
+    /* Agrega una etiqueta al codigo. */
     private void etiqueta(String nombre) {
         emitir("");
         emitir(nombre + ":");
     }
 
-    /* Instrucción de una asignación: destino = lugar del valor */
+    /*
+     * Descripcion: Genera una asignacion.
+     * Entrada: Variable destino y valor.
+     * Salida: Instruccion de asignacion.
+     * Restricciones: Usa el lugar donde se encuentra el valor.
+     */
     public void asignacion(String destino, Atrib valor) {
         emitir(destino + " = " + valor.lugar);
     }
 
-    /* Agrega una instrucción al código */
+    /*
+     * Descripcion: Agrega una instruccion al codigo.
+     * Entrada: Instruccion que se desea guardar.
+     * Salida: Ninguna.
+     * Restricciones: Agrega un salto de linea al final.
+     */
     public void emitir(String instruccion) {
         codigo.append(instruccion).append("\n");
     }
 
-    /* El código generado hasta ahora */
+    /*
+     * Descripcion: Obtiene el codigo generado.
+     * Entrada: Ninguna.
+     * Salida: Texto del codigo intermedio.
+     * Restricciones: Devuelve el codigo actual.
+     */
     public String obtenerCodigo() {
         return codigo.toString();
     }
 
-    /* Borra el código y reinicia todo */
+    /*
+     * Descripcion: Limpia el codigo y reinicia los datos.
+     * Entrada: Ninguna.
+     * Salida: Ninguna.
+     * Restricciones: Reinicia contadores, funciones y estructuras.
+     */
     public void limpiar() {
         codigo.setLength(0);
         contadorTemporales = 0;
@@ -92,17 +113,14 @@ public class Generador {
         marcaAsignacion = 0;
     }
 
-    /* Carpeta donde se guarda el código intermedio, dentro de Programa */
+    /* Carpeta donde se guarda el codigo intermedio. */
     public static final String CARPETA = "salida" + java.io.File.separator + "codigo_intermedio";
 
     /*
-     * Descripcion:
-     * Ubico la carpeta salida/codigo_intermedio dentro de la carpeta Programa
-     * (al lado de bin).
-     *
-     * Restricciones:
-     * Se calcula a partir de la ubicación de los .class, así funciona
-     * sin importar desde qué carpeta se ejecute el programa.
+     * Descripcion: Busca la carpeta de salida.
+     * Entrada: Ninguna.
+     * Salida: Ubicacion de la carpeta.
+     * Restricciones: Usa la ubicacion de los archivos .class.
      */
     public static java.io.File carpeta() {
         try {
@@ -117,11 +135,10 @@ public class Generador {
     }
 
     /*
-     * Descripcion:
-     * Guardo el código intermedio en un archivo .tac.
-     *
-     * Entrada: el archivo fuente analizado (de él sale el nombre).
-     * Salida : el archivo creado, por ejemplo codigo_intermedio/prueba.tac
+     * Descripcion: Guarda el codigo en un archivo .tac.
+     * Entrada: Archivo fuente analizado.
+     * Salida: Archivo .tac creado.
+     * Restricciones: Usa el nombre del archivo fuente.
      */
     public java.io.File guardar(java.io.File fuente) throws java.io.IOException {
 
@@ -147,15 +164,10 @@ public class Generador {
     }
 
     /*
-     * Descripcion:
-     * Genero la instrucción de una operación binaria: t = a op b.
-     *
-     * Entrada:
-     * El resultado que ya validó el parser (con su tipo), los dos operandos y el operador.
-     *
-     * Salida:
-     * El mismo resultado, con el temporal nuevo como lugar. Si el tipo es "error" no
-     * genera nada y lo devuelve igual.
+     * Descripcion: Genera una operacion con dos valores.
+     * Entrada: Resultado validado, dos operandos y operador.
+     * Salida: Resultado con un temporal nuevo.
+     * Restricciones: Si hay un error, no genera codigo.
      */
     public Atrib binaria(Atrib validado, Atrib a, String op, Atrib b) {
 
@@ -172,7 +184,12 @@ public class Generador {
         return validado;
     }
 
-    /* Operación de un solo operando: t = not e */
+    /*
+     * Descripcion: Genera una operacion con un solo valor.
+     * Entrada: Resultado validado, operador y operando.
+     * Salida: Resultado con un temporal nuevo.
+     * Restricciones: Si hay un error, no genera codigo.
+     */
     public Atrib unaria(Atrib validado, String op, Atrib e) {
 
         if (validado.tipo.equals("error")) {
@@ -188,25 +205,32 @@ public class Generador {
         return validado;
     }
 
-    /* Lee una posición de un arreglo en un temporal: t = a[i].
-    Así las operaciones solo reciben direcciones simples (t = t1 + 1, no t = a[i] + 1). */
+    /*
+     * Descripcion: Guarda el valor de una posicion del arreglo.
+     * Entrada: Tipo de dato y posicion del arreglo.
+     * Salida: Nombre del temporal.
+     * Restricciones: Guarda el valor antes de usarlo.
+     */
     public String cargarElemento(String tipo, String elemento) {
         String temporal = nuevoTemporal(tipo);
         emitir(temporal + " = " + elemento);
         return temporal;
     }
 
-
     private String ultimaCarga = null;
     private String valorUltimaCarga = null;
     private int inicioUltimaCarga = -1;
     private int finUltimaCarga = -1;
 
-    /* Dónde empieza el valor de la última asignación (justo después del =) */
+    /* Guarda la posicion donde empieza el valor de una asignacion. */
     private int marcaAsignacion = 0;
 
-    /* Copia un literal o una variable a un temporal: t1 = 5, t2 = x.
-    Conserva el tipo y el valor constante. Si el dato tiene error, no escribe nada. */
+    /*
+     * Descripcion: Copia un valor a un temporal.
+     * Entrada: Dato que se desea copiar.
+     * Salida: Dato guardado en un temporal.
+     * Restricciones: Si hay un error, no genera codigo.
+     */
     public Atrib cargar(Atrib dato) {
         if (dato == null || dato.tipo.equals("error")) {
             return dato;
@@ -224,6 +248,12 @@ public class Generador {
         return cargado;
     }
 
+    /*
+     * Descripcion: Evita una copia que no es necesaria.
+     * Entrada: Dato que se desea revisar.
+     * Salida: Dato original o sin la copia.
+     * Restricciones: Solo elimina la ultima carga realizada.
+     */
     public Atrib sinCarga(Atrib dato) {
         boolean esLaUltima = dato != null && dato.lugar.equals(ultimaCarga)
                 && codigo.length() == finUltimaCarga;
@@ -241,39 +271,68 @@ public class Generador {
         return directo;
     }
 
-    /* Se llama al leer el = de una asignación: ahí empieza el código del valor */
+    /* Marca donde empieza el codigo del valor de una asignacion. */
     public void marcarAsignacion() {
         marcaAsignacion = codigo.length();
     }
 
-    /* Declaración sin valor: data#int x */
+    /*
+     * Descripcion: Genera una declaracion de variable.
+     * Entrada: Tipo de dato y nombre de la variable.
+     * Salida: Instruccion de declaracion.
+     * Restricciones: Se usa cuando la variable no tiene valor inicial.
+     */
     public void declarar(String tipo, String nombre) {
-        emitir("data#" + tipo + " " + nombre);
+        emitir("declaracion# " + tipo + " " + nombre);
     }
 
-    /* Declaración con valor: el data# debe ir ANTES del código del valor,
-    pero el parser lo pide al final de la regla. Se inserta en la marca del =. */
+    /*
+     * Descripcion: Coloca la declaracion antes del valor inicial.
+     * Entrada: Tipo de dato y nombre de la variable.
+     * Salida: Declaracion agregada al codigo.
+     * Restricciones: Usa la posicion marcada al leer el signo =.
+     */
     public void declararAntesDelValor(String tipo, String nombre) {
-        codigo.insert(marcaAsignacion, "DeclVal#" + tipo + " " + nombre + "\n");
+        codigo.insert(marcaAsignacion, "declaracionPrevia# " + tipo + " " + nombre + "\n");
         ultimaCarga = null;
     }
 
-    /* Parámetro de una función, al inicio de su cuerpo: param_int x */
+    /*
+     * Descripcion: Agrega un parametro de una funcion.
+     * Entrada: Tipo de dato y nombre del parametro.
+     * Salida: Instruccion del parametro.
+     * Restricciones: Se coloca al inicio del cuerpo de la funcion.
+     */
     public void parametro(String tipo, String nombre) {
         emitir("param_" + tipo + " " + nombre);
     }
 
-    /* Instrucción de lectura: read destino */
+    /*
+     * Descripcion: Genera una instruccion para leer un dato.
+     * Entrada: Variable donde se guarda el dato.
+     * Salida: Instruccion read.
+     * Restricciones: Necesita un destino.
+     */
     public void leer(String destino) {
         emitir("read " + destino);
     }
 
-    /* Instrucción de escritura: write valor */
+    /*
+     * Descripcion: Genera una instruccion para mostrar un dato.
+     * Entrada: Valor que se desea mostrar.
+     * Salida: Instruccion write.
+     * Restricciones: Recibe el lugar donde esta el valor.
+     */
     public void escribir(String valor) {
         emitir("write " + valor);
     }
 
-    /* x++ y x--: int1 = x, int2 = int1 + 1, x = int2 */
+    /*
+     * Descripcion: Genera un aumento o disminucion de uno.
+     * Entrada: Tipo de dato, variable y operador.
+     * Salida: Instrucciones para actualizar la variable.
+     * Restricciones: Solo trabaja con ++ y --.
+     */
     public void incremento(String tipo, String id, String op) {
         String valor = nuevoTemporal(tipo);
         emitir(valor + " = " + id);
@@ -288,9 +347,12 @@ public class Generador {
 
     private boolean hayFuncion = false;
 
-    /* Etiqueta de inicio de la función: int_funExc:
-    Antes de la primera función (si no es principal) se escribe un salto a principal:
-    así las variables globales se inicializan primero y la ejecución empieza en main. */
+    /*
+     * Descripcion: Genera la etiqueta de inicio de una funcion.
+     * Entrada: Tipo de retorno y nombre de la funcion.
+     * Salida: Etiqueta de inicio.
+     * Restricciones: Antes de la primera funcion, salta a principal.
+     */
     public void etiquetaFuncion(String tipo, String nombre) {
         if (!hayFuncion && !nombre.equals("principal")) {
             emitir("goto " + TIPO_PRINCIPAL + "_principal");
@@ -306,15 +368,24 @@ public class Generador {
         emitir(tipo + "_" + nombre + ":");
     }
 
-    /* Fin de la función: int_funExc_final */
+    /*
+     * Descripcion: Marca el final de una funcion.
+     * Entrada: Ninguna.
+     * Salida: Etiqueta final de la funcion.
+     * Restricciones: Regresa al estado global.
+     */
     public void finFuncion() {
         emitir(tipoFuncionActual + "_" + funcionActual + PARTE_FINAL);
         funcionActual = "global";
         tipoFuncionActual = "";
     }
 
-    /* Llamada: un param por cada argumento y luego el call. Devuelve el temporal donde queda
-    el resultado (con el tipo que devuelve la función), o null si no devuelve valor. */
+    /*
+     * Descripcion: Genera la llamada a una funcion.
+     * Entrada: Nombre, tipo, argumentos y si devuelve un valor.
+     * Salida: Temporal con el resultado o null.
+     * Restricciones: Genera un parametro por cada argumento.
+     */
     public String llamar(String nombre, String tipo, java.util.ArrayList args, boolean devuelve) {
         for (Object o : args) {
             emitir("param " + ((Atrib) o).lugar);
@@ -330,33 +401,50 @@ public class Generador {
         return temporal;
     }
 
-    /* return con valor (lugar) o sin valor (null) */
+    /*
+     * Descripcion: Genera una instruccion de retorno.
+     * Entrada: Lugar del valor o null.
+     * Salida: Instruccion return.
+     * Restricciones: Puede regresar un valor o ninguno.
+     */
     public void retorno(String lugar) {
         emitir(lugar == null ? "return" : "return " + lugar);
     }
 
-    /* ---------- if / elif / else ----------
-       funExc_if_3_bloque1, funExc_if_3_sig1, ..., funExc_if_3_final */
+    /* ---------- if / elif / else ---------- */
+
+    /* Guarda los datos necesarios de cada condicional. */
     private static class Condicional {
-        String base;      /* prefijo: funExc_if_3 */
-        int rama = 0;     /* número de la rama con condición (if = 1, primer elif = 2...) */
-        String siguiente; /* etiqueta pendiente a la que se salta si la condición es falsa */
+        String base;
+        int rama = 0;
+        String siguiente;
     }
 
     private final java.util.ArrayList<Condicional> condicionales = new java.util.ArrayList<>();
 
+    /* Obtiene el condicional que se esta trabajando. */
     private Condicional ifActual() {
         return condicionales.isEmpty() ? null : condicionales.get(condicionales.size() - 1);
     }
 
-    /* Empieza un if: se apila su "ficha" */
+    /*
+     * Descripcion: Inicia un condicional if.
+     * Entrada: Ninguna.
+     * Salida: Agrega un nuevo condicional.
+     * Restricciones: Guarda el condicional para trabajar con el mas interno.
+     */
     public void iniciarIf() {
         Condicional c = new Condicional();
         c.base = prefijo("if");
         condicionales.add(c);
     }
 
-    /* Ya se escribió el código de la condición (del if o de un elif) */
+    /*
+     * Descripcion: Genera los saltos de una condicion.
+     * Entrada: Lugar donde se encuentra el resultado.
+     * Salida: Saltos hacia el bloque correspondiente.
+     * Restricciones: Se usa para if y elif.
+     */
     public void condicionIf(String lugar) {
         Condicional c = ifActual();
 
@@ -373,7 +461,12 @@ public class Generador {
         etiqueta(bloque);
     }
 
-    /* Empieza un elif o un else: la rama anterior salta al final y aquí cae la condición falsa */
+    /*
+     * Descripcion: Inicia otra rama del condicional.
+     * Entrada: Ninguna.
+     * Salida: Salto hacia el final y etiqueta de la siguiente rama.
+     * Restricciones: Se usa para elif y else.
+     */
     public void otraRama() {
         Condicional c = ifActual();
 
@@ -389,7 +482,12 @@ public class Generador {
         }
     }
 
-    /* Termina todo el if: se escriben las etiquetas pendientes */
+    /*
+     * Descripcion: Finaliza un condicional.
+     * Entrada: Ninguna.
+     * Salida: Etiquetas pendientes.
+     * Restricciones: Trabaja con el condicional mas interno.
+     */
     public void finIf() {
         if (condicionales.isEmpty()) {
             return;
@@ -404,17 +502,23 @@ public class Generador {
         etiqueta(c.base + PARTE_FINAL);
     }
 
-    /* ---------- while y for ----------
-       for:   funExc_for_2_inicializacion / _condicion / _inc / _bloque / _final
-       while: funExc_while_4_condicion / _bloque / _final */
+    /* ---------- while y for ---------- */
+
+    /* Guarda los datos necesarios de cada ciclo. */
     private static class Ciclo {
-        String base;    /* prefijo: funExc_for_2 */
+        String base;
         boolean esFor;
-        int marca = -1; /* for: dónde empieza en el código el incremento */
+        int marca = -1;
     }
 
     private final java.util.ArrayList<Ciclo> ciclos = new java.util.ArrayList<>();
 
+    /*
+     * Descripcion: Crea y guarda un nuevo ciclo.
+     * Entrada: Tipo de ciclo.
+     * Salida: Datos del ciclo creado.
+     * Restricciones: Indica si es un for o un while.
+     */
     private Ciclo nuevoCiclo(String estructura) {
         Ciclo c = new Ciclo();
         c.base = prefijo(estructura);
@@ -423,16 +527,27 @@ public class Generador {
         return c;
     }
 
+    /* Obtiene el ciclo que se esta trabajando. */
     private Ciclo cicloActual() {
         return ciclos.isEmpty() ? null : ciclos.get(ciclos.size() - 1);
     }
 
-    /* while: la etiqueta _condicion va ANTES del código de la condición */
+    /*
+     * Descripcion: Inicia un ciclo while.
+     * Entrada: Ninguna.
+     * Salida: Etiqueta de la condicion.
+     * Restricciones: La etiqueta va antes de evaluar la condicion.
+     */
     public void iniciarWhile() {
         etiqueta(nuevoCiclo("while").base + PARTE_CONDICION);
     }
 
-    /* while: ya está el código de la condición */
+    /*
+     * Descripcion: Genera los saltos de la condicion del ciclo.
+     * Entrada: Lugar donde esta el resultado.
+     * Salida: Saltos hacia el bloque o el final.
+     * Restricciones: Se usa cuando la condicion ya fue generada.
+     */
     public void saltoSiFalsoCiclo(String lugar) {
         Ciclo c = cicloActual();
 
@@ -445,12 +560,22 @@ public class Generador {
         etiqueta(c.base + PARTE_BLOQUE);
     }
 
-    /* for: se apila el ciclo y se escribe _inicializacion (antes de la inicialización) */
+    /*
+     * Descripcion: Inicia un ciclo for.
+     * Entrada: Ninguna.
+     * Salida: Etiqueta de inicializacion.
+     * Restricciones: Se genera antes de la inicializacion.
+     */
     public void iniciarFor() {
         etiqueta(nuevoCiclo("for").base + PARTE_INICIALIZACION);
     }
 
-    /* for: terminó la inicialización, aquí empieza la condición */
+    /*
+     * Descripcion: Marca el inicio de la condicion del for.
+     * Entrada: Ninguna.
+     * Salida: Etiqueta de condicion.
+     * Restricciones: Se usa despues de la inicializacion.
+     */
     public void inicioCondicionFor() {
         Ciclo c = cicloActual();
 
@@ -459,7 +584,12 @@ public class Generador {
         }
     }
 
-    /* for: terminó la condición, desde aquí se escribe el incremento */
+    /*
+     * Descripcion: Marca donde empieza el incremento del for.
+     * Entrada: Ninguna.
+     * Salida: Guarda la posicion actual del codigo.
+     * Restricciones: Se usa para mover el incremento despues.
+     */
     public void marcaIncremento() {
         Ciclo c = cicloActual();
 
@@ -468,9 +598,12 @@ public class Generador {
         }
     }
 
-    /* for: terminó la cabecera. Los saltos de la condición deben ir ANTES del incremento,
-    pero el lugar de la condición llega hasta ahora: se corta el incremento, se escriben
-    los saltos y se vuelve a poner el incremento debajo de su etiqueta _inc. */
+    /*
+     * Descripcion: Organiza las instrucciones de la cabecera del for.
+     * Entrada: Lugar donde esta el resultado de la condicion.
+     * Salida: Saltos y bloque del ciclo.
+     * Restricciones: Coloca el incremento despues de la condicion.
+     */
     public void cabeceraFor(String lugarCondicion) {
         Ciclo c = cicloActual();
 
@@ -499,7 +632,12 @@ public class Generador {
         etiqueta(c.base + PARTE_BLOQUE);
     }
 
-    /* Termina un while o un for: el for vuelve a _inc, el while a _condicion */
+    /*
+     * Descripcion: Finaliza un ciclo.
+     * Entrada: Ninguna.
+     * Salida: Salto para repetir el ciclo y etiqueta final.
+     * Restricciones: El for vuelve al incremento y el while a la condicion.
+     */
     public void finCiclo() {
         if (ciclos.isEmpty()) {
             return;
@@ -511,7 +649,12 @@ public class Generador {
         etiqueta(c.base + PARTE_FINAL);
     }
 
-    /* break: salta a la salida del ciclo más interno */
+    /*
+     * Descripcion: Genera la salida inmediata de un ciclo.
+     * Entrada: Ninguna.
+     * Salida: Salto hacia el final del ciclo.
+     * Restricciones: Sale del ciclo mas interno.
+     */
     public void saltoBreak() {
         Ciclo c = cicloActual();
 
@@ -519,4 +662,4 @@ public class Generador {
             emitir("goto " + c.base + PARTE_FINAL);
         }
     }
-}
+}

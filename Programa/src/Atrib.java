@@ -1,30 +1,32 @@
 /*
+ * Descripcion:
+ * Guarda la informacion de una expresion.
  *
- * Descripción:
- * Guarda la información de cada expresión que se analiza.
- * Incluye su tipo de dato, dónde se encuentra su valor y,
- * si es un número entero, también guarda ese valor.
+ * Entrada: Tipo de dato y lugar del valor.
  *
- * Entrada: el tipo de dato y el lugar donde está el valor.
- *
- * Salida: un objeto que se utiliza en las reglas del parser.
+ * Salida: Un objeto con los datos de la expresion.
  *
  * Restricciones:
- * Si el tipo es "error", significa que ya se encontró un
- * error en esa expresión. Así se evitan mensajes repetidos.
- *
+ * Si el tipo es "error", indica que la expresion tiene un error.
+ * Esto evita mostrar errores repetidos.
  */
-
 public class Atrib {
-    public String tipo;   // Tipo de dato
-    public String lugar;  // Lugar donde está el valor
-    public Integer valor; // Guarda el valor si es un número entero; si no se conoce, queda en null.
-    public String codigo; 
 
+    public String tipo;   // Tipo de dato
+    public String lugar;  // Lugar del valor
+    public Integer valor; // Valor entero, si existe
+    public String codigo;
+
+    /*
+     * Descripcion: Crea una expresion.
+     * Entrada: Tipo de dato y lugar del valor.
+     * Salida: Un objeto con esos datos.
+     * Restricciones: El valor inicia en null y el codigo vacio.
+     */
     public Atrib(String tipo, String lugar) {
         this.tipo = tipo;
         this.lugar = lugar;
         this.codigo = "";
         this.valor = null;
     }
-}
+}

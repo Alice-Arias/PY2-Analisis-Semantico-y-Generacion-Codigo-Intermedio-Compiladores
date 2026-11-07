@@ -1471,7 +1471,7 @@ public class Main {
 
     /* Declaracion sin valor (data#), con valor (DeclVal#) o parametro (param_) */
     private static boolean esDeclaracion(String linea) {
-        return linea.startsWith("data#") || linea.startsWith("DeclVal#") || linea.startsWith("param_");
+        return linea.startsWith("declaracion#") || linea.startsWith("declaracionPrevia#") || linea.startsWith("param_");
     }
 
     /* Instrucciones reales: sin contar lineas vacias, etiquetas ni fines de funcion */
@@ -2115,4 +2115,4 @@ public class Main {
             return lista;
         }
     }
-}
+}

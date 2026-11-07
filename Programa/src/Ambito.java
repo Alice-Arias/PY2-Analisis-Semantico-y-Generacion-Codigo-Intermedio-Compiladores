@@ -4,30 +4,31 @@ import java.util.List;
 import java.util.Map;
 
 /*
- * ============================================================
- *                          AMBITO
- * ============================================================
- * Descripcion: una tabla por ámbito, encadenada al ámbito que la contiene
- * (clase Env de la lectura). También guarda sus ámbitos hijos y el marco
- * donde se reservan las direcciones.
+ * AMBITO
+ * Descripcion: Guarda las variables y funciones de cada bloque.
+ * Tambien permite buscar nombres en los bloques anteriores.
  */
 public class Ambito {
 
     private final Map<String, Simbolo> simbolosPorNombre = new LinkedHashMap<>();
-
-    public final Ambito padre;                  /* el ámbito que contiene a este (null en el global) */
+    public final Ambito padre;
     public final String nombre;
-    public final int nivel;                     /* 0 = global, 1 = función, 2 o más = bloques */
+    public final int nivel;
     public final List<Ambito> hijos = new ArrayList<>();
 
     /*
-     * Marco: el ámbito que reserva las direcciones. El global y cada función
-     * tienen el suyo; los bloques internos (if, while, for) usan el de su función.
+     * Guarda el bloque donde se reservan las direcciones.
      */
     public final Ambito marco;
-    public int siguienteDireccion = 0;          /* solo se usa en los ámbitos que son marco */
-    public Simbolo funcionDuena;                /* la función a la que pertenece este cuerpo */
+    public int siguienteDireccion = 0;
+    public Simbolo funcionDuena;
 
+    /*
+     * Descripcion: Crea un nuevo ambito.
+     * Entrada: Ambito padre, nombre y si tiene espacio propio.
+     * Salida: Un nuevo ambito.
+     * Restricciones: El ambito global no tiene padre.
+     */
     public Ambito(Ambito padre, String nombre, boolean tieneMarcoPropio) {
         this.padre = padre;
         this.nombre = nombre;
@@ -39,49 +40,90 @@ public class Ambito {
         }
     }
 
+    /*
+     * Descripcion: Comprueba si es el ambito global.
+     * Entrada: Ninguna.
+     * Salida: true si es global, false si no lo es.
+     * Restricciones: No tiene.
+     */
     public boolean esGlobal() {
         return padre == null;
     }
 
-    /* put de la lectura: agrega un símbolo a este ámbito */
+    /*
+     * Descripcion: Agrega un simbolo al ambito.
+     * Entrada: El simbolo que se desea guardar.
+     * Salida: Ninguna.
+     * Restricciones: Se guarda usando su nombre.
+     */
     public void agregar(Simbolo simbolo) {
         simbolosPorNombre.put(simbolo.nombre, simbolo);
     }
 
-    /* get de la lectura: busca desde este ámbito hacia los que lo contienen */
+    /*
+     * Descripcion: Busca un simbolo en este ambito y sus padres.
+     * Entrada: Nombre del simbolo.
+     * Salida: El simbolo encontrado o null.
+     * Restricciones: Busca desde el ambito actual hacia arriba.
+     */
     public Simbolo buscar(String nombre) {
 
         for (Ambito ambito = this; ambito != null; ambito = ambito.padre) {
-
             Simbolo encontrado = ambito.simbolosPorNombre.get(nombre);
 
             if (encontrado != null) {
                 return encontrado;
             }
         }
-
         return null;
     }
 
-    /* Solo en este ámbito, para detectar nombres repetidos */
+    /*
+     * Descripcion: Busca un simbolo solo en este ambito.
+     * Entrada: Nombre del simbolo.
+     * Salida: El simbolo encontrado o null.
+     * Restricciones: No busca en los ambitos padres.
+     */
     public Simbolo buscarSoloAqui(String nombre) {
         return simbolosPorNombre.get(nombre);
     }
 
+    /*
+     * Descripcion: Obtiene los simbolos guardados.
+     * Entrada: Ninguna.
+     * Salida: Lista de simbolos.
+     * Restricciones: Solo devuelve los de este ambito.
+     */
     public Iterable<Simbolo> simbolos() {
         return simbolosPorNombre.values();
     }
 
+    /*
+     * Descripcion: Cuenta los simbolos guardados.
+     * Entrada: Ninguna.
+     * Salida: Cantidad de simbolos.
+     * Restricciones: Solo cuenta los de este ambito.
+     */
     public int cantidad() {
         return simbolosPorNombre.size();
     }
 
-    /* Ruta desde el global: global › funcion f › if */
+    /*
+     * Descripcion: Obtiene la ruta del ambito.
+     * Entrada: Ninguna.
+     * Salida: Ruta desde el ambito global.
+     * Restricciones: Incluye los ambitos padres.
+     */
     public String ruta() {
         return esGlobal() ? nombre : padre.ruta() + " › " + nombre;
     }
 
-    /* "if, elif, else" o "—" si no tiene hijos */
+    /*
+     * Descripcion: Obtiene los nombres de los ambitos hijos.
+     * Entrada: Ninguna.
+     * Salida: Nombres separados por comas o — si no tiene hijos.
+     * Restricciones: Solo muestra los hijos directos.
+     */
     public String nombresHijos() {
 
         if (hijos.isEmpty()) {
@@ -93,7 +135,6 @@ public class Ambito {
         for (Ambito hijo : hijos) {
             nombres.add(hijo.nombre);
         }
-
         return String.join(", ", nombres);
     }
 }

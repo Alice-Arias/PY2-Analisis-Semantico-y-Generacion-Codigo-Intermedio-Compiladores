@@ -4,29 +4,41 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/*
- * ============================================================
- *                 REPORTE DE LA TABLA DE SÍMBOLOS
- * ============================================================
- * Descripcion: arma el texto del reporte .txt en cuatro partes: árbol de
- * ámbitos, símbolos por ámbito, funciones y errores.
+/**
+ * Descripcion: Genera un reporte de la tabla de símbolos.
+ * Entrada: Tabla de símbolos y nombre del archivo fuente.
+ * Salida: Reporte con ámbitos, símbolos, funciones y errores.
+ * Restricciones: No modifica la tabla de símbolos.
  */
 public class ReporteTablaSimbolos {
 
     private static final String LINEA_DOBLE = "═".repeat(140);
 
-    private static final Pattern PATRON_ERROR = Pattern.compile("Error \\S+ en línea (\\d+), columna (\\d+): (.*)");
+    private static final Pattern PATRON_ERROR = Pattern.compile(
+            "Error \\S+ en línea (\\d+), columna (\\d+): (.*)");
 
-    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final DateTimeFormatter FORMATO_FECHA =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     private final TablaSimbolos tabla;
     private final StringBuilder texto = new StringBuilder();
 
+    /**
+     * Descripcion: Guarda la tabla de símbolos.
+     * Entrada: Tabla de símbolos.
+     * Salida: Objeto inicializado.
+     * Restricciones: La tabla no puede ser null.
+     */
     ReporteTablaSimbolos(TablaSimbolos tabla) {
         this.tabla = tabla;
     }
 
-    /* El reporte completo */
+    /**
+     * Descripcion: Genera todas las partes del reporte.
+     * Entrada: Nombre del archivo fuente.
+     * Salida: Texto completo del reporte.
+     * Restricciones: Utiliza los datos de la tabla recibida.
+     */
     String generar(String nombreFuente) {
 
         agregarEncabezado(nombreFuente);
@@ -41,6 +53,12 @@ public class ReporteTablaSimbolos {
         return texto.toString();
     }
 
+    /**
+     * Descripcion: Agrega los datos generales del reporte.
+     * Entrada: Nombre del archivo fuente.
+     * Salida: Encabezado con fecha y cantidades.
+     * Restricciones: Utiliza la fecha y los datos actuales.
+     */
     private void agregarEncabezado(String nombreFuente) {
 
         texto.append(LINEA_DOBLE).append("\n");
@@ -54,6 +72,12 @@ public class ReporteTablaSimbolos {
         texto.append("  Errores        : ").append(tabla.getErrores().size()).append("\n\n");
     }
 
+    /**
+     * Descripcion: Muestra las convenciones del reporte.
+     * Entrada: Ninguna.
+     * Salida: Información sobre tamaños, direcciones y accesos.
+     * Restricciones: Utiliza los tamaños definidos por el lenguaje.
+     */
     private void agregarConvenciones() {
 
         texto.append("  CONVENCIONES\n");
@@ -64,22 +88,42 @@ public class ReporteTablaSimbolos {
         texto.append("  Parámetros : el lenguaje solo tiene paso por valor\n\n");
     }
 
-    /* ---------- 1. Árbol de ámbitos ---------- */
+    // ---------- 1. Árbol de ámbitos ----------
 
+    /**
+     * Descripcion: Agrega el árbol de ámbitos al reporte.
+     * Entrada: Ámbito global.
+     * Salida: Árbol con todos los ámbitos.
+     * Restricciones: Comienza desde el ámbito global.
+     */
     private void agregarArbol() {
         agregarTitulo("1. ÁRBOL DE ÁMBITOS (tablas encadenadas)");
         texto.append(dibujarArbol(tabla.ambitoGlobal())).append("\n");
     }
 
-    /* Árbol completo desde el ámbito global, con ├── y └── */
+    /**
+     * Descripcion: Crea el árbol de ámbitos.
+     * Entrada: Ámbito global.
+     * Salida: Árbol en forma de texto.
+     * Restricciones: Incluye los ámbitos hijos.
+     */
     static String dibujarArbol(Ambito global) {
         StringBuilder arbol = new StringBuilder();
         dibujarRama(arbol, global, "", true);
         return arbol.toString();
     }
 
-    /* Un ámbito y, debajo, sus hijos con más sangría */
-    private static void dibujarRama(StringBuilder arbol, Ambito ambito, String sangria, boolean esUltimoHijo) {
+    /**
+     * Descripcion: Dibuja un ámbito y sus hijos.
+     * Entrada: Árbol, ámbito, sangría y posición del hijo.
+     * Salida: Rama del árbol en forma de texto.
+     * Restricciones: Mantiene el orden de los ámbitos.
+     */
+    private static void dibujarRama(
+            StringBuilder arbol,
+            Ambito ambito,
+            String sangria,
+            boolean esUltimoHijo) {
 
         arbol.append("  ");
 
@@ -87,21 +131,41 @@ public class ReporteTablaSimbolos {
             arbol.append(sangria).append(esUltimoHijo ? "└── " : "├── ");
         }
 
-        arbol.append(ambito.nombre).append("  (").append(textoCantidadSimbolos(ambito)).append(")\n");
+        arbol.append(ambito.nombre)
+             .append("  (").append(textoCantidadSimbolos(ambito)).append(")\n");
 
-        String sangriaHijos = ambito.esGlobal() ? "" : sangria + (esUltimoHijo ? "    " : "│   ");
+        String sangriaHijos = ambito.esGlobal()
+                ? ""
+                : sangria + (esUltimoHijo ? "    " : "│   ");
 
-        for (int i = 0; i < ambito.hijos.size(); i++) {
-            dibujarRama(arbol, ambito.hijos.get(i), sangriaHijos, i == ambito.hijos.size() - 1);
+        for (int indice = 0; indice < ambito.hijos.size(); indice++) {
+            dibujarRama(
+                    arbol,
+                    ambito.hijos.get(indice),
+                    sangriaHijos,
+                    indice == ambito.hijos.size() - 1);
         }
     }
 
+    /**
+     * Descripcion: Obtiene la cantidad de símbolos de un ámbito.
+     * Entrada: Ámbito que se desea consultar.
+     * Salida: Cantidad de símbolos en texto.
+     * Restricciones: Usa el singular o plural según la cantidad.
+     */
     private static String textoCantidadSimbolos(Ambito ambito) {
-        return ambito.cantidad() + (ambito.cantidad() == 1 ? " símbolo" : " símbolos");
+        return ambito.cantidad()
+                + (ambito.cantidad() == 1 ? " símbolo" : " símbolos");
     }
 
-    /* ---------- 2. Símbolos por ámbito ---------- */
+    // ---------- 2. Símbolos por ámbito ----------
 
+    /**
+     * Descripcion: Agrega los símbolos de cada ámbito.
+     * Entrada: Lista de ámbitos.
+     * Salida: Tablas con los símbolos encontrados.
+     * Restricciones: Muestra cuando un ámbito no tiene símbolos.
+     */
     private void agregarSimbolosPorAmbito() {
 
         agregarTitulo("2. SÍMBOLOS POR ÁMBITO");
@@ -117,6 +181,12 @@ public class ReporteTablaSimbolos {
         }
     }
 
+    /**
+     * Descripcion: Agrega la información de un ámbito.
+     * Entrada: Ámbito que se desea mostrar.
+     * Salida: Nombre, nivel, padre y ámbitos hijos.
+     * Restricciones: El ámbito global no tiene padre.
+     */
     private void agregarDatosDelAmbito(Ambito ambito) {
 
         texto.append("  ÁMBITO: ").append(ambito.ruta()).append("\n");
@@ -126,6 +196,12 @@ public class ReporteTablaSimbolos {
              .append(" · tablas hijas: ").append(ambito.nombresHijos()).append("\n");
     }
 
+    /**
+     * Descripcion: Crea la tabla de símbolos de un ámbito.
+     * Entrada: Ámbito que contiene los símbolos.
+     * Salida: Tabla con los datos de cada símbolo.
+     * Restricciones: Muestra los símbolos en el orden registrado.
+     */
     private static CuadroTexto cuadroDeSimbolos(Ambito ambito) {
 
         CuadroTexto cuadro = new CuadroTexto(
@@ -152,7 +228,12 @@ public class ReporteTablaSimbolos {
         return cuadro;
     }
 
-    /* Las funciones no ocupan datos; "?" si el tamaño no se conoce */
+    /**
+     * Descripcion: Obtiene el tamaño de un símbolo.
+     * Entrada: Símbolo que se desea consultar.
+     * Salida: Cantidad de bytes en texto.
+     * Restricciones: Las funciones no tienen tamaño asignado.
+     */
     private static String textoBytes(Simbolo simbolo) {
 
         if (simbolo.esFuncion()) {
@@ -162,12 +243,25 @@ public class ReporteTablaSimbolos {
         return simbolo.bytes > 0 ? String.valueOf(simbolo.bytes) : "?";
     }
 
+    /**
+     * Descripcion: Obtiene el valor inicial de un símbolo.
+     * Entrada: Símbolo que se desea consultar.
+     * Salida: Valor inicial o un guion.
+     * Restricciones: Las funciones y los valores null muestran un guion.
+     */
     private static String textoValorInicial(Simbolo simbolo) {
-        return simbolo.esFuncion() || simbolo.valorInicial == null ? "—" : simbolo.valorInicial;
+        return simbolo.esFuncion() || simbolo.valorInicial == null
+                ? "—" : simbolo.valorInicial;
     }
 
-    /* ---------- 3. Funciones y procedimientos ---------- */
+    // ---------- 3. Funciones y procedimientos ----------
 
+    /**
+     * Descripcion: Agrega las funciones y procedimientos al reporte.
+     * Entrada: Símbolos del ámbito global.
+     * Salida: Tabla con los datos de las funciones.
+     * Restricciones: Solo muestra los símbolos que son funciones.
+     */
     private void agregarFunciones() {
 
         agregarTitulo("3. FUNCIONES Y PROCEDIMIENTOS (estructura de parámetros)");
@@ -186,9 +280,16 @@ public class ReporteTablaSimbolos {
             }
         }
 
-        texto.append(hayFunciones ? cuadro.dibujar("  ") : "  (no hay funciones)\n").append("\n");
+        texto.append(hayFunciones ? cuadro.dibujar("  ") : "  (no hay funciones)\n")
+             .append("\n");
     }
 
+    /**
+     * Descripcion: Agrega una función a la tabla.
+     * Entrada: Tabla y símbolo de la función.
+     * Salida: Fila con los datos de la función.
+     * Restricciones: Muestra cuando la función no tiene parámetros.
+     */
     private static void agregarFilaDeFuncion(CuadroTexto cuadro, Simbolo funcion) {
 
         boolean sinParametros = funcion.parametros.isEmpty();
@@ -205,8 +306,14 @@ public class ReporteTablaSimbolos {
                 funcion.linea + ":" + funcion.columna);
     }
 
-    /* ---------- 4. Errores ---------- */
+    // ---------- 4. Errores ----------
 
+    /**
+     * Descripcion: Agrega los errores encontrados al reporte.
+     * Entrada: Lista de errores semánticos.
+     * Salida: Tabla con los errores encontrados.
+     * Restricciones: Muestra un mensaje cuando no hay errores.
+     */
     private void agregarErrores() {
 
         agregarTitulo("4. ERRORES SEMÁNTICOS DETECTADOS CON LA TABLA");
@@ -231,19 +338,34 @@ public class ReporteTablaSimbolos {
         texto.append(cuadro.dibujar("  "));
     }
 
-    /* Separa "Error ... en línea L, columna C: detalle" en sus partes */
+    /**
+     * Descripcion: Separa los datos de un error.
+     * Entrada: Tabla, número y texto del error.
+     * Salida: Fila con número, línea, columna y descripción.
+     * Restricciones: Si el error no coincide con el formato, muestra el texto completo.
+     */
     private static void agregarFilaDeError(CuadroTexto cuadro, int numero, String error) {
 
         Matcher partes = PATRON_ERROR.matcher(error);
 
         if (partes.matches()) {
-            cuadro.agregarFila(String.valueOf(numero), partes.group(1), partes.group(2), partes.group(3));
+            cuadro.agregarFila(
+                    String.valueOf(numero),
+                    partes.group(1),
+                    partes.group(2),
+                    partes.group(3));
         } else {
-            cuadro.agregarFila(String.valueOf(numero), "-", "-", error);
+            cuadro.agregarFila(
+                    String.valueOf(numero), "-", "-", error);
         }
     }
 
-    /* "  TITULO" y debajo una linea del mismo largo */
+    /**
+     * Descripcion: Agrega un título al reporte.
+     * Entrada: Texto del título.
+     * Salida: Título con una línea debajo.
+     * Restricciones: La línea tiene el mismo largo que el título.
+     */
     private void agregarTitulo(String titulo) {
         texto.append("  ").append(titulo).append("\n");
         texto.append("  ").append("─".repeat(titulo.length())).append("\n\n");
