@@ -1,0 +1,45 @@
+  Árbol de ámbitos
+
+  global  (7 símbolos)
+  ├── funcion doble  (1 símbolo)
+  ├── procedimiento principal  (6 símbolos)
+  │   └── if  (0 símbolos)
+  ├── funcion triple  (1 símbolo)
+  ├── funcion mal  (1 símbolo)
+  ├── funcion cuadrado  (1 símbolo)
+  ├── funcion sinCierre  (0 símbolos)
+  ├── funcion despues  (0 símbolos)
+  ├── bloque  (0 símbolos)
+  └── procedimiento principal  (0 símbolos)
+
+  Categorías: variable  arreglo  parámetro  función  procedimiento
+  Dirección:   global+n = zona estática                 ----   pila+n = registro de activación
+  Acceso:      público = declarado en el ámbito global ------- privado = dentro de una función o bloque
+
+  ┌─────┬────────────────────┬───────────────┬─────────┬──────────────────────────┬───────┬────────────┬─────────────┬────────────────────────┬──────────┬───────┬─────┐
+  │ Nº  │ NOMBRE             │ CATEGORÍA     │ TIPO    │ ÁMBITO                   │ BYTES │ DIMENSIÓN  │ DIRECCIÓN   │ VALOR INICIAL          │ ACCESO   │ LÍNEA │ COL │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 1   │ doble              │ función       │ int     │ global                   │ —     │ —          │ código      │ —                      │ público  │ 6     │ 5   │
+  │ 2   │ principal          │ procedimiento │ void    │ global                   │ —     │ —          │ código      │ —                      │ público  │ 10    │ 6   │
+  │ 3   │ triple             │ función       │ int     │ global                   │ —     │ —          │ código      │ —                      │ público  │ 23    │ 5   │
+  │ 4   │ mal                │ función       │ int     │ global                   │ —     │ —          │ código      │ —                      │ público  │ 27    │ 5   │
+  │ 5   │ cuadrado           │ función       │ int     │ global                   │ —     │ —          │ código      │ —                      │ público  │ 31    │ 5   │
+  │ 6   │ sinCierre          │ función       │ int     │ global                   │ —     │ —          │ código      │ —                      │ público  │ 35    │ 5   │
+  │ 7   │ despues            │ función       │ int     │ global                   │ —     │ —          │ código      │ —                      │ público  │ 38    │ 5   │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 8   │ n                  │ parámetro     │ int     │ función doble            │ 4     │ —          │ pila+0      │ —                      │ privado  │ 6     │ 18  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 9   │ a                  │ variable      │ int     │ procedimiento principal  │ 4     │ —          │ pila+0      │ 5                      │ privado  │ 11    │ 13  │
+  │ 10  │ b                  │ variable      │ int     │ procedimiento principal  │ 4     │ —          │ pila+4      │ doble є: a :э          │ privado  │ 12    │ 13  │
+  │ 11  │ c                  │ variable      │ int     │ procedimiento principal  │ 4     │ —          │ pila+8      │ 1                      │ privado  │ 15    │ 13  │
+  │ 12  │ e                  │ variable      │ int     │ procedimiento principal  │ 4     │ —          │ pila+12     │ 2.5                    │ privado  │ 16    │ 13  │
+  │ 13  │ x                  │ variable      │ error   │ procedimiento principal  │ ?     │ —          │ pila+16     │ —                      │ privado  │ 18    │ 9   │
+  │ 14  │ v                  │ arreglo       │ error   │ procedimiento principal  │ ?     │ [0..?]     │ pila+16     │ —                      │ privado  │ 19    │ 14  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 15  │ n                  │ parámetro     │ int     │ función triple           │ 4     │ —          │ pila+0      │ —                      │ privado  │ 23    │ 19  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 16  │ x                  │ parámetro     │ error   │ función mal              │ ?     │ —          │ pila+0      │ —                      │ privado  │ 27    │ 12  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 17  │ n                  │ parámetro     │ int     │ función cuadrado         │ 4     │ —          │ pila+0      │ —                      │ privado  │ 31    │ 21  │
+  └─────┴────────────────────┴───────────────┴─────────┴──────────────────────────┴───────┴────────────┴─────────────┴────────────────────────┴──────────┴───────┴─────┘
+

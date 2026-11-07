@@ -97,7 +97,7 @@ public class ReporteTablaSimbolos {
      * Restricciones: Comienza desde el ámbito global.
      */
     private void agregarArbol() {
-        agregarTitulo("1. ÁRBOL DE ÁMBITOS (tablas encadenadas)");
+        agregarTitulo("1. ÁRBOL DE ÁMBITOS ");
         texto.append(dibujarArbol(tabla.ambitoGlobal())).append("\n");
     }
 
@@ -132,7 +132,7 @@ public class ReporteTablaSimbolos {
         }
 
         arbol.append(ambito.nombre)
-             .append("  (").append(textoCantidadSimbolos(ambito)).append(")\n");
+            .append("  (").append(textoCantidadSimbolos(ambito)).append(")\n");
 
         String sangriaHijos = ambito.esGlobal()
                 ? ""
@@ -154,8 +154,7 @@ public class ReporteTablaSimbolos {
      * Restricciones: Usa el singular o plural según la cantidad.
      */
     private static String textoCantidadSimbolos(Ambito ambito) {
-        return ambito.cantidad()
-                + (ambito.cantidad() == 1 ? " símbolo" : " símbolos");
+        return ambito.cantidad() + (ambito.cantidad() == 1 ? " símbolo" : " símbolos");
     }
 
     // ---------- 2. Símbolos por ámbito ----------
@@ -191,9 +190,9 @@ public class ReporteTablaSimbolos {
 
         texto.append("  ÁMBITO: ").append(ambito.ruta()).append("\n");
         texto.append("  Nivel ").append(ambito.nivel)
-             .append(ambito.esGlobal() ? " (global)" : " (local)")
-             .append(" · padre: ").append(ambito.esGlobal() ? "—" : ambito.padre.nombre)
-             .append(" · tablas hijas: ").append(ambito.nombresHijos()).append("\n");
+            .append(ambito.esGlobal() ? " (global)" : " (local)")
+            .append(" · padre: ").append(ambito.esGlobal() ? "—" : ambito.padre.nombre)
+            .append(" · tablas hijas: ").append(ambito.nombresHijos()).append("\n");
     }
 
     /**
@@ -205,8 +204,7 @@ public class ReporteTablaSimbolos {
     private static CuadroTexto cuadroDeSimbolos(Ambito ambito) {
 
         CuadroTexto cuadro = new CuadroTexto(
-                new String[] {"Nº", "NOMBRE", "CATEGORÍA", "TIPO", "BYTES", "DIMENSIÓN",
-                              "DIRECCIÓN", "VALOR INICIAL", "ACCESO", "LÍN:COL"},
+                new String[] {"Nº", "NOMBRE", "CATEGORÍA", "TIPO", "BYTES", "DIMENSIÓN", "DIRECCIÓN", "VALOR INICIAL", "ACCESO", "LÍN:COL"},
                 new int[] {3, 16, 13, 7, 6, 12, 11, 30, 8, 8});
 
         int numero = 1;
@@ -267,8 +265,7 @@ public class ReporteTablaSimbolos {
         agregarTitulo("3. FUNCIONES Y PROCEDIMIENTOS (estructura de parámetros)");
 
         CuadroTexto cuadro = new CuadroTexto(
-                new String[] {"NOMBRE", "CATEGORÍA", "RETORNO", "Nº PARÁM.", "PARÁMETROS FORMALES",
-                              "PASO", "REG. ACTIV.", "TABLA HIJA", "LÍN:COL"},
+                new String[] {"NOMBRE", "CATEGORÍA", "RETORNO", "Nº PARÁM.", "PARÁMETROS FORMALES", "PASO", "REG. ACTIV.", "TABLA HIJA", "LÍN:COL"},
                 new int[] {14, 13, 8, 9, 30, 9, 11, 24, 8});
 
         boolean hayFunciones = false;
@@ -281,7 +278,7 @@ public class ReporteTablaSimbolos {
         }
 
         texto.append(hayFunciones ? cuadro.dibujar("  ") : "  (no hay funciones)\n")
-             .append("\n");
+            .append("\n");
     }
 
     /**

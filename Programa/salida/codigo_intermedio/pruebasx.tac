@@ -84,13 +84,13 @@ param_char c
 param_bool mayus
 bool38 = mayus
 if bool38 goto inicial$if$1$bloque1
-goto inicial$if$1$sig1
+goto inicial$if$1$siguiente1
 
 inicial$if$1$bloque1:
 char39 = 'A'
 return char39
 
-inicial$if$1$sig1:
+inicial$if$1$siguiente1:
 
 inicial$if$1$final:
 char40 = c
@@ -148,7 +148,7 @@ int62 = int60 // int61
 bool63 = int59 > int62
 bool64 = bool58 and bool63
 if bool64 goto principal$if$3$bloque1
-goto principal$if$3$sig1
+goto principal$if$3$siguiente1
 
 principal$if$3$bloque1:
 declaracion# int y
@@ -157,20 +157,20 @@ char65 = 'a'
 ch33 = char65
 goto principal$if$3$final
 
-principal$if$3$sig1:
+principal$if$3$siguiente1:
 bool66 = true
 bool67 = false
 bool68 = bool66 and bool67
 bool69 = true
 bool70 = bool68 or bool69
 if bool70 goto principal$if$3$bloque2
-goto principal$if$3$sig2
+goto principal$if$3$siguiente2
 
 principal$if$3$bloque2:
 declaracion# int y
 goto principal$if$3$final
 
-principal$if$3$sig2:
+principal$if$3$siguiente2:
 declaracion# int y
 declaracionPrevia# string str2
 string71 = "sdff"
@@ -193,7 +193,7 @@ x = int75
 principal$for$4$condicion:
 goto principal$for$4$bloque
 
-principal$for$4$inc:
+principal$for$4$incremento:
 int76 = x
 int77 = int76 + 1
 x = int77
@@ -206,7 +206,7 @@ int79 = x
 int80 = 10
 bool81 = int79 > int80
 if bool81 goto principal$if$5$bloque1
-goto principal$if$5$sig1
+goto principal$if$5$siguiente1
 
 principal$if$5$bloque1:
 int82 = edades[2]
@@ -215,10 +215,10 @@ int84 = int82 + int83
 edades[2] = int84
 goto principal$for$4$final
 
-principal$if$5$sig1:
+principal$if$5$siguiente1:
 
 principal$if$5$final:
-goto principal$for$4$inc
+goto principal$for$4$incremento
 
 principal$for$4$final:
 declaracionPrevia# int uno
@@ -287,37 +287,37 @@ int110 = contador
 int111 = 3
 bool112 = int110 == int111
 if bool112 goto principal$if$7$bloque1
-goto principal$if$7$sig1
+goto principal$if$7$siguiente1
 
 principal$if$7$bloque1:
 string113 = "tres"
 write string113
 goto principal$if$7$final
 
-principal$if$7$sig1:
+principal$if$7$siguiente1:
 int114 = contador
 int115 = 2
 bool116 = int114 == int115
 if bool116 goto principal$if$7$bloque2
-goto principal$if$7$sig2
+goto principal$if$7$siguiente2
 
 principal$if$7$bloque2:
 string117 = "dos"
 write string117
 goto principal$if$7$final
 
-principal$if$7$sig2:
+principal$if$7$siguiente2:
 int118 = contador
 int119 = 1
 bool120 = int118 <= int119
 if bool120 goto principal$if$7$bloque3
-goto principal$if$7$sig3
+goto principal$if$7$siguiente3
 
 principal$if$7$bloque3:
 string121 = "uno"
 write string121
 
-principal$if$7$sig3:
+principal$if$7$siguiente3:
 
 principal$if$7$final:
 int122 = contador
@@ -332,13 +332,13 @@ char126 = 'A'
 bool127 = char125 == char126
 bool128 = not bool127
 if bool128 goto principal$if$8$bloque1
-goto principal$if$8$sig1
+goto principal$if$8$siguiente1
 
 principal$if$8$bloque1:
 string129 = "no es A"
 write string129
 
-principal$if$8$sig1:
+principal$if$8$siguiente1:
 
 principal$if$8$final:
 
@@ -354,7 +354,7 @@ bool133 = int131 < int132
 if bool133 goto principal$for$9$bloque
 goto principal$for$9$final
 
-principal$for$9$inc:
+principal$for$9$incremento:
 int134 = i
 int135 = int134 + 1
 i = int135
@@ -374,7 +374,7 @@ int143 = 1
 int144 = int142 + int143
 int145 = arr[i]
 _arr_[int144] = int145
-goto principal$for$9$inc
+goto principal$for$9$incremento
 
 principal$for$9$final:
 declaracion# int j
@@ -390,7 +390,7 @@ bool149 = int147 >= int148
 if bool149 goto principal$for$10$bloque
 goto principal$for$10$final
 
-principal$for$10$inc:
+principal$for$10$incremento:
 int150 = j
 int151 = int150 - 1
 j = int151
@@ -403,7 +403,7 @@ bool154 = int152 < int153
 bool155 = activo
 bool156 = bool154 or bool155
 if bool156 goto principal$if$11$bloque1
-goto principal$if$11$sig1
+goto principal$if$11$siguiente1
 
 principal$if$11$bloque1:
 
@@ -425,10 +425,10 @@ goto principal$while$12$condicion
 principal$while$12$final:
 goto principal$for$10$final
 
-principal$if$11$sig1:
+principal$if$11$siguiente1:
 
 principal$if$11$final:
-goto principal$for$10$inc
+goto principal$for$10$incremento
 
 principal$for$10$final:
 return

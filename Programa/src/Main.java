@@ -1284,9 +1284,7 @@ public class Main {
 
         List<String> parrafos = new ArrayList<>();
 
-        parrafos.add("Se buscó el menor número de ediciones (insertar, reemplazar o eliminar un token) "
-                + "que deja el archivo con menos errores sintácticos. Cada edición se probó "
-                + "volviendo a analizar el archivo completo.");
+        parrafos.add("Cambios mínimos de un token que reducen los errores sintácticos.");
         parrafos.add("");
 
         int puntajeAnterior = puntajeInicial;
@@ -1296,7 +1294,7 @@ public class Main {
 
             parrafos.add(numero++ + ". " + describirEdicion(edicion)
                     + " (línea " + edicion.linea + ", columna " + edicion.columna + "): errores sintácticos "
-                    + textoPuntaje(puntajeAnterior) + " → " + textoPuntaje(edicion.puntaje));
+                    + textoPuntaje(puntajeAnterior) + " - " + textoPuntaje(edicion.puntaje));
 
             puntajeAnterior = edicion.puntaje;
         }

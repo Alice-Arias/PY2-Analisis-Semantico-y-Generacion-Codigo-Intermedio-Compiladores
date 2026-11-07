@@ -24,15 +24,10 @@
 public class Generador {
 
     private final StringBuilder codigo = new StringBuilder();
-
     private int contadorTemporales = 0;
-
     private int contadorEtiquetas = 0;
-
     private String funcionActual = "global";
-
     private String tipoFuncionActual = "";
-
     private static final String TIPO_PRINCIPAL = "void";
 
     /* Separa las partes de una etiqueta. */
@@ -41,9 +36,9 @@ public class Generador {
     /* Nombres de las partes de las etiquetas. */
     private static final String PARTE_INICIALIZACION = SEPARADOR + "inicializacion";
     private static final String PARTE_CONDICION = SEPARADOR + "condicion";
-    private static final String PARTE_INCREMENTO = SEPARADOR + "inc";
+    private static final String PARTE_INCREMENTO = SEPARADOR + "incremento";
     private static final String PARTE_BLOQUE = SEPARADOR + "bloque";
-    private static final String PARTE_SIGUIENTE = SEPARADOR + "sig";
+    private static final String PARTE_SIGUIENTE = SEPARADOR + "siguiente";
     private static final String PARTE_FINAL = SEPARADOR + "final";
 
     /*

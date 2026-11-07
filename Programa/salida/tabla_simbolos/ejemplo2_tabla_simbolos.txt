@@ -1,0 +1,43 @@
+  Árbol de ámbitos
+
+  global  (4 símbolos)
+  ├── funcion _mi_  (3 símbolos)
+  │   └── while  (0 símbolos)
+  │       ├── while  (0 símbolos)
+  │       ├── if  (0 símbolos)
+  │       ├── if  (1 símbolo)
+  │       │   ├── for  (1 símbolo)
+  │       │   │   └── cuerpo for  (0 símbolos)
+  │       │   └── for  (0 símbolos)
+  │       │       └── cuerpo for  (0 símbolos)
+  │       └── else  (0 símbolos)
+  ├── funcion _miOtraFun_  (0 símbolos)
+  └── procedimiento principal  (2 símbolos)
+
+  Categorías: variable  arreglo  parámetro  función  procedimiento
+  Dirección:   global+n = zona estática                 ----   pila+n = registro de activación
+  Acceso:      público = declarado en el ámbito global ------- privado = dentro de una función o bloque
+
+  ┌─────┬────────────────────┬───────────────┬─────────┬──────────────────────────┬───────┬────────────┬─────────────┬────────────────────────┬──────────┬───────┬─────┐
+  │ Nº  │ NOMBRE             │ CATEGORÍA     │ TIPO    │ ÁMBITO                   │ BYTES │ DIMENSIÓN  │ DIRECCIÓN   │ VALOR INICIAL          │ ACCESO   │ LÍNEA │ COL │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 1   │ gch                │ variable      │ char    │ global                   │ 1     │ —          │ global+0    │ '&'                    │ público  │ 2     │ 10  │
+  │ 2   │ _mi_               │ función       │ float   │ global                   │ —     │ —          │ código      │ —                      │ público  │ 4     │ 7   │
+  │ 3   │ _miOtraFun_        │ función       │ bool    │ global                   │ —     │ —          │ código      │ —                      │ público  │ 43    │ 7   │
+  │ 4   │ principal          │ procedimiento │ void    │ global                   │ —     │ —          │ código      │ —                      │ público  │ 46    │ 7   │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 5   │ _dif_              │ parámetro     │ int     │ función _mi_             │ 4     │ —          │ pila+0      │ —                      │ privado  │ 4     │ 20  │
+  │ 6   │ _otra_             │ parámetro     │ char    │ función _mi_             │ 1     │ —          │ pila+4      │ —                      │ privado  │ 4     │ 32  │
+  │ 7   │ _str_              │ variable      │ string  │ función _mi_             │ 4     │ —          │ pila+5      │ "Hola $~&|:?$& :э      │ privado  │ 6     │ 13  │
+  │     │                    │               │         │                          │       │            │             │ mundo"                 │          │       │     │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 8   │ x                  │ variable      │ int     │ función _mi_ › while ›   │ 4     │ —          │ pila+9      │ —                      │ privado  │ 21    │ 21  │
+  │     │                    │               │         │ if                       │       │            │             │                        │          │       │     │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 9   │ x                  │ variable      │ int     │ función _mi_ › while ›   │ 4     │ —          │ pila+13     │ 9                      │ privado  │ 22    │ 28  │
+  │     │                    │               │         │ if › for                 │       │            │             │                        │          │       │     │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 10  │ _b1_               │ variable      │ bool    │ procedimiento principal  │ 1     │ —          │ pila+0      │ —                      │ privado  │ 48    │ 11  │
+  │ 11  │ _s1_               │ variable      │ string  │ procedimiento principal  │ 4     │ —          │ pila+1      │ —                      │ privado  │ 49    │ 13  │
+  └─────┴────────────────────┴───────────────┴─────────┴──────────────────────────┴───────┴────────────┴─────────────┴────────────────────────┴──────────┴───────┴─────┘
+
