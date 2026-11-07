@@ -16,8 +16,10 @@
  * Mantener toda la generacion de codigo en esta clase.
  *
  * Formato de etiquetas:
- * funcion_estructura_numero_parte
- * Las funciones terminan con la etiqueta _final.
+ * funcion$estructura$numero$parte, por ejemplo principal$while$6$condicion
+ * Las funciones usan tipo$nombre: y terminan con tipo$nombre$final.
+ * Se usa $ porque ningun identificador puede tenerlo: asi una etiqueta
+ * nunca se confunde con una variable (los identificadores si usan _).
  */
 public class Generador {
 
@@ -33,13 +35,16 @@ public class Generador {
 
     private static final String TIPO_PRINCIPAL = "void";
 
+    /* Separa las partes de una etiqueta. */
+    public static final String SEPARADOR = "$";
+
     /* Nombres de las partes de las etiquetas. */
-    private static final String PARTE_INICIALIZACION = "_inicializacion";
-    private static final String PARTE_CONDICION = "_condicion";
-    private static final String PARTE_INCREMENTO = "_inc";
-    private static final String PARTE_BLOQUE = "_bloque";
-    private static final String PARTE_SIGUIENTE = "_sig";
-    private static final String PARTE_FINAL = "_final";
+    private static final String PARTE_INICIALIZACION = SEPARADOR + "inicializacion";
+    private static final String PARTE_CONDICION = SEPARADOR + "condicion";
+    private static final String PARTE_INCREMENTO = SEPARADOR + "inc";
+    private static final String PARTE_BLOQUE = SEPARADOR + "bloque";
+    private static final String PARTE_SIGUIENTE = SEPARADOR + "sig";
+    private static final String PARTE_FINAL = SEPARADOR + "final";
 
     /*
      * Descripcion: Crea un nombre temporal.
@@ -52,10 +57,20 @@ public class Generador {
         return tipo + contadorTemporales;
     }
 
-    /* Crea el nombre base de una estructura. */
+    /*
+     * Descripcion: Crea la etiqueta de una funcion.
+     * Entrada: Tipo de retorno y nombre de la funcion.
+     * Salida: La etiqueta, por ejemplo int$suma.
+     * Restricciones: La usan la definicion de la funcion y cada call.
+     */
+    public static String etiquetaDeFuncion(String tipo, String nombre) {
+        return tipo + SEPARADOR + nombre;
+    }
+
+    /* Crea el nombre base de una estructura: principal$if$3 */
     private String prefijo(String estructura) {
         contadorEtiquetas++;
-        return funcionActual + "_" + estructura + "_" + contadorEtiquetas;
+        return funcionActual + SEPARADOR + estructura + SEPARADOR + contadorEtiquetas;
     }
 
     /* Agrega una etiqueta al codigo. */
@@ -355,7 +370,7 @@ public class Generador {
      */
     public void etiquetaFuncion(String tipo, String nombre) {
         if (!hayFuncion && !nombre.equals("principal")) {
-            emitir("goto " + TIPO_PRINCIPAL + "_principal");
+            emitir("goto " + etiquetaDeFuncion(TIPO_PRINCIPAL, "principal"));
         }
 
         hayFuncion = true;
@@ -365,7 +380,7 @@ public class Generador {
         if (codigo.length() > 0) {
             emitir("");
         }
-        emitir(tipo + "_" + nombre + ":");
+        emitir(etiquetaDeFuncion(tipo, nombre) + ":");
     }
 
     /*
@@ -375,7 +390,7 @@ public class Generador {
      * Restricciones: Regresa al estado global.
      */
     public void finFuncion() {
-        emitir(tipoFuncionActual + "_" + funcionActual + PARTE_FINAL);
+        emitir(etiquetaDeFuncion(tipoFuncionActual, funcionActual) + PARTE_FINAL);
         funcionActual = "global";
         tipoFuncionActual = "";
     }

@@ -1525,10 +1525,12 @@ public class parser extends java_cup.runtime.lr_parser {
        LECTURA DE TOKENS Y TEXTO
        ============================================================ */
 
-    /* Nombre: scan
-       Descripcion: pide el siguiente token y lo guarda en la lista.
-       Objetivo: recordar todo lo que se ha leido.
-       Salida: el token leido. */
+    /*
+     * Descripcion: Pide el siguiente token y lo guarda.
+     * Entrada: Ninguna.
+     * Salida: El token leido.
+     * Restricciones: Guarda todos los tokens en orden.
+     */
     @Override
     public Symbol scan() throws Exception {
         Symbol token = super.scan();
@@ -1536,10 +1538,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return token;
     }
 
-    /* Nombre: buscarToken
-       Descripcion: busca un token por su linea y su columna, de atras hacia adelante.
-       Objetivo: saber en que posicion de la lista esta ese token.
-       Salida: la posicion del token, o -1 si no lo encuentra. */
+    /*
+     * Descripcion: Busca un token por su linea y columna.
+     * Entrada: Linea, columna y desde donde buscar.
+     * Salida: Su posicion, o -1 si no esta.
+     * Restricciones: Busca de atras hacia adelante.
+     */
     private int buscarToken(int linea, int columna, int desdePosicion) {
         for (int i = desdePosicion; i >= 0; i--) {
             Symbol token = tokensLeidos.get(i);
@@ -1550,10 +1554,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return -1;
     }
 
-    /* Nombre: textoEntre
-       Descripcion: junta el texto de los tokens que hay entre dos posiciones.
-       Objetivo: saber que se escribio entre dos simbolos.
-       Salida: el texto, o null si no encuentra las posiciones. */
+    /*
+     * Descripcion: Junta el texto escrito entre dos tokens.
+     * Entrada: Linea y columna del primero y del ultimo.
+     * Salida: El texto, o null si no los encuentra.
+     * Restricciones: No incluye los dos tokens de los extremos.
+     */
     public String textoEntre(int lineaInicio, int columnaInicio, int lineaFin, int columnaFin) {
         int posicionFin = buscarToken(lineaFin, columnaFin, tokensLeidos.size() - 1);
         int posicionInicio = buscarToken(lineaInicio, columnaInicio, posicionFin - 1);
@@ -1575,10 +1581,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return texto.toString();
     }
 
-    /* Nombre: textoDesde
-       Descripcion: junta el texto desde una posicion hasta el ultimo token leido.
-       Objetivo: saber que se escribio desde un simbolo hasta ahora.
-       Salida: el texto, o null si no hay tokens. */
+    /*
+     * Descripcion: Junta el texto desde un token hasta el ultimo leido.
+     * Entrada: Linea y columna del token.
+     * Salida: El texto, o null si no hay tokens.
+     * Restricciones: Ninguna.
+     */
     public String textoDesde(int linea, int columna) {
         if (tokensLeidos.isEmpty()) {
             return null;
@@ -1587,10 +1595,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return textoEntre(linea, columna, ultimoToken.left, ultimoToken.right);
     }
 
-    /* Nombre: textoValor
-       Descripcion: da el texto del valor inicial de una variable.
-       Objetivo: mostrar ese valor en la tabla de simbolos.
-       Salida: el texto sin el simbolo final de la sentencia. */
+    /*
+     * Descripcion: Da el texto del valor inicial de una variable.
+     * Entrada: Linea y columna del signo Ͱ.
+     * Salida: El texto, sin el » del final.
+     * Restricciones: Se usa para mostrarlo en la tabla de simbolos.
+     */
     public String textoValor(int linea, int columna) {
         String texto = textoDesde(linea, columna);
         if (texto != null && texto.endsWith("»")) {
@@ -1599,10 +1609,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return texto;
     }
 
-    /* Nombre: aEntero
-       Descripcion: convierte un texto en un numero entero.
-       Objetivo: conocer el valor de las constantes enteras.
-       Salida: el numero, o null si no se puede convertir. */
+    /*
+     * Descripcion: Convierte un texto en numero entero.
+     * Entrada: Texto.
+     * Salida: El numero, o null si no es un entero.
+     * Restricciones: Ninguna.
+     */
     public Integer aEntero(String texto) {
         try {
             return Integer.valueOf(texto.trim());
@@ -1616,35 +1628,42 @@ public class parser extends java_cup.runtime.lr_parser {
        AYUDAS PEQUENAS
        ============================================================ */
 
-    /* Nombre: esNumerico
-       Descripcion: dice si un tipo es int o float.
-       Objetivo: no repetir esta pregunta en cada regla.
-       Salida: true si es int o float. */
+    /*
+     * Descripcion: Dice si un tipo es int o float.
+     * Entrada: Tipo.
+     * Salida: true si es int o float.
+     * Restricciones: Ninguna.
+     */
     private boolean esNumerico(String tipo) {
         return tipo.equals("int") || tipo.equals("float");
     }
 
-    /* Nombre: tieneError
-       Descripcion: dice si un dato ya fallo antes (su tipo es error).
-       Objetivo: no repetir el mismo mensaje.
-       Salida: true si el dato es de tipo error. */
+    /*
+     * Descripcion: Dice si un dato ya tuvo un error antes.
+     * Entrada: Dato.
+     * Salida: true si su tipo es error.
+     * Restricciones: Sirve para no repetir el mismo mensaje.
+     */
     private boolean tieneError(Atrib dato) {
         return dato.tipo.equals("error");
     }
 
-    /* Nombre: sinErroresNuevos
-       Descripcion: compara la cantidad de errores de ahora con la de antes.
-       Objetivo: saber si una revision no encontro errores.
-       Salida: true si no se guardo ningun error nuevo. */
+    /*
+     * Descripcion: Dice si una revision no encontro errores.
+     * Entrada: Cantidad de errores antes de revisar.
+     * Salida: true si no aparecio ninguno nuevo.
+     * Restricciones: Ninguna.
+     */
     private boolean sinErroresNuevos(int erroresAntes) {
         return tabla.getErrores().size() == erroresAntes;
     }
 
-    /* Nombre: reportar
-       Descripcion: guarda un error semantico con el tipo de validacion que lo detecto,
-                    por ejemplo "[Aritmética] no se pueden mezclar...".
-       Objetivo: que Main pueda agrupar los errores por tipo de validacion.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Guarda un error semantico.
+     * Entrada: Tipo de validacion, linea, columna y mensaje.
+     * Salida: Error guardado como "[Aritmetica] mensaje".
+     * Restricciones: Main usa el tipo para agrupar los errores.
+     */
     private void reportar(String validacion, int linea, int columna, String mensaje) {
         tabla.errorSemantico(linea, columna, "[" + validacion + "] " + mensaje);
     }
@@ -1654,10 +1673,12 @@ public class parser extends java_cup.runtime.lr_parser {
        OPERACIONES ARITMETICAS
        ============================================================ */
 
-    /* Nombre: aritmetica
-       Descripcion: revisa los tipos de una operacion con numeros.
-       Objetivo: que solo se usen int o float y que no se mezclen.
-       Salida: un dato con el tipo del resultado, o de tipo error si algo fallo. */
+    /*
+     * Descripcion: Revisa los tipos de una operacion con numeros.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Dato con el tipo del resultado, o de tipo error.
+     * Restricciones: Solo int o float, sin mezclarlos (tipado fuerte).
+     */
     public Atrib aritmetica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
 
         String tipoIzquierda = izquierda.tipo;
@@ -1710,19 +1731,23 @@ public class parser extends java_cup.runtime.lr_parser {
         return resultado;
     }
 
-    /* Nombre: generarAritmetica
-       Descripcion: valida una operacion y despues pide escribir su instruccion.
-       Objetivo: que solo se escriba codigo de operaciones correctas.
-       Salida: un dato con el tipo y el lugar del resultado. */
+    /*
+     * Descripcion: Revisa una operacion y escribe su instruccion.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Dato con el tipo y el temporal del resultado.
+     * Restricciones: Si hay error, no escribe codigo.
+     */
     public Atrib generarAritmetica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
         Atrib resultado = aritmetica(izquierda, operador, derecha, linea, columna);
         return gen.binaria(resultado, izquierda, operador, derecha);
     }
 
-    /* Nombre: negativo
-       Descripcion: le pone el signo menos a un numero.
-       Objetivo: manejar numeros negativos y conservar su valor.
-       Salida: un dato con el mismo tipo y el lugar con el signo menos. */
+    /*
+     * Descripcion: Le pone el signo menos a un numero.
+     * Entrada: El numero.
+     * Salida: El mismo numero en negativo.
+     * Restricciones: Conserva su valor si es constante.
+     */
     public Atrib negativo(Atrib numero) {
         Atrib resultado = new Atrib(numero.tipo, "-" + numero.lugar);
         if (numero.valor != null) {
@@ -1731,10 +1756,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return resultado;
     }
 
-    /* Nombre: calcularConstante
-       Descripcion: calcula una operacion cuando los dos lados son enteros constantes.
-       Objetivo: conocer el valor para revisar tamanos y posiciones de arreglos.
-       Salida: el resultado, o null si no se puede calcular. */
+    /*
+     * Descripcion: Calcula una operacion entre dos enteros constantes.
+     * Entrada: Lado izquierdo, operador y lado derecho.
+     * Salida: El resultado, o null si no se puede calcular.
+     * Restricciones: Sirve para revisar tamanos e indices de arreglos.
+     */
     private Integer calcularConstante(Atrib izquierda, String operador, Atrib derecha) {
         if (!izquierda.tipo.equals("int") || izquierda.valor == null || derecha.valor == null) {
             return null;
@@ -1785,10 +1812,12 @@ public class parser extends java_cup.runtime.lr_parser {
        COMPARACIONES Y OPERACIONES LOGICAS
        ============================================================ */
 
-    /* Nombre: relacional
-       Descripcion: revisa una comparacion (< > <= >= == !=).
-       Objetivo: que los dos lados sean del mismo tipo y que no sean texto.
-       Salida: siempre un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa una comparacion (< > <= >= == !=).
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Siempre un dato de tipo bool.
+     * Restricciones: Los dos lados deben ser del mismo tipo y no texto.
+     */
     public Atrib relacional(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
 
         /* Regla 1: si alguno ya fallo, no repetir el mensaje */
@@ -1819,10 +1848,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return new Atrib("bool", "?");
     }
 
-    /* Nombre: generarRelacional
-       Descripcion: valida una comparacion y despues pide escribir su instruccion.
-       Objetivo: que solo se escriba codigo de comparaciones correctas.
-       Salida: un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa una comparacion y escribe su instruccion.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Dato bool con su temporal.
+     * Restricciones: Si hay error, no escribe codigo.
+     */
     public Atrib generarRelacional(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
         int erroresAntes = tabla.getErrores().size();
         Atrib resultado = relacional(izquierda, operador, derecha, linea, columna);
@@ -1831,10 +1862,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return todoBien ? gen.binaria(resultado, izquierda, operador, derecha) : resultado;
     }
 
-    /* Nombre: logica
-       Descripcion: revisa una operacion logica (and, or).
-       Objetivo: que los dos lados sean bool.
-       Salida: siempre un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa una operacion and u or.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Siempre un dato de tipo bool.
+     * Restricciones: Los dos lados deben ser bool.
+     */
     public Atrib logica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
 
         /* Regla 1: si alguno ya fallo, no repetir el mensaje */
@@ -1852,10 +1885,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return new Atrib("bool", "?");
     }
 
-    /* Nombre: generarLogica
-       Descripcion: valida una operacion logica (and, or) y escribe su instruccion.
-       Objetivo: que solo se escriba codigo de operaciones logicas correctas.
-       Salida: un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa un and u or y escribe su instruccion.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Dato bool con su temporal.
+     * Restricciones: Si hay error, no escribe codigo.
+     */
     public Atrib generarLogica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
         int erroresAntes = tabla.getErrores().size();
         Atrib resultado = logica(izquierda, operador, derecha, linea, columna);
@@ -1864,10 +1899,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return todoBien ? gen.binaria(resultado, izquierda, operador, derecha) : resultado;
     }
 
-    /* Nombre: negacion
-       Descripcion: revisa una negacion (not).
-       Objetivo: que el valor sea bool.
-       Salida: siempre un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa un not.
+     * Entrada: El valor y su posicion.
+     * Salida: Siempre un dato de tipo bool.
+     * Restricciones: El valor debe ser bool.
+     */
     public Atrib negacion(Atrib valor, int linea, int columna) {
 
         if (tieneError(valor)) {
@@ -1882,10 +1919,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return new Atrib("bool", "?");
     }
 
-    /* Nombre: generarNegacion
-       Descripcion: valida una negacion (not) y escribe su instruccion.
-       Objetivo: que solo se escriba codigo de negaciones correctas.
-       Salida: un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa un not y escribe su instruccion.
+     * Entrada: El valor y su posicion.
+     * Salida: Dato bool con su temporal.
+     * Restricciones: Si hay error, no escribe codigo.
+     */
     public Atrib generarNegacion(Atrib valor, int linea, int columna) {
         int erroresAntes = tabla.getErrores().size();
         Atrib resultado = negacion(valor, linea, columna);
@@ -1899,10 +1938,12 @@ public class parser extends java_cup.runtime.lr_parser {
        ASIGNACIONES
        ============================================================ */
 
-    /* Nombre: asignar
-       Descripcion: revisa que el valor tenga el mismo tipo que la variable.
-       Objetivo: no guardar un valor de un tipo en una variable de otro tipo.
-       Salida: ninguna (si no coinciden, guarda un error). */
+    /*
+     * Descripcion: Revisa que el valor sea del tipo de la variable.
+     * Entrada: Tipo de validacion, nombre, tipo de la variable, valor y posicion.
+     * Salida: Ninguna (si no coinciden, guarda un error).
+     * Restricciones: No repite mensajes de datos que ya fallaron.
+     */
     public void asignar(String validacion, String nombre, String tipoVariable, Atrib valor, int linea, int columna) {
 
         /* Regla 1: si el valor o la variable ya fallaron, no repetir el mensaje */
@@ -1917,10 +1958,12 @@ public class parser extends java_cup.runtime.lr_parser {
         }
     }
 
-    /* Nombre: generarAsignacion
-       Descripcion: escribe la instruccion de guardar un valor en una variable.
-       Objetivo: que el codigo intermedio tenga cada asignacion.
-       Salida: ninguna (solo escribe si el valor no fallo y el tipo coincide). */
+    /*
+     * Descripcion: Escribe la instruccion de una asignacion.
+     * Entrada: Nombre, tipo de la variable y valor.
+     * Salida: Ninguna.
+     * Restricciones: Solo si el valor no fallo y el tipo coincide.
+     */
     public void generarAsignacion(String nombre, String tipoVariable, Atrib valor) {
         if (!tieneError(valor) && valor.tipo.equals(tipoVariable)) {
             gen.asignacion(nombre, valor);
@@ -1932,20 +1975,23 @@ public class parser extends java_cup.runtime.lr_parser {
        ARREGLOS
        ============================================================ */
 
-    /* Nombre: tamanoTexto
-       Descripcion: da el texto del tamano de un arreglo.
-       Objetivo: mostrar el tamano en la tabla de simbolos.
-       Salida: el valor calculado si es constante, o el texto original. */
+    /*
+     * Descripcion: Da el tamano de un arreglo como texto.
+     * Entrada: Tamano y texto original.
+     * Salida: El numero si es constante, o el texto escrito.
+     * Restricciones: Se usa en la tabla de simbolos.
+     */
     public String tamanoTexto(Atrib tamano, String textoOriginal) {
         boolean tamanoConocido = tamano != null && tamano.valor != null;
         return tamanoConocido ? String.valueOf(tamano.valor) : textoOriginal;
     }
 
-    /* Nombre: arreglo
-       Descripcion: revisa la declaracion de un arreglo.
-       Objetivo: que el tamano sea int y mayor que cero, y que los valores sean del tipo
-                 del arreglo y no sobren.
-       Salida: ninguna (si algo falla, guarda un error). */
+    /*
+     * Descripcion: Revisa la declaracion de un arreglo.
+     * Entrada: Nombre, tipo, tamano, valores y posicion.
+     * Salida: Ninguna (si algo falla, guarda un error).
+     * Restricciones: Tamano int mayor que 0; valores del mismo tipo y sin sobrar.
+     */
     public void arreglo(String nombre, String tipoElementos, Atrib tamano, ArrayList valores, int linea, int columna) {
 
         /* Regla 1: el tamano debe ser int (si ya fallo, no repetir el mensaje) */
@@ -1995,10 +2041,12 @@ public class parser extends java_cup.runtime.lr_parser {
         }
     }
 
-    /* Nombre: elemento
-       Descripcion: revisa el uso de una posicion de un arreglo, por ejemplo notas[0].
-       Objetivo: que el arreglo exista, que la posicion sea int y que no se salga del arreglo.
-       Salida: un dato con el tipo de los elementos, o de tipo error. */
+    /*
+     * Descripcion: Revisa el uso de una posicion de un arreglo.
+     * Entrada: Arreglo, nombre, posicion y lugar en el codigo.
+     * Salida: Dato con el tipo del arreglo y lugar nombre[posicion].
+     * Restricciones: El indice debe ser int y caer dentro del arreglo.
+     */
     public Atrib elemento(Simbolo arreglo, String nombre, Atrib posicion, int linea, int columna) {
 
         /* Regla 1: si no existe o no es arreglo, usarArreglo ya aviso */
@@ -2028,10 +2076,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return new Atrib(arreglo.tipo, nombre + "[" + posicion.lugar + "]");
     }
 
-    /* Nombre: generarElemento
-       Descripcion: escribe la lectura de una posicion de un arreglo en un temporal (t = a[i]).
-       Objetivo: que un elemento usado dentro de una operacion sea una direccion simple.
-       Salida: un dato con el tipo del elemento y el temporal como lugar. */
+    /*
+     * Descripcion: Copia una posicion de un arreglo a un temporal.
+     * Entrada: El elemento, por ejemplo edades[2].
+     * Salida: Dato con el temporal como lugar.
+     * Restricciones: Si tiene error, lo devuelve igual.
+     */
     public Atrib generarElemento(Atrib elemento) {
         if (tieneError(elemento)) {
             return elemento;
@@ -2039,10 +2089,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return new Atrib(elemento.tipo, gen.cargarElemento(elemento.tipo, elemento.lugar));
     }
 
-    /* Nombre: generarValoresArreglo
-       Descripcion: escribe los valores iniciales de un arreglo, uno por posicion.
-       Objetivo: que arr[3] = {22, 10, 11} quede como arr[0] = 22, arr[1] = 10, arr[2] = 11.
-       Salida: ninguna (solo escribe los valores sin error y del tipo del arreglo). */
+    /*
+     * Descripcion: Escribe los valores iniciales de un arreglo.
+     * Entrada: Nombre, tipo y lista de valores.
+     * Salida: Ninguna (arr[0] = ..., arr[1] = ...).
+     * Restricciones: Solo los valores sin error y del tipo correcto.
+     */
     public void generarValoresArreglo(String nombre, String tipo, ArrayList valores) {
         if (valores == null) {
             return;
@@ -2057,10 +2109,12 @@ public class parser extends java_cup.runtime.lr_parser {
        FUNCIONES
        ============================================================ */
 
-    /* Nombre: llamada
-       Descripcion: revisa una llamada a funcion: cuantos datos y de que tipo.
-       Objetivo: que se den los datos que la funcion pide.
-       Salida: un dato con el tipo que devuelve la funcion, o de tipo error. */
+    /*
+     * Descripcion: Revisa una llamada a una funcion.
+     * Entrada: Funcion, nombre, argumentos y posicion.
+     * Salida: Dato con el tipo que devuelve, o de tipo error.
+     * Restricciones: Misma cantidad y tipos que los parametros.
+     */
     public Atrib llamada(Simbolo funcion, String nombre, ArrayList argumentos, int linea, int columna) {
 
         /* Regla 1: si no existe o no es funcion, usarFuncion ya aviso */
@@ -2091,11 +2145,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return new Atrib(funcion.tipo, nombre);
     }
 
-    /* Nombre: generarLlamada
-       Descripcion: valida una llamada a funcion y escribe sus param y su call.
-       Objetivo: que el codigo intermedio tenga cada llamada correcta. El call usa la
-                 etiqueta de la funcion (tipo_nombre), igual que en su definicion.
-       Salida: un dato con el tipo que devuelve la funcion y el lugar del resultado. */
+    /*
+     * Descripcion: Revisa una llamada y escribe sus param y su call.
+     * Entrada: Funcion, nombre, argumentos y posicion.
+     * Salida: Dato con el temporal del resultado.
+     * Restricciones: El call usa la misma etiqueta que la funcion (tipo$nombre).
+     */
     public Atrib generarLlamada(Simbolo funcion, String nombre, ArrayList argumentos, int linea, int columna) {
 
         int erroresAntes = tabla.getErrores().size();
@@ -2110,7 +2165,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
         if (todoBien) {
             boolean devuelveValor = !funcion.tipo.equals("void");
-            String temporal = gen.llamar(funcion.tipo + "_" + nombre, funcion.tipo, argumentos, devuelveValor);
+            String temporal = gen.llamar(Generador.etiquetaDeFuncion(funcion.tipo, nombre), funcion.tipo, argumentos, devuelveValor);
             if (temporal != null) {
                 resultado.lugar = temporal;
             }
@@ -2119,11 +2174,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return resultado;
     }
 
-    /* Nombre: declararFuncion
-       Descripcion: guarda una funcion en la tabla de simbolos.
-       Objetivo: que no retorne string, que sus parametros no se repitan y que su nombre sea unico.
-                 Ademas deja anotada la funcion actual para revisar sus return.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Guarda una funcion en la tabla de simbolos.
+     * Entrada: Nombre, tipo, parametros y posicion.
+     * Salida: Ninguna (si algo falla, guarda un error).
+     * Restricciones: No puede retornar string ni repetir parametros o nombre.
+     */
     public void declararFuncion(String nombre, String tipo, ArrayList parametros, int linea, int columna) {
 
         if (tipo.equals("string")) {
@@ -2153,10 +2209,12 @@ public class parser extends java_cup.runtime.lr_parser {
         columnaFuncionActual = columna;
     }
 
-    /* Nombre: finFuncion
-       Descripcion: se llama al cerrar el cuerpo de una funcion.
-       Objetivo: revisar que una funcion con tipo tenga al menos un return.
-       Salida: ninguna (si falta, guarda un error). */
+    /*
+     * Descripcion: Revisa el final de una funcion.
+     * Entrada: Ninguna.
+     * Salida: Ninguna (si falta, guarda un error).
+     * Restricciones: Una funcion con tipo debe tener al menos un return.
+     */
     public void finFuncion() {
         boolean tieneTipo = tipoFuncionActual != null && !tipoFuncionActual.equals("void");
         if (tieneTipo && !funcionTieneReturn) {
@@ -2165,10 +2223,12 @@ public class parser extends java_cup.runtime.lr_parser {
         }
     }
 
-    /* Nombre: retorno
-       Descripcion: revisa un return contra la funcion donde esta.
-       Objetivo: que el valor devuelto sea del tipo de la funcion.
-       Salida: ninguna (si todo esta bien, escribe el return). */
+    /*
+     * Descripcion: Revisa un return y escribe su instruccion.
+     * Entrada: El valor (o null) y su posicion.
+     * Salida: Ninguna.
+     * Restricciones: void no devuelve valor; el valor debe ser del tipo de la funcion.
+     */
     public void retorno(Atrib valor, int linea, int columna) {
 
         funcionTieneReturn = true;
@@ -2209,10 +2269,12 @@ public class parser extends java_cup.runtime.lr_parser {
        La tabla de simbolos solo guarda y busca; aqui se decide que es un error.
        ============================================================ */
 
-    /* Nombre: avisarRepetido
-       Descripcion: avisa si un nombre ya estaba declarado en el mismo bloque.
-       Objetivo: no permitir dos declaraciones iguales en un bloque.
-       Salida: ninguna (si estaba repetido, guarda un error). */
+    /*
+     * Descripcion: Avisa si un nombre ya existia en el mismo bloque.
+     * Entrada: Tipo de validacion, simbolo anterior, nombre y posicion.
+     * Salida: Ninguna (si estaba repetido, guarda un error).
+     * Restricciones: Ninguna.
+     */
     private void avisarRepetido(String validacion, Simbolo simboloPrevio, String nombre, int linea, int columna) {
         if (simboloPrevio != null) {
             reportar(validacion, linea, columna, "'" + nombre
@@ -2220,29 +2282,35 @@ public class parser extends java_cup.runtime.lr_parser {
         }
     }
 
-    /* Nombre: declararVariable
-       Descripcion: guarda una variable en la tabla de simbolos.
-       Objetivo: que cada variable quede registrada una sola vez por bloque.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Guarda una variable en la tabla de simbolos.
+     * Entrada: Nombre, tipo, valor inicial y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Un nombre solo una vez por bloque.
+     */
     public void declararVariable(String nombre, String tipo, String valorInicial, int linea, int columna) {
         Simbolo simboloPrevio = tabla.declararVariable(nombre, tipo, valorInicial, linea, columna);
         avisarRepetido("Nombres", simboloPrevio, nombre, linea, columna);
     }
 
-    /* Nombre: declararArreglo
-       Descripcion: guarda un arreglo en la tabla de simbolos.
-       Objetivo: que cada arreglo quede registrado una sola vez por bloque.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Guarda un arreglo en la tabla de simbolos.
+     * Entrada: Nombre, tipo, tamano, cantidad de valores, valores y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Un nombre solo una vez por bloque.
+     */
     public void declararArreglo(String nombre, String tipo, String tamano, int elementos,
                                 String valores, int linea, int columna) {
         Simbolo simboloPrevio = tabla.declararArreglo(nombre, tipo, tamano, elementos, valores, linea, columna);
         avisarRepetido("Nombres", simboloPrevio, nombre, linea, columna);
     }
 
-    /* Nombre: usar
-       Descripcion: busca una variable que se esta usando.
-       Objetivo: que este declarada, que no sea funcion y que no sea un arreglo sin posicion.
-       Salida: el simbolo, o null si hubo un error (el error ya se guardo). */
+    /*
+     * Descripcion: Busca una variable que se esta usando.
+     * Entrada: Nombre y posicion.
+     * Salida: El simbolo, o null si hubo un error.
+     * Restricciones: Debe existir, no ser funcion y no ser arreglo sin indice.
+     */
     public Simbolo usar(String nombre, int linea, int columna) {
         Simbolo simbolo = tabla.buscar(nombre);
 
@@ -2261,10 +2329,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return simbolo;
     }
 
-    /* Nombre: usarArreglo
-       Descripcion: busca un arreglo que se esta usando.
-       Objetivo: que este declarado y que de verdad sea un arreglo.
-       Salida: el simbolo (puede ser null o no ser arreglo; el error ya se guardo). */
+    /*
+     * Descripcion: Busca un arreglo que se esta usando.
+     * Entrada: Nombre y posicion.
+     * Salida: El simbolo (puede ser null).
+     * Restricciones: Debe existir y ser un arreglo.
+     */
     public Simbolo usarArreglo(String nombre, int linea, int columna) {
         Simbolo simbolo = tabla.buscar(nombre);
 
@@ -2276,10 +2346,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return simbolo;
     }
 
-    /* Nombre: usarFuncion
-       Descripcion: busca una funcion que se esta llamando.
-       Objetivo: que este declarada y que de verdad sea una funcion.
-       Salida: el simbolo (puede ser null o no ser funcion; el error ya se guardo). */
+    /*
+     * Descripcion: Busca una funcion que se esta llamando.
+     * Entrada: Nombre y posicion.
+     * Salida: El simbolo (puede ser null).
+     * Restricciones: Debe existir y ser una funcion.
+     */
     public Simbolo usarFuncion(String nombre, int linea, int columna) {
         Simbolo simbolo = tabla.buscar(nombre);
 
@@ -2291,10 +2363,12 @@ public class parser extends java_cup.runtime.lr_parser {
         return simbolo;
     }
 
-    /* Nombre: finPrograma
-       Descripcion: se llama al terminar de leer el programa.
-       Objetivo: revisar que exista la funcion principal.
-       Salida: ninguna (si falta, guarda un error). */
+    /*
+     * Descripcion: Revisa el final del programa.
+     * Entrada: Ninguna.
+     * Salida: Ninguna (si falta principal, guarda un error).
+     * Restricciones: El programa debe tener una funcion principal.
+     */
     public void finPrograma() {
         if (tabla.buscar("principal") != null) {
             return;
@@ -2319,10 +2393,12 @@ public class parser extends java_cup.runtime.lr_parser {
        CONTROL: CICLOS, BREAK, CONDICIONES Y ++ --
        ============================================================ */
 
-    /* Nombre: entrarCiclo y salirCiclo
-       Descripcion: cuentan cuantos while o for estan abiertos en este momento.
-       Objetivo: saber si un break esta dentro de un ciclo.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Cuentan los while y for abiertos.
+     * Entrada: Ninguna.
+     * Salida: Ninguna.
+     * Restricciones: Sirve para saber si un break esta dentro de un ciclo.
+     */
     public void entrarCiclo() {
         ciclosAbiertos++;
     }
@@ -2333,20 +2409,24 @@ public class parser extends java_cup.runtime.lr_parser {
         }
     }
 
-    /* Nombre: validarBreak
-       Descripcion: revisa un break.
-       Objetivo: que solo se use dentro de un while o de un for.
-       Salida: ninguna (si esta afuera, guarda un error). */
+    /*
+     * Descripcion: Revisa un break.
+     * Entrada: Posicion del break.
+     * Salida: Ninguna (si esta afuera, guarda un error).
+     * Restricciones: Solo se usa dentro de un while o un for.
+     */
     public void validarBreak(int linea, int columna) {
         if (ciclosAbiertos == 0) {
             reportar("Control", linea, columna, "break solo puede utilizarse dentro de un ciclo");
         }
     }
 
-    /* Nombre: condicion
-       Descripcion: revisa la condicion de un if, elif, while o for.
-       Objetivo: que la condicion sea de tipo bool.
-       Salida: ninguna (si no es bool, guarda un error). */
+    /*
+     * Descripcion: Revisa la condicion de un if, elif, while o for.
+     * Entrada: Tipo de validacion, condicion y posicion.
+     * Salida: Ninguna (si no es bool, guarda un error).
+     * Restricciones: La condicion debe ser bool.
+     */
     public void condicion(String validacion, Atrib condicion, int linea, int columna) {
 
         if (condicion == null || tieneError(condicion)) {
@@ -2359,10 +2439,12 @@ public class parser extends java_cup.runtime.lr_parser {
         }
     }
 
-    /* Nombre: incrementar
-       Descripcion: revisa un ++ o un --.
-       Objetivo: que solo se use con variables int o float.
-       Salida: ninguna (si esta bien, escribe la instruccion). */
+    /*
+     * Descripcion: Revisa un ++ o un -- y escribe su instruccion.
+     * Entrada: Variable, nombre, operador y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Solo con variables int o float.
+     */
     public void incrementar(Simbolo variable, String nombre, String operador, int linea, int columna) {
 
         if (variable == null) {
@@ -2382,10 +2464,12 @@ public class parser extends java_cup.runtime.lr_parser {
        ENTRADA Y SALIDA
        ============================================================ */
 
-    /* Nombre: leer
-       Descripcion: revisa una instruccion read.
-       Objetivo: que se lea en una variable o posicion de tipo int, float o char.
-       Salida: ninguna (si esta bien, escribe la instruccion). */
+    /*
+     * Descripcion: Revisa un read y escribe su instruccion.
+     * Entrada: Destino y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Solo int, float o char.
+     */
     public void leer(Atrib destino, int linea, int columna) {
 
         if (destino == null || tieneError(destino)) {
@@ -2401,10 +2485,12 @@ public class parser extends java_cup.runtime.lr_parser {
         gen.leer(destino.lugar);
     }
 
-    /* Nombre: escribir
-       Descripcion: revisa una instruccion write.
-       Objetivo: que solo se escriban valores int, float o string.
-       Salida: ninguna (si esta bien, escribe la instruccion). */
+    /*
+     * Descripcion: Revisa un write y escribe su instruccion.
+     * Entrada: Valor y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Solo int, float o string.
+     */
     public void escribir(Atrib valor, int linea, int columna) {
 
         if (valor == null || tieneError(valor)) {
@@ -2425,32 +2511,40 @@ public class parser extends java_cup.runtime.lr_parser {
        Main reemplaza errorProduccion y tokenFaltante para guardar el aviso.
        ============================================================ */
 
-    /* Nombre: errorProduccion
-       Descripcion: avisa que el programa trae un error comun, con su mensaje.
-       Objetivo: dar un mensaje exacto. Main lo reemplaza para guardarlo.
-       Salida: ninguna (aqui no hace nada). */
+    /*
+     * Descripcion: Avisa un error comun con su mensaje.
+     * Entrada: Linea, columna y mensaje.
+     * Salida: Ninguna (aqui no hace nada).
+     * Restricciones: Main la reemplaza para guardar el aviso.
+     */
     public void errorProduccion(int linea, int columna, String mensaje) {
     }
 
-    /* Nombre: tokenFaltante
-       Descripcion: avisa que falta un simbolo y que el parser lo puso por su cuenta.
-       Objetivo: dar un mensaje exacto. Main lo reemplaza para guardarlo.
-       Salida: ninguna (aqui no hace nada). */
+    /*
+     * Descripcion: Avisa que faltaba un simbolo y el parser lo puso.
+     * Entrada: Simbolo, linea y columna.
+     * Salida: Ninguna (aqui no hace nada).
+     * Restricciones: Main la reemplaza para guardar el aviso.
+     */
     public void tokenFaltante(String token, int linea, int columna) {
     }
 
-    /* Nombre: faltaTerminador
-       Descripcion: avisa que falta el simbolo de fin al final de una sentencia.
-       Objetivo: arreglar el error sin perder codigo.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Avisa que falta el » al final de una sentencia.
+     * Entrada: Ninguna.
+     * Salida: Ninguna.
+     * Restricciones: Se sigue leyendo sin perder codigo.
+     */
     public void faltaTerminador() {
         faltaToken("»");
     }
 
-    /* Nombre: faltaToken
-       Descripcion: calcula donde falta un simbolo (fin de sentencia, parentesis o cierre de bloque) y lo avisa.
-       Objetivo: decir la posicion exacta del simbolo que falta.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Calcula donde falta un simbolo y lo avisa.
+     * Entrada: El simbolo que falta.
+     * Salida: Ninguna.
+     * Restricciones: Falta justo despues del penultimo token leido.
+     */
     public void faltaToken(String token) {
         int cantidadLeidos = tokensLeidos.size();
         if (cantidadLeidos < 2) {

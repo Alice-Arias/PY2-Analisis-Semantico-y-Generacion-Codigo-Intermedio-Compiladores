@@ -28,21 +28,18 @@ import java_cup.runtime.Symbol;
 
 /*
  * Descripcion:
- * Coordino las fases del compilador: analisis lexico, sintactico, semantico
- * (tabla de simbolos) y generacion de codigo intermedio.
+ * Programa principal del compilador. Ejecuta las cuatro fases (lexica, sintactica,
+ * semantica y codigo intermedio) y muestra los resultados.
  *
  * Entrada:
- * El archivo .cmm que se desea analizar y, opcional, el archivo donde se guardan los tokens.
+ * El archivo .cmm a analizar y, si se quiere, el archivo donde guardar los tokens.
  *
  * Salida:
- * Los resultados y errores de cada fase en la consola, la tabla de simbolos y el codigo
- * intermedio en archivos.
+ * Resultados y errores en la consola. Tokens, tabla de simbolos y codigo
+ * intermedio guardados en la carpeta salida.
  *
  * Restricciones:
- * El archivo debe estar en UTF-8.
- *
- * Objetivo:
- * Ejecutar todas las fases en un solo programa y mostrar los resultados de forma clara.
+ * El archivo .cmm debe estar en UTF-8.
  */
 public class Main {
 
@@ -59,8 +56,8 @@ public class Main {
     /* Los errores semánticos empiezan con su validación: "[Aritmética] detalle" (grupo 1 = validación, grupo 2 = detalle) */
     private static final Pattern PATRON_VALIDACION = Pattern.compile("^\\[([^\\]]+)\\]\\s*(.*)$");
 
-    /* Las etiquetas de if, while y for tienen "_if_N_", "_while_N_" o "_for_N_" en el nombre */
-    private static final Pattern PATRON_ETIQUETA_ESTRUCTURA = Pattern.compile("_(if|while|for)_\\d+_");
+    /* Las etiquetas de if, while y for tienen "$if$N$", "$while$N$" o "$for$N$" en el nombre */
+    private static final Pattern PATRON_ETIQUETA_ESTRUCTURA = Pattern.compile("\\$(if|while|for)\\$\\d+\\$");
 
     /* Si el parser se rinde, su resultado cuenta como si tuviera muchisimos errores */
     private static final int PENALIZACION_INTERRUMPIDO = 1_000_000;
@@ -92,11 +89,10 @@ public class Main {
     private static final boolean USAR_COLORES = detectarColores();
 
     /*
-     * Descripcion:
-     * Reviso si la consola puede mostrar colores.
-     *
-     * Salida:
-     * true si se pueden usar colores.
+     * Descripcion: Revisa si la consola puede mostrar colores.
+     * Entrada: Ninguna.
+     * Salida: true si se pueden usar colores.
+     * Restricciones: Se apagan si existe la variable NO_COLOR.
      */
     private static boolean detectarColores() {
 
@@ -115,7 +111,12 @@ public class Main {
         return terminal != null && !terminal.equals("dumb");
     }
 
-    /* En Windows, ejecutar un comando de cmd deja la consola lista para los colores ANSI */
+    /*
+     * Descripcion: Prepara la consola de Windows para los colores.
+     * Entrada: Ninguna.
+     * Salida: Ninguna.
+     * Restricciones: Si falla, solo no se ven colores.
+     */
     private static void activarColoresEnWindows() {
         try {
             new ProcessBuilder("cmd", "/c", "rem").inheritIO().start().waitFor();
@@ -124,7 +125,12 @@ public class Main {
         }
     }
 
-    /* Le pone un color a un texto (o lo deja igual si no hay colores) */
+    /*
+     * Descripcion: Le pone color a un texto.
+     * Entrada: Color y texto.
+     * Salida: El texto con color.
+     * Restricciones: Si no hay colores, devuelve el texto igual.
+     */
     private static String pintar(String color, String texto) {
         return USAR_COLORES ? "\u001B[" + color + "m" + texto + "\u001B[0m" : texto;
     }
@@ -176,6 +182,12 @@ public class Main {
     /* Numero del token -> nombre interno (PLUS, ID...). Se arma una sola vez leyendo la clase sym */
     private static final Map<Integer, String> NOMBRE_DEL_TOKEN = cargarNombresDeTokens();
 
+    /*
+     * Descripcion: Arma la lista de nombres de los tokens.
+     * Entrada: Ninguna (lee la clase sym).
+     * Salida: Numero de cada token y su nombre.
+     * Restricciones: Se hace una sola vez.
+     */
     private static Map<Integer, String> cargarNombresDeTokens() {
 
         Map<Integer, String> nombres = new HashMap<>();
@@ -196,12 +208,22 @@ public class Main {
         return nombres;
     }
 
-    /* Nombre interno de un token a partir de su numero */
+    /*
+     * Descripcion: Busca el nombre de un token.
+     * Entrada: Numero del token.
+     * Salida: Nombre del token, por ejemplo PLUS.
+     * Restricciones: Si no existe, devuelve DESCONOCIDO.
+     */
     private static String nombreToken(int numero) {
         return NOMBRE_DEL_TOKEN.getOrDefault(numero, "DESCONOCIDO");
     }
 
-    /* Como se escribe un token en el lenguaje ("PLUS" -> "+") */
+    /*
+     * Descripcion: Dice como se escribe un token en el lenguaje.
+     * Entrada: Nombre del token.
+     * Salida: El simbolo, por ejemplo "+" para PLUS.
+     * Restricciones: Si no esta en la lista, lo devuelve en minuscula.
+     */
     private static String textoLegible(String nombreToken) {
         return TEXTO_DEL_TOKEN.getOrDefault(nombreToken, nombreToken.toLowerCase());
     }
@@ -211,6 +233,12 @@ public class Main {
        PROGRAMA PRINCIPAL
        ============================================================ */
 
+    /*
+     * Descripcion: Ejecuta el compilador completo.
+     * Entrada: Archivo .cmm y, opcional, archivo de tokens.
+     * Salida: Resultados en consola y archivos en salida.
+     * Restricciones: Si no recibe archivo, muestra como usarlo.
+     */
     public static void main(String[] args) throws Exception {
 
         long inicio = System.nanoTime();
@@ -245,9 +273,13 @@ public class Main {
         /* Si el parser se rindio, el resultado tampoco es valido aunque no haya errores contados */
         boolean archivoCorrecto = erroresTotales == 0 && !analizador.interrumpido;
 
-        faseCodigoIntermedio(analizador, archivoFuente, archivoCorrecto);
+        String codigoIntermedio = faseCodigoIntermedio(analizador, archivoFuente, archivoCorrecto);
 
         mostrarResultadoFinal(lexico, analizador, tabla, erroresTotales, archivoCorrecto, inicio);
+
+        /* Las preguntas van despues del resultado: asi el veredicto se ve primero
+           y el tiempo no cuenta lo que se tarda la persona en responder */
+        ofrecerCodigoIntermedio(codigoIntermedio);
 
         ofrecerTablaSimbolos(tabla, reporte);
 
@@ -259,18 +291,17 @@ public class Main {
        FASES
        ============================================================ */
 
-    /* Lo que deja el analisis lexico: cuantos tokens se leyeron y sus errores */
+    /* Lo que deja el analisis lexico. */
     private static class ResultadoLexico {
         int tokens;
         List<String> errores;
     }
 
     /*
-     * Descripcion:
-     * Fase 1: leo todos los tokens, los guardo en el archivo de tokens y muestro los errores.
-     *
-     * Entrada: el archivo fuente y el archivo donde se guardan los tokens.
-     * Salida : la cantidad de tokens y la lista de errores lexicos.
+     * Descripcion: Fase 1: lee los tokens y muestra los errores lexicos.
+     * Entrada: Archivo fuente y archivo de tokens.
+     * Salida: Cantidad de tokens y errores lexicos.
+     * Restricciones: Guarda los tokens en un archivo.
      */
     private static ResultadoLexico faseLexica(File fuente, File archivoTokens) throws Exception {
 
@@ -292,11 +323,10 @@ public class Main {
     }
 
     /*
-     * Descripcion:
-     * Fase 2: analizo la estructura del programa y muestro cada error sintactico.
-     *
-     * Entrada: el archivo fuente.
-     * Salida : el parser ya ejecutado (con sus errores, su tabla y su codigo intermedio).
+     * Descripcion: Fase 2: revisa la estructura y muestra los errores sintacticos.
+     * Entrada: Archivo fuente.
+     * Salida: El parser ya ejecutado.
+     * Restricciones: El parser tambien llena la tabla y genera el codigo.
      */
     private static ParserConErrores faseSintactica(File fuente) throws Exception {
 
@@ -324,11 +354,10 @@ public class Main {
     }
 
     /*
-     * Descripcion:
-     * Fase 3: guardo la tabla de simbolos (la lleno el parser) y muestro los errores semanticos.
-     *
-     * Entrada: la tabla de simbolos y el archivo fuente.
-     * Salida : el archivo donde quedo guardada la tabla.
+     * Descripcion: Fase 3: guarda la tabla de simbolos y muestra los errores semanticos.
+     * Entrada: Tabla de simbolos y archivo fuente.
+     * Salida: Archivo donde quedo la tabla.
+     * Restricciones: La tabla ya la lleno el parser.
      */
     private static File faseSemantica(TablaSimbolos tabla, File fuente) throws Exception {
 
@@ -353,23 +382,19 @@ public class Main {
     }
 
     /*
-     * Descripcion:
-     * Fase 4: guardo el codigo intermedio y pregunto si se quiere ver.
-     *
-     * Entrada: el parser ya ejecutado, el archivo fuente y si el archivo no tiene errores.
-     * Salida : el archivo .tac (solo si no hay errores).
-     *
-     * Restricciones:
-     * Con errores el codigo no tendria sentido: no se genera ni se guarda.
+     * Descripcion: Fase 4: guarda el codigo intermedio.
+     * Entrada: Parser, archivo fuente y si no hay errores.
+     * Salida: El codigo generado, o null si no se genero.
+     * Restricciones: Si hay errores, no se genera.
      */
-    private static void faseCodigoIntermedio(ParserConErrores analizador, File fuente, boolean archivoCorrecto)
+    private static String faseCodigoIntermedio(ParserConErrores analizador, File fuente, boolean archivoCorrecto)
             throws Exception {
 
         mostrarSeccion("FASE 4 · CÓDIGO INTERMEDIO");
 
         if (!archivoCorrecto) {
             mostrarEstado(false, "No se generó código intermedio: el archivo tiene errores.");
-            return;
+            return null;
         }
 
         String codigo = analizador.gen.obtenerCodigo();
@@ -381,14 +406,33 @@ public class Main {
 
         mostrarEstado(true, "Código intermedio generado.");
 
+        return codigo;
+    }
+
+    /*
+     * Descripcion: Pregunta si se quiere ver el codigo intermedio.
+     * Entrada: El codigo, o null si no se genero.
+     * Salida: El codigo en consola, si se pide.
+     * Restricciones: Si no hay codigo, no pregunta.
+     */
+    private static void ofrecerCodigoIntermedio(String codigo) {
+
+        if (codigo == null) {
+            return;
+        }
+
+        System.out.println();
+
         if (preguntarSiNo("¿Desea ver el código intermedio? (s/n): ")) {
             mostrarCodigoIntermedio(codigo);
         }
     }
 
     /*
-     * Descripcion:
-     * Muestro el resumen de todas las fases, el tiempo y si el archivo es correcto.
+     * Descripcion: Muestra el resumen de todas las fases.
+     * Entrada: Resultados de cada fase y hora de inicio.
+     * Salida: Conteo de errores, tiempo y veredicto.
+     * Restricciones: Ninguna.
      */
     private static void mostrarResultadoFinal(ResultadoLexico lexico, ParserConErrores analizador,
                                               TablaSimbolos tabla, int erroresTotales,
@@ -420,7 +464,12 @@ public class Main {
         }
     }
 
-    /* "850 ms" o "1.250 s" */
+    /*
+     * Descripcion: Calcula cuanto tardo el programa.
+     * Entrada: Hora de inicio.
+     * Salida: Texto como "850 ms" o "1.250 s".
+     * Restricciones: Ninguna.
+     */
     private static String tiempoTranscurrido(long inicio) {
 
         long milisegundos = (System.nanoTime() - inicio) / 1_000_000;
@@ -432,7 +481,12 @@ public class Main {
         return (milisegundos / 1000) + "." + String.format("%03d", milisegundos % 1000) + " s";
     }
 
-    /* Muestro donde quedo la tabla de simbolos y pregunto si se quiere ver en consola */
+    /*
+     * Descripcion: Muestra donde quedo la tabla y pregunta si se quiere ver.
+     * Entrada: Tabla de simbolos y archivo del reporte.
+     * Salida: La tabla en consola, si se pide.
+     * Restricciones: Ninguna.
+     */
     private static void ofrecerTablaSimbolos(TablaSimbolos tabla, File reporte) {
 
         System.out.println();
@@ -453,7 +507,12 @@ public class Main {
        ELEMENTOS DE LA CONSOLA
        ============================================================ */
 
-    /* Titulo principal dentro de un marco doble */
+    /*
+     * Descripcion: Muestra un titulo dentro de un marco.
+     * Entrada: Texto del titulo.
+     * Salida: Titulo en consola.
+     * Restricciones: El texto debe caber en el ancho.
+     */
     private static void mostrarTitulo(String texto) {
 
         int libre = ANCHO - 2 - texto.length();
@@ -466,7 +525,12 @@ public class Main {
         System.out.println(pintar(CIAN, "╚" + "═".repeat(ANCHO - 2) + "╝"));
     }
 
-    /* Linea que separa una fase de la siguiente: ━━ TEXTO ━━━━━━ */
+    /*
+     * Descripcion: Muestra la linea que separa cada fase.
+     * Entrada: Nombre de la seccion.
+     * Salida: Linea de titulo en consola.
+     * Restricciones: Ninguna.
+     */
     private static void mostrarSeccion(String texto) {
 
         String cabecera = "━━ " + texto + " ";
@@ -476,7 +540,12 @@ public class Main {
         System.out.println();
     }
 
-    /* Cuadro verde (correcto) o rojo (con errores) con varias lineas de texto */
+    /*
+     * Descripcion: Muestra un cuadro verde o rojo con mensajes.
+     * Entrada: Si es correcto y las lineas de texto.
+     * Salida: Cuadro en consola.
+     * Restricciones: Cada linea debe caber en el cuadro.
+     */
     private static void mostrarCajaResultado(boolean correcto, String... lineas) {
 
         String color = correcto ? VERDE : ROJO;
@@ -490,31 +559,53 @@ public class Main {
         System.out.println(pintar(color, "└" + "─".repeat(ANCHO - 2) + "┘"));
     }
 
-    /* "  Etiqueta                 : valor" */
+    /*
+     * Descripcion: Muestra una etiqueta con su valor.
+     * Entrada: Etiqueta y valor.
+     * Salida: Linea en consola.
+     * Restricciones: Ninguna.
+     */
     private static void mostrarDato(String etiqueta, Object valor) {
         System.out.printf("  %-24s : %s%n", etiqueta, valor);
     }
 
-    /* Un numero en cian: "  Tokens reconocidos       :    42" */
+    /*
+     * Descripcion: Muestra un numero con su etiqueta.
+     * Entrada: Etiqueta y numero.
+     * Salida: Linea en consola.
+     * Restricciones: Ninguna.
+     */
     private static void mostrarConteo(String etiqueta, int valor) {
         System.out.println(String.format("  %-24s : ", etiqueta) + pintar(CIAN, String.format("%5d", valor)));
     }
 
-    /* Una cantidad de errores: rojo si hay alguno, verde si no hay */
+    /*
+     * Descripcion: Muestra una cantidad de errores.
+     * Entrada: Etiqueta y cantidad.
+     * Salida: Linea en consola.
+     * Restricciones: Rojo si hay errores, verde si no.
+     */
     private static void mostrarConteoErrores(String etiqueta, int valor) {
         String color = valor > 0 ? ROJO : VERDE;
         System.out.println(String.format("  %-24s : ", etiqueta) + pintar(color, String.format("%5d", valor)));
     }
 
-    /* "  ✔ mensaje" en verde o "  ✖ mensaje" en rojo */
+    /*
+     * Descripcion: Muestra si una fase salio bien o mal.
+     * Entrada: Si es correcto y el mensaje.
+     * Salida: Mensaje con ✔ o ✖.
+     * Restricciones: Ninguna.
+     */
     private static void mostrarEstado(boolean correcto, String mensaje) {
         System.out.println();
         System.out.println(pintar(correcto ? VERDE : ROJO, "  " + (correcto ? "✔ " : "✖ ") + mensaje));
     }
 
     /*
-     * Una fila dentro de un cuadro: │ texto            │
-     * El texto sin colores se usa para calcular cuantos espacios faltan hasta el borde.
+     * Descripcion: Muestra una fila dentro de un cuadro.
+     * Entrada: Texto sin color, texto con color y color del borde.
+     * Salida: Fila en consola.
+     * Restricciones: El texto sin color sirve para medir el espacio.
      */
     private static void filaCuadro(String textoPlano, String textoConColor, String colorBorde) {
 
@@ -525,8 +616,10 @@ public class Main {
     }
 
     /*
-     * Corto un texto en lineas de maximo "ancho" caracteres sin partir palabras.
-     * Si una palabra sola es mas larga que el ancho, esa si se parte.
+     * Descripcion: Corta un texto largo en varias lineas.
+     * Entrada: Texto y ancho maximo.
+     * Salida: Lista de lineas.
+     * Restricciones: No parte palabras, salvo si una sola no cabe.
      */
     private static List<String> partirEnLineas(String texto, int ancho) {
 
@@ -562,7 +655,12 @@ public class Main {
         return lineas;
     }
 
-    /* Ruta relativa a la carpeta desde donde se ejecuta el programa (si se puede) */
+    /*
+     * Descripcion: Acorta la ruta de un archivo.
+     * Entrada: Archivo.
+     * Salida: Ruta desde la carpeta actual.
+     * Restricciones: Si no se puede, devuelve solo el nombre.
+     */
     private static String rutaCorta(File archivo) {
         try {
             Path base = Paths.get("").toAbsolutePath().normalize();
@@ -578,7 +676,12 @@ public class Main {
     /* Carpeta donde se guardan los tokens, dentro de Programa */
     private static final String CARPETA_TOKENS = "salida" + File.separator + "tokens";
 
-    /* "pruebasX.cmm"  ->  Programa/salida/tokens/pruebasX_tokens.txt */
+    /*
+     * Descripcion: Arma la ruta del archivo de tokens.
+     * Entrada: Archivo fuente.
+     * Salida: salida/tokens/<nombre>_tokens.txt.
+     * Restricciones: Se usa si no se indico otro archivo.
+     */
     private static File archivoTokensPorDefecto(File fuente) {
 
         String nombre = fuente.getName();
@@ -591,7 +694,12 @@ public class Main {
         return new File(carpetaPrograma(), CARPETA_TOKENS + File.separator + nombre + "_tokens.txt");
     }
 
-    /* La carpeta Programa: la que contiene a bin, donde estan los .class */
+    /*
+     * Descripcion: Busca la carpeta Programa.
+     * Entrada: Ninguna.
+     * Salida: Carpeta que contiene a bin.
+     * Restricciones: Si no se puede, usa la carpeta actual.
+     */
     private static File carpetaPrograma() {
         try {
             File carpetaBin = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
@@ -601,7 +709,12 @@ public class Main {
         }
     }
 
-    /* Las dos ultimas carpetas donde esta un archivo: "salida/codigo_intermedio" */
+    /*
+     * Descripcion: Da las dos ultimas carpetas de un archivo.
+     * Entrada: Archivo.
+     * Salida: Texto como "salida/codigo_intermedio".
+     * Restricciones: Ninguna.
+     */
     private static String carpetaCorta(File archivo) {
 
         File carpeta = archivo.getParentFile();
@@ -619,11 +732,10 @@ public class Main {
     private static Scanner teclado = null;
 
     /*
-     * Descripcion:
-     * Hago una pregunta de si o no en la consola, hasta que la respuesta sea valida.
-     *
-     * Salida:
-     * true si responde s / si, false si responde n / no o si no hay entrada.
+     * Descripcion: Hace una pregunta de si o no.
+     * Entrada: Texto de la pregunta.
+     * Salida: true si responde s, false si responde n.
+     * Restricciones: Repite hasta recibir una respuesta valida.
      */
     private static boolean preguntarSiNo(String pregunta) {
 
@@ -655,7 +767,12 @@ public class Main {
         }
     }
 
-    /* El Lexer imprime cosas por su cuenta: mientras trabaja, la consola se apaga */
+    /*
+     * Descripcion: Apaga la consola mientras trabaja el Lexer.
+     * Entrada: Ninguna.
+     * Salida: La consola original, para volver a encenderla.
+     * Restricciones: Hay que restaurarla al terminar.
+     */
     private static PrintStream silenciarConsola() {
         PrintStream original = System.out;
         System.setOut(new PrintStream(OutputStream.nullOutputStream()));
@@ -668,12 +785,10 @@ public class Main {
        ============================================================ */
 
     /*
-     * Descripcion:
-     * Leo todos los tokens del archivo fuente y los guardo en el archivo de tokens,
-     * con su linea, columna, nombre y lexema. Al final se agregan los errores lexicos.
-     *
-     * Entrada: el archivo fuente y el archivo de tokens.
-     * Salida : la cantidad de tokens y los errores lexicos.
+     * Descripcion: Lee todos los tokens y los guarda en un archivo.
+     * Entrada: Archivo fuente y archivo de tokens.
+     * Salida: Cantidad de tokens y errores lexicos.
+     * Restricciones: Crea la carpeta de tokens si no existe.
      */
     private static ResultadoLexico analisisLexico(File fuente, File archivoTokens) throws Exception {
 
@@ -722,13 +837,19 @@ public class Main {
         }
     }
 
-    /* Las partes de un error "Error ... en línea L, columna C: detalle" */
+    /* Las partes de un error: linea, columna y detalle. */
     private static class PartesError {
         String linea = "-";
         String columna = "-";
         String detalle;
     }
 
+    /*
+     * Descripcion: Separa un error en linea, columna y detalle.
+     * Entrada: Texto del error.
+     * Salida: Las partes del error.
+     * Restricciones: Si no tiene el formato esperado, todo queda en el detalle.
+     */
     private static PartesError separarError(String error) {
 
         PartesError partes = new PartesError();
@@ -747,7 +868,12 @@ public class Main {
         return partes;
     }
 
-    /* Tabla de errores lexicos: numero, linea, columna y descripcion */
+    /*
+     * Descripcion: Muestra la tabla de errores lexicos.
+     * Entrada: Lista de errores.
+     * Salida: Tabla en consola.
+     * Restricciones: Ninguna.
+     */
     private static void mostrarErroresLexicos(List<String> errores) {
 
         System.out.println();
@@ -784,12 +910,10 @@ public class Main {
        ============================================================ */
 
     /*
-     * Descripcion:
-     * Ejecuto el parser sobre el archivo fuente. El parser tambien llena la tabla de
-     * simbolos y genera el codigo intermedio con sus acciones semanticas.
-     *
-     * Entrada: el archivo fuente.
-     * Salida : el parser ya ejecutado.
+     * Descripcion: Ejecuta el parser sobre el archivo.
+     * Entrada: Archivo fuente.
+     * Salida: El parser ya ejecutado.
+     * Restricciones: Si el parser falla, queda marcado como interrumpido.
      */
     private static ParserConErrores analisisSintactico(File fuente) throws Exception {
 
@@ -812,7 +936,12 @@ public class Main {
         }
     }
 
-    /* Todas las lineas del archivo fuente (para mostrar la linea donde esta cada error) */
+    /*
+     * Descripcion: Lee todas las lineas del archivo fuente.
+     * Entrada: Archivo fuente.
+     * Salida: Lista de lineas.
+     * Restricciones: Si no se puede leer, devuelve una lista vacia.
+     */
     private static List<String> leerLineas(File fuente) {
         try {
             return Files.readAllLines(fuente.toPath(), StandardCharsets.UTF_8);
@@ -821,7 +950,7 @@ public class Main {
         }
     }
 
-    /* Los datos de un error sintactico */
+    /* Los datos de un error sintactico. */
     private static class ErrorSintactico {
         int linea;
         int columna;
@@ -838,18 +967,22 @@ public class Main {
         int posicionEnFlujo = -1;
         List<Integer> numerosEsperados = new ArrayList<>();
 
-        /* Un error sin mensaje es uno que el parser tuvo que saltar en modo panico */
+        /*
+         * Descripcion: Dice si el error se recupero con modo panico.
+         * Entrada: Ninguna.
+         * Salida: true si el error no tiene mensaje propio.
+         * Restricciones: Ninguna.
+         */
         boolean esDeModoPanico() {
             return mensaje == null;
         }
     }
 
     /*
-     * Descripcion:
-     * Muestro un error sintactico en un cuadro rojo: la linea del codigo con una marca
-     * debajo del error, lo que se encontro y lo que se esperaba.
-     *
-     * Entrada: el numero del error, el error y las lineas del archivo fuente.
+     * Descripcion: Muestra un error sintactico en un cuadro rojo.
+     * Entrada: Numero del error, el error y las lineas del archivo.
+     * Salida: Cuadro en consola.
+     * Restricciones: Ninguna.
      */
     private static void mostrarErrorSintactico(int numero, ErrorSintactico error, List<String> lineasFuente) {
 
@@ -900,7 +1033,12 @@ public class Main {
         System.out.println();
     }
 
-    /* La linea del codigo donde esta el error y, debajo, una marca ^^^ en el token */
+    /*
+     * Descripcion: Muestra la linea del error y marca el token con ^^^.
+     * Entrada: Error, linea del codigo y ancho disponible.
+     * Salida: Dos filas en el cuadro.
+     * Restricciones: Si la linea es larga, muestra solo la zona del error.
+     */
     private static void mostrarLineaConError(ErrorSintactico error, String lineaFuente, int anchoInterno) {
 
         int anchoNumero = Math.max(3, String.valueOf(error.linea).length());
@@ -939,7 +1077,12 @@ public class Main {
                 ROJO_SUAVE);
     }
 
-    /* "Se encontró : 'lexema'  (TOKEN)" o "fin de archivo" */
+    /*
+     * Descripcion: Muestra el token que se encontro.
+     * Entrada: Error.
+     * Salida: Fila "Se encontro" en el cuadro.
+     * Restricciones: Corta los textos de mas de 40 caracteres.
+     */
     private static void mostrarLoEncontrado(ErrorSintactico error) {
 
         if (error.alFinalDelArchivo) {
@@ -962,7 +1105,12 @@ public class Main {
                 ROJO_SUAVE);
     }
 
-    /* Como maximo 6 opciones; si hay mas, termina en ", …" */
+    /*
+     * Descripcion: Resume la lista de tokens esperados.
+     * Entrada: Lista de tokens esperados.
+     * Salida: Texto con maximo 6 opciones.
+     * Restricciones: Si hay mas, termina en ", …".
+     */
     private static String resumirEsperados(List<String> esperados) {
 
         List<String> lista = new ArrayList<>(esperados);
@@ -976,7 +1124,12 @@ public class Main {
         return String.join(", ", lista) + (hayMas ? ", …" : "");
     }
 
-    /* "Etiqueta    : valor" dentro del cuadro rojo; si el valor es largo sigue en la linea de abajo */
+    /*
+     * Descripcion: Muestra un dato dentro del cuadro de error.
+     * Entrada: Etiqueta, valor y color.
+     * Salida: Una o varias filas en el cuadro.
+     * Restricciones: Si el valor es largo, sigue en la linea de abajo.
+     */
     private static void mostrarDetalleError(String etiqueta, String valor, String color) {
 
         String prefijo = String.format("%-11s : ", etiqueta);
@@ -996,9 +1149,10 @@ public class Main {
        CORRECCION GLOBAL
        ============================================================ */
 
+    /* Los tres tipos de edicion de la correccion global. */
     private enum TipoEdicion { INSERTAR, REEMPLAZAR, ELIMINAR }
 
-    /* Un cambio de un solo token en el archivo, y como queda el archivo despues del cambio */
+    /* Un cambio de un token y como queda el archivo despues. */
     private static class Edicion {
         TipoEdicion tipo;
         String tokenOriginal;      /* el token que se elimina, se reemplaza o antes del cual se inserta */
@@ -1009,7 +1163,12 @@ public class Main {
         int puntaje;               /* errores que quedan despues de la edicion */
     }
 
-    /* Le entrega al parser los tokens de una lista, en vez de leerlos del archivo */
+    /*
+     * Descripcion: Le da al parser tokens de una lista en vez de un archivo.
+     * Entrada: Lista de tokens.
+     * Salida: Un token cada vez que el parser lo pide.
+     * Restricciones: Se usa en la correccion global.
+     */
     private static class ListaDeTokens implements java_cup.runtime.Scanner {
 
         private final List<Symbol> tokens;
@@ -1019,6 +1178,12 @@ public class Main {
             this.tokens = tokens;
         }
 
+        /*
+         * Descripcion: Entrega el siguiente token de la lista.
+         * Entrada: Ninguna.
+         * Salida: El siguiente token.
+         * Restricciones: Al final repite el ultimo (fin de archivo).
+         */
         @Override
         public Symbol next_token() {
             Symbol token = tokens.get(Math.min(posicion, tokens.size() - 1));
@@ -1028,17 +1193,10 @@ public class Main {
     }
 
     /*
-     * Descripcion:
-     * Busco el menor numero de ediciones (insertar, reemplazar o eliminar un token) que
-     * dejan el archivo con menos errores sintacticos. Cada edicion posible se prueba
-     * analizando otra vez el archivo COMPLETO, y gana la que mas errores elimina.
-     *
-     * Entrada: el parser que ya analizo el archivo.
-     * Salida : una sugerencia en pantalla. No cambia el archivo ni los conteos de errores.
-     *
-     * Restricciones:
-     * Solo se usa si el modo panico tuvo que intervenir. Prueba como maximo MAXIMO_EDICIONES
-     * ediciones y solo con tokens de estructura (no inventa identificadores ni numeros).
+     * Descripcion: Busca las menores ediciones que quitan errores sintacticos.
+     * Entrada: El parser que ya analizo el archivo.
+     * Salida: Sugerencia en consola.
+     * Restricciones: Solo si hubo modo panico. Maximo 6 ediciones. No cambia el archivo.
      */
     private static void mostrarCorreccionGlobal(ParserConErrores analisisOriginal) {
 
@@ -1094,6 +1252,12 @@ public class Main {
         }
     }
 
+    /*
+     * Descripcion: Busca el primer error de modo panico.
+     * Entrada: Un analisis.
+     * Salida: El error, o null si no hay.
+     * Restricciones: Ninguna.
+     */
     private static ErrorSintactico primerErrorDeModoPanico(ParserConErrores analisis) {
 
         for (ErrorSintactico error : analisis.errores) {
@@ -1105,7 +1269,12 @@ public class Main {
         return null;
     }
 
-    /* Cuadro cian con las ediciones sugeridas y cuantos errores quedan despues de cada una */
+    /*
+     * Descripcion: Muestra las ediciones sugeridas.
+     * Entrada: Ediciones y errores antes y despues.
+     * Salida: Cuadro cian en consola.
+     * Restricciones: Ninguna.
+     */
     private static void mostrarCuadroCorreccion(List<Edicion> aplicadas, int puntajeInicial, int puntajeFinal) {
 
         System.out.println(pintar(CIAN_SUAVE, "┌─ CORRECCIÓN GLOBAL (sugerencia) "
@@ -1155,6 +1324,12 @@ public class Main {
         System.out.println();
     }
 
+    /*
+     * Descripcion: Explica una edicion en palabras.
+     * Entrada: Edicion.
+     * Salida: Texto como "Insertar '»' antes de 'x'".
+     * Restricciones: Ninguna.
+     */
     private static String describirEdicion(Edicion edicion) {
         switch (edicion.tipo) {
             case INSERTAR:
@@ -1166,20 +1341,36 @@ public class Main {
         }
     }
 
-    /* Que tan malo es un analisis: sus errores, o muchisimo mas si el parser se rindio */
+    /*
+     * Descripcion: Mide que tan malo es un analisis.
+     * Entrada: Un analisis.
+     * Salida: Cantidad de errores.
+     * Restricciones: Si el parser se rindio, suma una penalizacion muy grande.
+     */
     private static int puntaje(ParserConErrores analisis) {
         return analisis.interrumpido
                 ? PENALIZACION_INTERRUMPIDO + analisis.errores.size()
                 : analisis.errores.size();
     }
 
+    /*
+     * Descripcion: Convierte un puntaje en texto.
+     * Entrada: Puntaje.
+     * Salida: Texto con la cantidad de errores.
+     * Restricciones: Agrega "(se interrumpe)" si el parser se rindio.
+     */
     private static String textoPuntaje(int puntaje) {
         return puntaje >= PENALIZACION_INTERRUMPIDO
                 ? (puntaje - PENALIZACION_INTERRUMPIDO) + " (se interrumpe)"
                 : String.valueOf(puntaje);
     }
 
-    /* Analiza una lista de tokens con un parser nuevo, sin imprimir nada */
+    /*
+     * Descripcion: Analiza una lista de tokens con un parser nuevo.
+     * Entrada: Lista de tokens.
+     * Salida: El analisis.
+     * Restricciones: No imprime nada.
+     */
     private static ParserConErrores analizarTokens(List<Symbol> tokens) {
 
         PrintStream consola = silenciarConsola();
@@ -1197,7 +1388,12 @@ public class Main {
         return analisis;
     }
 
-    /* Copia de la lista de tokens, asegurando que termine con fin de archivo */
+    /*
+     * Descripcion: Copia la lista de tokens.
+     * Entrada: Lista original.
+     * Salida: Copia que termina con fin de archivo.
+     * Restricciones: Ninguna.
+     */
     private static List<Symbol> tokensConFinDeArchivo(List<Symbol> original) {
 
         List<Symbol> copia = new ArrayList<>(original);
@@ -1214,7 +1410,12 @@ public class Main {
         return copia;
     }
 
-    /* Solo se usan tokens de estructura: no se inventan identificadores, numeros ni textos */
+    /*
+     * Descripcion: Dice si un token se puede usar en una sugerencia.
+     * Entrada: Numero del token.
+     * Salida: true si es un simbolo o palabra del lenguaje.
+     * Restricciones: No inventa identificadores, numeros ni textos.
+     */
     private static boolean esTokenDeEstructura(int numero) {
 
         String nombre = nombreToken(numero);
@@ -1226,7 +1427,12 @@ public class Main {
                 && !nombre.equals("DESCONOCIDO");
     }
 
-    /* Como se muestra un token en una sugerencia */
+    /*
+     * Descripcion: Dice como se muestra un token en una sugerencia.
+     * Entrada: Token.
+     * Salida: Su texto.
+     * Restricciones: Ninguna.
+     */
     private static String textoDelToken(Symbol token) {
 
         boolean tieneValor = token.sym != sym.EOF && token.value != null && !String.valueOf(token.value).isEmpty();
@@ -1238,6 +1444,12 @@ public class Main {
         return token.sym == sym.EOF ? "fin de archivo" : textoLegible(nombreToken(token.sym));
     }
 
+    /*
+     * Descripcion: Crea una edicion.
+     * Entrada: Tipo, token, token nuevo y tokens resultantes.
+     * Salida: La edicion.
+     * Restricciones: Ninguna.
+     */
     private static Edicion nuevaEdicion(TipoEdicion tipo, Symbol token, String tokenNuevo, List<Symbol> tokens) {
 
         Edicion edicion = new Edicion();
@@ -1251,8 +1463,10 @@ public class Main {
     }
 
     /*
-     * Las ediciones que se prueban en el lugar del error. Si dos arreglan lo mismo, gana
-     * la primera de la lista: eliminar, despues insertar y por ultimo reemplazar.
+     * Descripcion: Lista las ediciones que se prueban en un error.
+     * Entrada: Tokens y el error.
+     * Salida: Ediciones: eliminar, insertar y reemplazar.
+     * Restricciones: Si dos arreglan lo mismo, gana la primera.
      */
     private static List<Edicion> edicionesPosibles(List<Symbol> tokens, ErrorSintactico error) {
 
@@ -1330,7 +1544,7 @@ public class Main {
     /* Largo del inicio de cada linea: Nº, LÍNEA, COL y VALIDACIÓN */
     private static final int ANCHO_PREFIJO_SEMANTICO = 37;
 
-    /* Un error semantico listo para mostrar */
+    /* Un error semantico listo para mostrar. */
     private static class FilaSemantica {
         String linea;
         String columna;
@@ -1339,11 +1553,10 @@ public class Main {
     }
 
     /*
-     * Descripcion:
-     * Muestro los errores semanticos, uno por linea: numero, linea y columna del codigo,
-     * tipo de validacion y descripcion. Al final, cuantos errores hay de cada tipo.
-     *
-     * Entrada: la lista de errores ("Error ... en línea L, columna C: [Validación] detalle").
+     * Descripcion: Muestra los errores semanticos, uno por linea.
+     * Entrada: Lista de errores.
+     * Salida: Tabla en consola y resumen por tipo.
+     * Restricciones: Ninguna.
      */
     private static void mostrarErroresSemanticos(List<String> errores) {
 
@@ -1407,7 +1620,12 @@ public class Main {
         mostrarResumenPorValidacion(cantidadPorValidacion, ancho);
     }
 
-    /* "Por validación: Aritmética 2   Nombres 1" (si no cabe, sigue en otra linea) */
+    /*
+     * Descripcion: Muestra cuantos errores hay de cada tipo.
+     * Entrada: Cantidad por tipo y ancho.
+     * Salida: Linea "Por validacion" en consola.
+     * Restricciones: Si no cabe, sigue en otra linea.
+     */
     private static void mostrarResumenPorValidacion(Map<String, Integer> cantidadPorValidacion, int ancho) {
 
         String inicio = "  Por validación: ";
@@ -1440,7 +1658,7 @@ public class Main {
        Colores (solo tres, mas gris):
          amarillo : inicio y fin de cada funcion, y la funcion de un call
          cian     : etiquetas de if, while y for, y el destino de cada salto
-         verde    : declaraciones (data#, DeclVal#, param_)
+         verde    : declaraciones (declaracion#, declaracionPrevia#, param_)
          rojo     : operadores (+ - * // / mod pot < > <= >= == != and or not)
          gris     : numeros de linea y separadores
          negrita  : palabras de control (goto, if, call, return, param, read, write)
@@ -1449,32 +1667,62 @@ public class Main {
     private static final String SANGRIA_ETIQUETA = "  ";
     private static final String SANGRIA_INSTRUCCION = "    ";
 
-    /* "nombre:" sin espacios */
+    /*
+     * Descripcion: Dice si una linea es una etiqueta.
+     * Entrada: Linea de codigo.
+     * Salida: true si termina en ":" y no tiene espacios.
+     * Restricciones: Ninguna.
+     */
     private static boolean esEtiqueta(String linea) {
         return linea.endsWith(":") && !linea.contains(" ");
     }
 
-    /* Etiqueta de un if, while o for: principal_for_3_cond: */
+    /*
+     * Descripcion: Dice si es una etiqueta de if, while o for.
+     * Entrada: Linea de codigo.
+     * Salida: true si tiene $if$, $while$ o $for$.
+     * Restricciones: Ninguna.
+     */
     private static boolean esEtiquetaDeEstructura(String linea) {
         return esEtiqueta(linea) && PATRON_ETIQUETA_ESTRUCTURA.matcher(linea).find();
     }
 
-    /* Etiqueta de una funcion: int_suma: */
+    /*
+     * Descripcion: Dice si es la etiqueta de inicio de una funcion.
+     * Entrada: Linea de codigo.
+     * Salida: true si es etiqueta y no es de estructura.
+     * Restricciones: Ninguna.
+     */
     private static boolean esInicioDeFuncion(String linea) {
         return esEtiqueta(linea) && !PATRON_ETIQUETA_ESTRUCTURA.matcher(linea).find();
     }
 
-    /* Fin de una funcion: int_suma_final (sin dos puntos, a diferencia de las etiquetas) */
+    /*
+     * Descripcion: Dice si es el fin de una funcion.
+     * Entrada: Linea de codigo.
+     * Salida: true si termina en $final y no lleva ":".
+     * Restricciones: Ninguna.
+     */
     private static boolean esFinDeFuncion(String linea) {
-        return linea.endsWith("_final") && !linea.contains(" ") && !linea.endsWith(":");
+        return linea.endsWith("$final") && !linea.contains(" ") && !linea.endsWith(":");
     }
 
-    /* Declaracion sin valor (data#), con valor (DeclVal#) o parametro (param_) */
+    /*
+     * Descripcion: Dice si una linea es una declaracion.
+     * Entrada: Linea de codigo.
+     * Salida: true si empieza con declaracion#, declaracionPrevia# o param_.
+     * Restricciones: Ninguna.
+     */
     private static boolean esDeclaracion(String linea) {
         return linea.startsWith("declaracion#") || linea.startsWith("declaracionPrevia#") || linea.startsWith("param_");
     }
 
-    /* Instrucciones reales: sin contar lineas vacias, etiquetas ni fines de funcion */
+    /*
+     * Descripcion: Cuenta las instrucciones del codigo intermedio.
+     * Entrada: Codigo intermedio.
+     * Salida: Cantidad de instrucciones.
+     * Restricciones: No cuenta lineas vacias, etiquetas ni fines de funcion.
+     */
     private static int contarInstrucciones(String codigo) {
 
         int cantidad = 0;
@@ -1489,14 +1737,10 @@ public class Main {
     }
 
     /*
-     * Descripcion:
-     * Muestro el codigo intermedio numerado, con colores y sangria: cada funcion
-     * separada por una linea, las etiquetas un poco adentro y las instrucciones mas adentro.
-     *
-     * Entrada: el texto del codigo intermedio.
-     *
-     * Restricciones:
-     * Los numeros de linea son los mismos del archivo .tac (los separadores no llevan numero).
+     * Descripcion: Muestra el codigo intermedio con colores.
+     * Entrada: Codigo intermedio.
+     * Salida: Codigo numerado en consola.
+     * Restricciones: Los numeros son los mismos del .tac.
      */
     private static void mostrarCodigoIntermedio(String codigo) {
 
@@ -1522,11 +1766,10 @@ public class Main {
     }
 
     /*
-     * Descripcion:
-     * Armo el codigo intermedio linea por linea, con numero de linea, sangria y una
-     * linea separadora antes de cada funcion. Lo usan la consola y el archivo .tac.
-     *
-     * Salida: las lineas ya formateadas (con colores si la consola los usa).
+     * Descripcion: Arma el codigo con numeros, sangria y separadores.
+     * Entrada: Codigo intermedio.
+     * Salida: Lista de lineas listas para mostrar.
+     * Restricciones: Ninguna.
      */
     private static List<String> formatearCodigoIntermedio(String codigo) {
 
@@ -1577,15 +1820,25 @@ public class Main {
     /* Los codigos ANSI de color: ESC[36m, ESC[0m... */
     private static final Pattern PATRON_COLOR = Pattern.compile("\u001B\\[[0-9;]*m");
 
-    /* El mismo texto sin colores (un archivo de texto no los puede mostrar) */
+    /*
+     * Descripcion: Quita los colores de un texto.
+     * Entrada: Texto con colores.
+     * Salida: Texto sin colores.
+     * Restricciones: Se usa antes de guardar en un archivo.
+     */
     private static String quitarColores(String texto) {
         return PATRON_COLOR.matcher(texto).replaceAll("");
     }
 
-    /* Le pone color a una instruccion segun su forma */
+    /*
+     * Descripcion: Le pone color a una instruccion.
+     * Entrada: Linea de codigo.
+     * Salida: La linea con colores.
+     * Restricciones: El color depende del tipo de instruccion.
+     */
     private static String colorearInstruccion(String linea) {
 
-        /* data#int x,  DeclVal#int x  y  param_int x */
+        /* declaracion# int x,  declaracionPrevia# int x  y  param_int x */
         if (esDeclaracion(linea)) {
             return pintar(VERDE_SUAVE, linea);
         }
@@ -1637,10 +1890,10 @@ public class Main {
             "and", "or", "not"));
 
     /*
-     * Pinta de rojo el operador de una operacion:
-     *   destino = a op b    (int15 = int13 + int14)
-     *   destino = op a      (bool13 = not bool12)
-     * Una asignacion simple (x = int2) o un texto ("no es A") queda igual.
+     * Descripcion: Pinta de rojo el operador de una operacion.
+     * Entrada: Linea de codigo.
+     * Salida: La linea con el operador en rojo.
+     * Restricciones: No toca textos, caracteres ni asignaciones simples.
      */
     private static String colorearOperador(String linea) {
 
@@ -1676,7 +1929,12 @@ public class Main {
        TABLA DE SIMBOLOS EN CONSOLA
        ============================================================ */
 
-    /* Cuadro verde que dice donde quedo guardada la tabla de simbolos */
+    /*
+     * Descripcion: Muestra donde quedo guardada la tabla de simbolos.
+     * Entrada: Archivo del reporte.
+     * Salida: Cuadro verde en consola.
+     * Restricciones: Ninguna.
+     */
     private static void mostrarCuadroReporte(File reporte) {
 
         String titulo = " TABLA DE SÍMBOLOS GENERADA ";
@@ -1698,8 +1956,10 @@ public class Main {
     }
 
     /*
-     * "Etiqueta : valor" dentro de un cuadro. Si el valor es una ruta larga, se corta
-     * justo despues de una barra para que cada carpeta quede entera.
+     * Descripcion: Muestra un dato dentro de un cuadro.
+     * Entrada: Etiqueta, valor, color y color del borde.
+     * Salida: Una o varias filas.
+     * Restricciones: Las rutas largas se cortan despues de una barra.
      */
     private static void mostrarDatoEnCuadro(String etiqueta, String valor, String color, String colorBorde) {
 
@@ -1739,16 +1999,10 @@ public class Main {
     private static final int[] ANCHOS_TABLA = {3, 18, 13, 7, 24, 5, 10, 11, 22, 8, 5, 3};
 
     /*
-     * Descripcion:
-     * Muestro el arbol de ambitos y una sola tabla con todos los simbolos. Los simbolos
-     * de cada ambito (global, cada funcion, cada if, while...) forman un grupo de filas
-     * separado de los demas por una linea.
-     *
-     * Entrada: la tabla de simbolos ya llena.
-     *
-     * Restricciones:
-     * Es ancha (unos 166 caracteres): conviene una terminal grande. Los textos largos
-     * pasan a la linea de abajo dentro de su celda.
+     * Descripcion: Muestra la tabla de simbolos en consola.
+     * Entrada: Tabla de simbolos.
+     * Salida: Arbol de ambitos y tabla.
+     * Restricciones: Es ancha: conviene una terminal grande.
      */
     private static void mostrarTablaSimbolos(TablaSimbolos tabla) {
 
@@ -1757,7 +2011,12 @@ public class Main {
         }
     }
 
-    /* La tabla de simbolos para guardarla en el archivo: igual que en consola, sin colores */
+    /*
+     * Descripcion: Prepara la tabla para guardarla en un archivo.
+     * Entrada: Tabla de simbolos.
+     * Salida: La tabla como texto, sin colores.
+     * Restricciones: Queda igual que en consola.
+     */
     private static String tablaSimbolosParaArchivo(TablaSimbolos tabla) {
 
         StringBuilder texto = new StringBuilder();
@@ -1769,7 +2028,12 @@ public class Main {
         return texto.toString();
     }
 
-    /* Arma la tabla linea por linea. La usan la consola y el archivo, asi se ven iguales. */
+    /*
+     * Descripcion: Arma la tabla de simbolos linea por linea.
+     * Entrada: Tabla de simbolos.
+     * Salida: Lista de lineas.
+     * Restricciones: La usan la consola y el archivo.
+     */
     private static List<String> formatearTablaSimbolos(TablaSimbolos tabla) {
 
         List<String> lineas = new ArrayList<>();
@@ -1830,6 +2094,12 @@ public class Main {
         return lineas;
     }
 
+    /*
+     * Descripcion: Arma las celdas de una fila de la tabla.
+     * Entrada: Numero, simbolo y nombre del ambito.
+     * Salida: Textos de cada columna.
+     * Restricciones: Ninguna.
+     */
     private static String[] celdasDelSimbolo(int numero, Simbolo simbolo, String nombreAmbito) {
 
         boolean esFuncion = simbolo.esFuncion();
@@ -1850,6 +2120,12 @@ public class Main {
         };
     }
 
+    /*
+     * Descripcion: Elige el color de cada celda de una fila.
+     * Entrada: Simbolo.
+     * Salida: Color de cada columna.
+     * Restricciones: Ninguna.
+     */
     private static String[] coloresDelSimbolo(Simbolo simbolo) {
         return new String[] {
             SIN_COLOR,
@@ -1867,7 +2143,12 @@ public class Main {
         };
     }
 
-    /* "global › funcion f1 › if"  ->  "función f1 › if" (el global se queda como "global") */
+    /*
+     * Descripcion: Acorta el nombre de un ambito.
+     * Entrada: Ambito.
+     * Salida: Texto como "funcion f1 › if".
+     * Restricciones: El global se queda como "global".
+     */
     private static String nombreCortoAmbito(Ambito ambito) {
 
         String ruta = ambito.ruta();
@@ -1879,7 +2160,12 @@ public class Main {
         return ruta.replace("funcion ", "función ");
     }
 
-    /* Linea de borde de la tabla: ┌───┬───┐ */
+    /*
+     * Descripcion: Arma una linea de borde de la tabla.
+     * Entrada: Caracteres de izquierda, medio y derecha.
+     * Salida: Linea como ┌───┬───┐.
+     * Restricciones: Ninguna.
+     */
     private static String bordeTabla(char izquierda, char medio, char derecha) {
 
         StringBuilder borde = new StringBuilder().append(izquierda);
@@ -1892,7 +2178,12 @@ public class Main {
         return borde.toString();
     }
 
-    /* Una fila de la tabla; si una celda es larga, la fila ocupa varias lineas */
+    /*
+     * Descripcion: Agrega una fila a la tabla.
+     * Entrada: Lista de salida, celdas y colores.
+     * Salida: Una o varias lineas agregadas.
+     * Restricciones: Si una celda es larga, la fila ocupa varias lineas.
+     */
     private static void filaTabla(List<String> salida, String[] celdas, String[] colores) {
 
         List<List<String>> lineasPorCelda = new ArrayList<>();
@@ -1924,6 +2215,12 @@ public class Main {
         }
     }
 
+    /*
+     * Descripcion: Elige el color de una categoria.
+     * Entrada: Categoria.
+     * Salida: Color.
+     * Restricciones: Ninguna.
+     */
     private static String colorCategoria(String categoria) {
         switch (categoria) {
             case "variable":      return VERDE_SUAVE;
@@ -1941,12 +2238,10 @@ public class Main {
        ============================================================ */
 
     /*
-     * Descripcion:
-     * Parser que guarda los errores en vez de imprimirlos, para que Main los muestre
-     * todos con el mismo formato.
-     *
-     * Entrada: los tokens del Lexer (o de una lista, en la correccion global).
-     * Salida : la lista de errores sintacticos y si el analisis se interrumpio.
+     * Descripcion: Parser que guarda los errores en vez de imprimirlos.
+     * Entrada: Tokens del Lexer o de una lista.
+     * Salida: Errores sintacticos y si el analisis se interrumpio.
+     * Restricciones: Main muestra todos los errores con el mismo formato.
      */
     private static class ParserConErrores extends parser {
 
@@ -1961,11 +2256,22 @@ public class Main {
         /* Todos los tokens que el parser leyo, en orden (la correccion global los vuelve a analizar) */
         private final List<Symbol> flujo = new ArrayList<>();
 
+        /*
+         * Descripcion: Crea el parser.
+         * Entrada: De donde salen los tokens.
+         * Salida: El parser listo.
+         * Restricciones: Ninguna.
+         */
         ParserConErrores(java_cup.runtime.Scanner lexer) {
             super(lexer);
         }
 
-        /* Posicion de un token dentro del flujo (-1 si no esta) */
+        /*
+         * Descripcion: Busca la posicion de un token.
+         * Entrada: Token.
+         * Salida: Su posicion, o -1 si no esta.
+         * Restricciones: Ninguna.
+         */
         private int posicionEnFlujo(Symbol token) {
             for (int i = flujo.size() - 1; i >= 0; i--) {
                 if (flujo.get(i) == token) {
@@ -1975,12 +2281,23 @@ public class Main {
             return -1;
         }
 
-        /* Despues de un error, basta un token correcto para seguir analizando */
+        /*
+         * Descripcion: Dice cuantos tokens correctos hacen falta para seguir.
+         * Entrada: Ninguna.
+         * Salida: 1.
+         * Restricciones: Ninguna.
+         */
         @Override
         protected int error_sync_size() {
             return 1;
         }
 
+        /*
+         * Descripcion: Pide el siguiente token y lo guarda.
+         * Entrada: Ninguna.
+         * Salida: El token leido.
+         * Restricciones: Recuerda el ultimo token real.
+         */
         @Override
         public Symbol scan() throws Exception {
 
@@ -1997,7 +2314,12 @@ public class Main {
             return token;
         }
 
-        /* Guarda un error de modo panico con todo lo necesario para mostrarlo */
+        /*
+         * Descripcion: Guarda un error de modo panico.
+         * Entrada: Token donde fallo.
+         * Salida: Error agregado a la lista.
+         * Restricciones: Ninguna.
+         */
         @Override
         public void syntax_error(Symbol token) {
 
@@ -2033,17 +2355,33 @@ public class Main {
             errores.add(error);
         }
 
-        /* Los mensajes de CUP no se imprimen: Main muestra los errores con su propio formato */
+        /*
+         * Descripcion: Evita que CUP imprima mensajes.
+         * Entrada: Mensaje e informacion.
+         * Salida: Ninguna.
+         * Restricciones: Main muestra los errores.
+         */
         @Override
         public void report_error(String message, Object info) {
         }
 
+        /*
+         * Descripcion: Marca que el parser se rindio.
+         * Entrada: Mensaje e informacion.
+         * Salida: Ninguna.
+         * Restricciones: Ninguna.
+         */
         @Override
         public void report_fatal_error(String message, Object info) {
             interrumpido = true;
         }
 
-        /* Error comun que la gramatica reconoce con una regla propia (producción de error) */
+        /*
+         * Descripcion: Guarda un error comun que la gramatica reconoce.
+         * Entrada: Linea, columna y mensaje.
+         * Salida: Error agregado a la lista.
+         * Restricciones: Ninguna.
+         */
         @Override
         public void errorProduccion(int linea, int columna, String mensaje) {
 
@@ -2058,7 +2396,12 @@ public class Main {
             errores.add(error);
         }
 
-        /* Simbolo que faltaba y que el parser inserto por su cuenta (recuperación a nivel de frase) */
+        /*
+         * Descripcion: Guarda un simbolo que faltaba y que el parser agrego.
+         * Entrada: Simbolo, linea y columna.
+         * Salida: Error agregado a la lista.
+         * Restricciones: Ninguna.
+         */
         @Override
         public void tokenFaltante(String token, int linea, int columna) {
 
@@ -2090,7 +2433,12 @@ public class Main {
             errores.add(error);
         }
 
-        /* Los tokens que se esperaban, escritos como en el lenguaje (maximo 10) */
+        /*
+         * Descripcion: Lista los tokens que se esperaban.
+         * Entrada: Ninguna.
+         * Salida: Lista de textos.
+         * Restricciones: Maximo 10.
+         */
         private List<String> textosEsperados() {
 
             Set<String> textos = new LinkedHashSet<>();

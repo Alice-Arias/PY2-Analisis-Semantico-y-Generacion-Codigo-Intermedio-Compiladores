@@ -3,9 +3,12 @@ import java.util.ArrayList;
 
 /* ============================================================
    PARSER.CUP
-   Revisa que el programa este bien escrito y tenga sentido.
-   Aqui estan las reglas del lenguaje, las validaciones y las
-   llamadas al generador de codigo intermedio.
+   ============================================================
+   Descripcion: Gramatica del lenguaje. Revisa que el programa este bien escrito
+                (sintaxis) y que tenga sentido (semantica), y pide el codigo intermedio.
+   Entrada: Los tokens que entrega el Lexer.
+   Salida: La tabla de simbolos, los errores semanticos y el codigo intermedio.
+   Restricciones: CUP lo convierte en parser.java y sym.java (build.bat).
    ============================================================ */
 
 parser code {:
@@ -39,10 +42,12 @@ parser code {:
        LECTURA DE TOKENS Y TEXTO
        ============================================================ */
 
-    /* Nombre: scan
-       Descripcion: pide el siguiente token y lo guarda en la lista.
-       Objetivo: recordar todo lo que se ha leido.
-       Salida: el token leido. */
+    /*
+     * Descripcion: Pide el siguiente token y lo guarda.
+     * Entrada: Ninguna.
+     * Salida: El token leido.
+     * Restricciones: Guarda todos los tokens en orden.
+     */
     @Override
     public Symbol scan() throws Exception {
         Symbol token = super.scan();
@@ -50,10 +55,12 @@ parser code {:
         return token;
     }
 
-    /* Nombre: buscarToken
-       Descripcion: busca un token por su linea y su columna, de atras hacia adelante.
-       Objetivo: saber en que posicion de la lista esta ese token.
-       Salida: la posicion del token, o -1 si no lo encuentra. */
+    /*
+     * Descripcion: Busca un token por su linea y columna.
+     * Entrada: Linea, columna y desde donde buscar.
+     * Salida: Su posicion, o -1 si no esta.
+     * Restricciones: Busca de atras hacia adelante.
+     */
     private int buscarToken(int linea, int columna, int desdePosicion) {
         for (int i = desdePosicion; i >= 0; i--) {
             Symbol token = tokensLeidos.get(i);
@@ -64,10 +71,12 @@ parser code {:
         return -1;
     }
 
-    /* Nombre: textoEntre
-       Descripcion: junta el texto de los tokens que hay entre dos posiciones.
-       Objetivo: saber que se escribio entre dos simbolos.
-       Salida: el texto, o null si no encuentra las posiciones. */
+    /*
+     * Descripcion: Junta el texto escrito entre dos tokens.
+     * Entrada: Linea y columna del primero y del ultimo.
+     * Salida: El texto, o null si no los encuentra.
+     * Restricciones: No incluye los dos tokens de los extremos.
+     */
     public String textoEntre(int lineaInicio, int columnaInicio, int lineaFin, int columnaFin) {
         int posicionFin = buscarToken(lineaFin, columnaFin, tokensLeidos.size() - 1);
         int posicionInicio = buscarToken(lineaInicio, columnaInicio, posicionFin - 1);
@@ -89,10 +98,12 @@ parser code {:
         return texto.toString();
     }
 
-    /* Nombre: textoDesde
-       Descripcion: junta el texto desde una posicion hasta el ultimo token leido.
-       Objetivo: saber que se escribio desde un simbolo hasta ahora.
-       Salida: el texto, o null si no hay tokens. */
+    /*
+     * Descripcion: Junta el texto desde un token hasta el ultimo leido.
+     * Entrada: Linea y columna del token.
+     * Salida: El texto, o null si no hay tokens.
+     * Restricciones: Ninguna.
+     */
     public String textoDesde(int linea, int columna) {
         if (tokensLeidos.isEmpty()) {
             return null;
@@ -101,10 +112,12 @@ parser code {:
         return textoEntre(linea, columna, ultimoToken.left, ultimoToken.right);
     }
 
-    /* Nombre: textoValor
-       Descripcion: da el texto del valor inicial de una variable.
-       Objetivo: mostrar ese valor en la tabla de simbolos.
-       Salida: el texto sin el simbolo final de la sentencia. */
+    /*
+     * Descripcion: Da el texto del valor inicial de una variable.
+     * Entrada: Linea y columna del signo Ͱ.
+     * Salida: El texto, sin el » del final.
+     * Restricciones: Se usa para mostrarlo en la tabla de simbolos.
+     */
     public String textoValor(int linea, int columna) {
         String texto = textoDesde(linea, columna);
         if (texto != null && texto.endsWith("»")) {
@@ -113,10 +126,12 @@ parser code {:
         return texto;
     }
 
-    /* Nombre: aEntero
-       Descripcion: convierte un texto en un numero entero.
-       Objetivo: conocer el valor de las constantes enteras.
-       Salida: el numero, o null si no se puede convertir. */
+    /*
+     * Descripcion: Convierte un texto en numero entero.
+     * Entrada: Texto.
+     * Salida: El numero, o null si no es un entero.
+     * Restricciones: Ninguna.
+     */
     public Integer aEntero(String texto) {
         try {
             return Integer.valueOf(texto.trim());
@@ -130,35 +145,42 @@ parser code {:
        AYUDAS PEQUENAS
        ============================================================ */
 
-    /* Nombre: esNumerico
-       Descripcion: dice si un tipo es int o float.
-       Objetivo: no repetir esta pregunta en cada regla.
-       Salida: true si es int o float. */
+    /*
+     * Descripcion: Dice si un tipo es int o float.
+     * Entrada: Tipo.
+     * Salida: true si es int o float.
+     * Restricciones: Ninguna.
+     */
     private boolean esNumerico(String tipo) {
         return tipo.equals("int") || tipo.equals("float");
     }
 
-    /* Nombre: tieneError
-       Descripcion: dice si un dato ya fallo antes (su tipo es error).
-       Objetivo: no repetir el mismo mensaje.
-       Salida: true si el dato es de tipo error. */
+    /*
+     * Descripcion: Dice si un dato ya tuvo un error antes.
+     * Entrada: Dato.
+     * Salida: true si su tipo es error.
+     * Restricciones: Sirve para no repetir el mismo mensaje.
+     */
     private boolean tieneError(Atrib dato) {
         return dato.tipo.equals("error");
     }
 
-    /* Nombre: sinErroresNuevos
-       Descripcion: compara la cantidad de errores de ahora con la de antes.
-       Objetivo: saber si una revision no encontro errores.
-       Salida: true si no se guardo ningun error nuevo. */
+    /*
+     * Descripcion: Dice si una revision no encontro errores.
+     * Entrada: Cantidad de errores antes de revisar.
+     * Salida: true si no aparecio ninguno nuevo.
+     * Restricciones: Ninguna.
+     */
     private boolean sinErroresNuevos(int erroresAntes) {
         return tabla.getErrores().size() == erroresAntes;
     }
 
-    /* Nombre: reportar
-       Descripcion: guarda un error semantico con el tipo de validacion que lo detecto,
-                    por ejemplo "[Aritmética] no se pueden mezclar...".
-       Objetivo: que Main pueda agrupar los errores por tipo de validacion.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Guarda un error semantico.
+     * Entrada: Tipo de validacion, linea, columna y mensaje.
+     * Salida: Error guardado como "[Aritmetica] mensaje".
+     * Restricciones: Main usa el tipo para agrupar los errores.
+     */
     private void reportar(String validacion, int linea, int columna, String mensaje) {
         tabla.errorSemantico(linea, columna, "[" + validacion + "] " + mensaje);
     }
@@ -168,10 +190,12 @@ parser code {:
        OPERACIONES ARITMETICAS
        ============================================================ */
 
-    /* Nombre: aritmetica
-       Descripcion: revisa los tipos de una operacion con numeros.
-       Objetivo: que solo se usen int o float y que no se mezclen.
-       Salida: un dato con el tipo del resultado, o de tipo error si algo fallo. */
+    /*
+     * Descripcion: Revisa los tipos de una operacion con numeros.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Dato con el tipo del resultado, o de tipo error.
+     * Restricciones: Solo int o float, sin mezclarlos (tipado fuerte).
+     */
     public Atrib aritmetica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
 
         String tipoIzquierda = izquierda.tipo;
@@ -224,19 +248,23 @@ parser code {:
         return resultado;
     }
 
-    /* Nombre: generarAritmetica
-       Descripcion: valida una operacion y despues pide escribir su instruccion.
-       Objetivo: que solo se escriba codigo de operaciones correctas.
-       Salida: un dato con el tipo y el lugar del resultado. */
+    /*
+     * Descripcion: Revisa una operacion y escribe su instruccion.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Dato con el tipo y el temporal del resultado.
+     * Restricciones: Si hay error, no escribe codigo.
+     */
     public Atrib generarAritmetica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
         Atrib resultado = aritmetica(izquierda, operador, derecha, linea, columna);
         return gen.binaria(resultado, izquierda, operador, derecha);
     }
 
-    /* Nombre: negativo
-       Descripcion: le pone el signo menos a un numero.
-       Objetivo: manejar numeros negativos y conservar su valor.
-       Salida: un dato con el mismo tipo y el lugar con el signo menos. */
+    /*
+     * Descripcion: Le pone el signo menos a un numero.
+     * Entrada: El numero.
+     * Salida: El mismo numero en negativo.
+     * Restricciones: Conserva su valor si es constante.
+     */
     public Atrib negativo(Atrib numero) {
         Atrib resultado = new Atrib(numero.tipo, "-" + numero.lugar);
         if (numero.valor != null) {
@@ -245,10 +273,12 @@ parser code {:
         return resultado;
     }
 
-    /* Nombre: calcularConstante
-       Descripcion: calcula una operacion cuando los dos lados son enteros constantes.
-       Objetivo: conocer el valor para revisar tamanos y posiciones de arreglos.
-       Salida: el resultado, o null si no se puede calcular. */
+    /*
+     * Descripcion: Calcula una operacion entre dos enteros constantes.
+     * Entrada: Lado izquierdo, operador y lado derecho.
+     * Salida: El resultado, o null si no se puede calcular.
+     * Restricciones: Sirve para revisar tamanos e indices de arreglos.
+     */
     private Integer calcularConstante(Atrib izquierda, String operador, Atrib derecha) {
         if (!izquierda.tipo.equals("int") || izquierda.valor == null || derecha.valor == null) {
             return null;
@@ -299,10 +329,12 @@ parser code {:
        COMPARACIONES Y OPERACIONES LOGICAS
        ============================================================ */
 
-    /* Nombre: relacional
-       Descripcion: revisa una comparacion (< > <= >= == !=).
-       Objetivo: que los dos lados sean del mismo tipo y que no sean texto.
-       Salida: siempre un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa una comparacion (< > <= >= == !=).
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Siempre un dato de tipo bool.
+     * Restricciones: Los dos lados deben ser del mismo tipo y no texto.
+     */
     public Atrib relacional(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
 
         /* Regla 1: si alguno ya fallo, no repetir el mensaje */
@@ -333,10 +365,12 @@ parser code {:
         return new Atrib("bool", "?");
     }
 
-    /* Nombre: generarRelacional
-       Descripcion: valida una comparacion y despues pide escribir su instruccion.
-       Objetivo: que solo se escriba codigo de comparaciones correctas.
-       Salida: un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa una comparacion y escribe su instruccion.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Dato bool con su temporal.
+     * Restricciones: Si hay error, no escribe codigo.
+     */
     public Atrib generarRelacional(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
         int erroresAntes = tabla.getErrores().size();
         Atrib resultado = relacional(izquierda, operador, derecha, linea, columna);
@@ -345,10 +379,12 @@ parser code {:
         return todoBien ? gen.binaria(resultado, izquierda, operador, derecha) : resultado;
     }
 
-    /* Nombre: logica
-       Descripcion: revisa una operacion logica (and, or).
-       Objetivo: que los dos lados sean bool.
-       Salida: siempre un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa una operacion and u or.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Siempre un dato de tipo bool.
+     * Restricciones: Los dos lados deben ser bool.
+     */
     public Atrib logica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
 
         /* Regla 1: si alguno ya fallo, no repetir el mensaje */
@@ -366,10 +402,12 @@ parser code {:
         return new Atrib("bool", "?");
     }
 
-    /* Nombre: generarLogica
-       Descripcion: valida una operacion logica (and, or) y escribe su instruccion.
-       Objetivo: que solo se escriba codigo de operaciones logicas correctas.
-       Salida: un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa un and u or y escribe su instruccion.
+     * Entrada: Lado izquierdo, operador, lado derecho y posicion.
+     * Salida: Dato bool con su temporal.
+     * Restricciones: Si hay error, no escribe codigo.
+     */
     public Atrib generarLogica(Atrib izquierda, String operador, Atrib derecha, int linea, int columna) {
         int erroresAntes = tabla.getErrores().size();
         Atrib resultado = logica(izquierda, operador, derecha, linea, columna);
@@ -378,10 +416,12 @@ parser code {:
         return todoBien ? gen.binaria(resultado, izquierda, operador, derecha) : resultado;
     }
 
-    /* Nombre: negacion
-       Descripcion: revisa una negacion (not).
-       Objetivo: que el valor sea bool.
-       Salida: siempre un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa un not.
+     * Entrada: El valor y su posicion.
+     * Salida: Siempre un dato de tipo bool.
+     * Restricciones: El valor debe ser bool.
+     */
     public Atrib negacion(Atrib valor, int linea, int columna) {
 
         if (tieneError(valor)) {
@@ -396,10 +436,12 @@ parser code {:
         return new Atrib("bool", "?");
     }
 
-    /* Nombre: generarNegacion
-       Descripcion: valida una negacion (not) y escribe su instruccion.
-       Objetivo: que solo se escriba codigo de negaciones correctas.
-       Salida: un dato de tipo bool. */
+    /*
+     * Descripcion: Revisa un not y escribe su instruccion.
+     * Entrada: El valor y su posicion.
+     * Salida: Dato bool con su temporal.
+     * Restricciones: Si hay error, no escribe codigo.
+     */
     public Atrib generarNegacion(Atrib valor, int linea, int columna) {
         int erroresAntes = tabla.getErrores().size();
         Atrib resultado = negacion(valor, linea, columna);
@@ -413,10 +455,12 @@ parser code {:
        ASIGNACIONES
        ============================================================ */
 
-    /* Nombre: asignar
-       Descripcion: revisa que el valor tenga el mismo tipo que la variable.
-       Objetivo: no guardar un valor de un tipo en una variable de otro tipo.
-       Salida: ninguna (si no coinciden, guarda un error). */
+    /*
+     * Descripcion: Revisa que el valor sea del tipo de la variable.
+     * Entrada: Tipo de validacion, nombre, tipo de la variable, valor y posicion.
+     * Salida: Ninguna (si no coinciden, guarda un error).
+     * Restricciones: No repite mensajes de datos que ya fallaron.
+     */
     public void asignar(String validacion, String nombre, String tipoVariable, Atrib valor, int linea, int columna) {
 
         /* Regla 1: si el valor o la variable ya fallaron, no repetir el mensaje */
@@ -431,10 +475,12 @@ parser code {:
         }
     }
 
-    /* Nombre: generarAsignacion
-       Descripcion: escribe la instruccion de guardar un valor en una variable.
-       Objetivo: que el codigo intermedio tenga cada asignacion.
-       Salida: ninguna (solo escribe si el valor no fallo y el tipo coincide). */
+    /*
+     * Descripcion: Escribe la instruccion de una asignacion.
+     * Entrada: Nombre, tipo de la variable y valor.
+     * Salida: Ninguna.
+     * Restricciones: Solo si el valor no fallo y el tipo coincide.
+     */
     public void generarAsignacion(String nombre, String tipoVariable, Atrib valor) {
         if (!tieneError(valor) && valor.tipo.equals(tipoVariable)) {
             gen.asignacion(nombre, valor);
@@ -446,20 +492,23 @@ parser code {:
        ARREGLOS
        ============================================================ */
 
-    /* Nombre: tamanoTexto
-       Descripcion: da el texto del tamano de un arreglo.
-       Objetivo: mostrar el tamano en la tabla de simbolos.
-       Salida: el valor calculado si es constante, o el texto original. */
+    /*
+     * Descripcion: Da el tamano de un arreglo como texto.
+     * Entrada: Tamano y texto original.
+     * Salida: El numero si es constante, o el texto escrito.
+     * Restricciones: Se usa en la tabla de simbolos.
+     */
     public String tamanoTexto(Atrib tamano, String textoOriginal) {
         boolean tamanoConocido = tamano != null && tamano.valor != null;
         return tamanoConocido ? String.valueOf(tamano.valor) : textoOriginal;
     }
 
-    /* Nombre: arreglo
-       Descripcion: revisa la declaracion de un arreglo.
-       Objetivo: que el tamano sea int y mayor que cero, y que los valores sean del tipo
-                 del arreglo y no sobren.
-       Salida: ninguna (si algo falla, guarda un error). */
+    /*
+     * Descripcion: Revisa la declaracion de un arreglo.
+     * Entrada: Nombre, tipo, tamano, valores y posicion.
+     * Salida: Ninguna (si algo falla, guarda un error).
+     * Restricciones: Tamano int mayor que 0; valores del mismo tipo y sin sobrar.
+     */
     public void arreglo(String nombre, String tipoElementos, Atrib tamano, ArrayList valores, int linea, int columna) {
 
         /* Regla 1: el tamano debe ser int (si ya fallo, no repetir el mensaje) */
@@ -509,10 +558,12 @@ parser code {:
         }
     }
 
-    /* Nombre: elemento
-       Descripcion: revisa el uso de una posicion de un arreglo, por ejemplo notas[0].
-       Objetivo: que el arreglo exista, que la posicion sea int y que no se salga del arreglo.
-       Salida: un dato con el tipo de los elementos, o de tipo error. */
+    /*
+     * Descripcion: Revisa el uso de una posicion de un arreglo.
+     * Entrada: Arreglo, nombre, posicion y lugar en el codigo.
+     * Salida: Dato con el tipo del arreglo y lugar nombre[posicion].
+     * Restricciones: El indice debe ser int y caer dentro del arreglo.
+     */
     public Atrib elemento(Simbolo arreglo, String nombre, Atrib posicion, int linea, int columna) {
 
         /* Regla 1: si no existe o no es arreglo, usarArreglo ya aviso */
@@ -542,10 +593,12 @@ parser code {:
         return new Atrib(arreglo.tipo, nombre + "[" + posicion.lugar + "]");
     }
 
-    /* Nombre: generarElemento
-       Descripcion: escribe la lectura de una posicion de un arreglo en un temporal (t = a[i]).
-       Objetivo: que un elemento usado dentro de una operacion sea una direccion simple.
-       Salida: un dato con el tipo del elemento y el temporal como lugar. */
+    /*
+     * Descripcion: Copia una posicion de un arreglo a un temporal.
+     * Entrada: El elemento, por ejemplo edades[2].
+     * Salida: Dato con el temporal como lugar.
+     * Restricciones: Si tiene error, lo devuelve igual.
+     */
     public Atrib generarElemento(Atrib elemento) {
         if (tieneError(elemento)) {
             return elemento;
@@ -553,10 +606,12 @@ parser code {:
         return new Atrib(elemento.tipo, gen.cargarElemento(elemento.tipo, elemento.lugar));
     }
 
-    /* Nombre: generarValoresArreglo
-       Descripcion: escribe los valores iniciales de un arreglo, uno por posicion.
-       Objetivo: que arr[3] = {22, 10, 11} quede como arr[0] = 22, arr[1] = 10, arr[2] = 11.
-       Salida: ninguna (solo escribe los valores sin error y del tipo del arreglo). */
+    /*
+     * Descripcion: Escribe los valores iniciales de un arreglo.
+     * Entrada: Nombre, tipo y lista de valores.
+     * Salida: Ninguna (arr[0] = ..., arr[1] = ...).
+     * Restricciones: Solo los valores sin error y del tipo correcto.
+     */
     public void generarValoresArreglo(String nombre, String tipo, ArrayList valores) {
         if (valores == null) {
             return;
@@ -571,10 +626,12 @@ parser code {:
        FUNCIONES
        ============================================================ */
 
-    /* Nombre: llamada
-       Descripcion: revisa una llamada a funcion: cuantos datos y de que tipo.
-       Objetivo: que se den los datos que la funcion pide.
-       Salida: un dato con el tipo que devuelve la funcion, o de tipo error. */
+    /*
+     * Descripcion: Revisa una llamada a una funcion.
+     * Entrada: Funcion, nombre, argumentos y posicion.
+     * Salida: Dato con el tipo que devuelve, o de tipo error.
+     * Restricciones: Misma cantidad y tipos que los parametros.
+     */
     public Atrib llamada(Simbolo funcion, String nombre, ArrayList argumentos, int linea, int columna) {
 
         /* Regla 1: si no existe o no es funcion, usarFuncion ya aviso */
@@ -605,11 +662,12 @@ parser code {:
         return new Atrib(funcion.tipo, nombre);
     }
 
-    /* Nombre: generarLlamada
-       Descripcion: valida una llamada a funcion y escribe sus param y su call.
-       Objetivo: que el codigo intermedio tenga cada llamada correcta. El call usa la
-                 etiqueta de la funcion (tipo_nombre), igual que en su definicion.
-       Salida: un dato con el tipo que devuelve la funcion y el lugar del resultado. */
+    /*
+     * Descripcion: Revisa una llamada y escribe sus param y su call.
+     * Entrada: Funcion, nombre, argumentos y posicion.
+     * Salida: Dato con el temporal del resultado.
+     * Restricciones: El call usa la misma etiqueta que la funcion (tipo$nombre).
+     */
     public Atrib generarLlamada(Simbolo funcion, String nombre, ArrayList argumentos, int linea, int columna) {
 
         int erroresAntes = tabla.getErrores().size();
@@ -624,7 +682,7 @@ parser code {:
 
         if (todoBien) {
             boolean devuelveValor = !funcion.tipo.equals("void");
-            String temporal = gen.llamar(funcion.tipo + "_" + nombre, funcion.tipo, argumentos, devuelveValor);
+            String temporal = gen.llamar(Generador.etiquetaDeFuncion(funcion.tipo, nombre), funcion.tipo, argumentos, devuelveValor);
             if (temporal != null) {
                 resultado.lugar = temporal;
             }
@@ -633,11 +691,12 @@ parser code {:
         return resultado;
     }
 
-    /* Nombre: declararFuncion
-       Descripcion: guarda una funcion en la tabla de simbolos.
-       Objetivo: que no retorne string, que sus parametros no se repitan y que su nombre sea unico.
-                 Ademas deja anotada la funcion actual para revisar sus return.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Guarda una funcion en la tabla de simbolos.
+     * Entrada: Nombre, tipo, parametros y posicion.
+     * Salida: Ninguna (si algo falla, guarda un error).
+     * Restricciones: No puede retornar string ni repetir parametros o nombre.
+     */
     public void declararFuncion(String nombre, String tipo, ArrayList parametros, int linea, int columna) {
 
         if (tipo.equals("string")) {
@@ -667,10 +726,12 @@ parser code {:
         columnaFuncionActual = columna;
     }
 
-    /* Nombre: finFuncion
-       Descripcion: se llama al cerrar el cuerpo de una funcion.
-       Objetivo: revisar que una funcion con tipo tenga al menos un return.
-       Salida: ninguna (si falta, guarda un error). */
+    /*
+     * Descripcion: Revisa el final de una funcion.
+     * Entrada: Ninguna.
+     * Salida: Ninguna (si falta, guarda un error).
+     * Restricciones: Una funcion con tipo debe tener al menos un return.
+     */
     public void finFuncion() {
         boolean tieneTipo = tipoFuncionActual != null && !tipoFuncionActual.equals("void");
         if (tieneTipo && !funcionTieneReturn) {
@@ -679,10 +740,12 @@ parser code {:
         }
     }
 
-    /* Nombre: retorno
-       Descripcion: revisa un return contra la funcion donde esta.
-       Objetivo: que el valor devuelto sea del tipo de la funcion.
-       Salida: ninguna (si todo esta bien, escribe el return). */
+    /*
+     * Descripcion: Revisa un return y escribe su instruccion.
+     * Entrada: El valor (o null) y su posicion.
+     * Salida: Ninguna.
+     * Restricciones: void no devuelve valor; el valor debe ser del tipo de la funcion.
+     */
     public void retorno(Atrib valor, int linea, int columna) {
 
         funcionTieneReturn = true;
@@ -723,10 +786,12 @@ parser code {:
        La tabla de simbolos solo guarda y busca; aqui se decide que es un error.
        ============================================================ */
 
-    /* Nombre: avisarRepetido
-       Descripcion: avisa si un nombre ya estaba declarado en el mismo bloque.
-       Objetivo: no permitir dos declaraciones iguales en un bloque.
-       Salida: ninguna (si estaba repetido, guarda un error). */
+    /*
+     * Descripcion: Avisa si un nombre ya existia en el mismo bloque.
+     * Entrada: Tipo de validacion, simbolo anterior, nombre y posicion.
+     * Salida: Ninguna (si estaba repetido, guarda un error).
+     * Restricciones: Ninguna.
+     */
     private void avisarRepetido(String validacion, Simbolo simboloPrevio, String nombre, int linea, int columna) {
         if (simboloPrevio != null) {
             reportar(validacion, linea, columna, "'" + nombre
@@ -734,29 +799,35 @@ parser code {:
         }
     }
 
-    /* Nombre: declararVariable
-       Descripcion: guarda una variable en la tabla de simbolos.
-       Objetivo: que cada variable quede registrada una sola vez por bloque.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Guarda una variable en la tabla de simbolos.
+     * Entrada: Nombre, tipo, valor inicial y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Un nombre solo una vez por bloque.
+     */
     public void declararVariable(String nombre, String tipo, String valorInicial, int linea, int columna) {
         Simbolo simboloPrevio = tabla.declararVariable(nombre, tipo, valorInicial, linea, columna);
         avisarRepetido("Nombres", simboloPrevio, nombre, linea, columna);
     }
 
-    /* Nombre: declararArreglo
-       Descripcion: guarda un arreglo en la tabla de simbolos.
-       Objetivo: que cada arreglo quede registrado una sola vez por bloque.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Guarda un arreglo en la tabla de simbolos.
+     * Entrada: Nombre, tipo, tamano, cantidad de valores, valores y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Un nombre solo una vez por bloque.
+     */
     public void declararArreglo(String nombre, String tipo, String tamano, int elementos,
                                 String valores, int linea, int columna) {
         Simbolo simboloPrevio = tabla.declararArreglo(nombre, tipo, tamano, elementos, valores, linea, columna);
         avisarRepetido("Nombres", simboloPrevio, nombre, linea, columna);
     }
 
-    /* Nombre: usar
-       Descripcion: busca una variable que se esta usando.
-       Objetivo: que este declarada, que no sea funcion y que no sea un arreglo sin posicion.
-       Salida: el simbolo, o null si hubo un error (el error ya se guardo). */
+    /*
+     * Descripcion: Busca una variable que se esta usando.
+     * Entrada: Nombre y posicion.
+     * Salida: El simbolo, o null si hubo un error.
+     * Restricciones: Debe existir, no ser funcion y no ser arreglo sin indice.
+     */
     public Simbolo usar(String nombre, int linea, int columna) {
         Simbolo simbolo = tabla.buscar(nombre);
 
@@ -775,10 +846,12 @@ parser code {:
         return simbolo;
     }
 
-    /* Nombre: usarArreglo
-       Descripcion: busca un arreglo que se esta usando.
-       Objetivo: que este declarado y que de verdad sea un arreglo.
-       Salida: el simbolo (puede ser null o no ser arreglo; el error ya se guardo). */
+    /*
+     * Descripcion: Busca un arreglo que se esta usando.
+     * Entrada: Nombre y posicion.
+     * Salida: El simbolo (puede ser null).
+     * Restricciones: Debe existir y ser un arreglo.
+     */
     public Simbolo usarArreglo(String nombre, int linea, int columna) {
         Simbolo simbolo = tabla.buscar(nombre);
 
@@ -790,10 +863,12 @@ parser code {:
         return simbolo;
     }
 
-    /* Nombre: usarFuncion
-       Descripcion: busca una funcion que se esta llamando.
-       Objetivo: que este declarada y que de verdad sea una funcion.
-       Salida: el simbolo (puede ser null o no ser funcion; el error ya se guardo). */
+    /*
+     * Descripcion: Busca una funcion que se esta llamando.
+     * Entrada: Nombre y posicion.
+     * Salida: El simbolo (puede ser null).
+     * Restricciones: Debe existir y ser una funcion.
+     */
     public Simbolo usarFuncion(String nombre, int linea, int columna) {
         Simbolo simbolo = tabla.buscar(nombre);
 
@@ -805,10 +880,12 @@ parser code {:
         return simbolo;
     }
 
-    /* Nombre: finPrograma
-       Descripcion: se llama al terminar de leer el programa.
-       Objetivo: revisar que exista la funcion principal.
-       Salida: ninguna (si falta, guarda un error). */
+    /*
+     * Descripcion: Revisa el final del programa.
+     * Entrada: Ninguna.
+     * Salida: Ninguna (si falta principal, guarda un error).
+     * Restricciones: El programa debe tener una funcion principal.
+     */
     public void finPrograma() {
         if (tabla.buscar("principal") != null) {
             return;
@@ -833,10 +910,12 @@ parser code {:
        CONTROL: CICLOS, BREAK, CONDICIONES Y ++ --
        ============================================================ */
 
-    /* Nombre: entrarCiclo y salirCiclo
-       Descripcion: cuentan cuantos while o for estan abiertos en este momento.
-       Objetivo: saber si un break esta dentro de un ciclo.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Cuentan los while y for abiertos.
+     * Entrada: Ninguna.
+     * Salida: Ninguna.
+     * Restricciones: Sirve para saber si un break esta dentro de un ciclo.
+     */
     public void entrarCiclo() {
         ciclosAbiertos++;
     }
@@ -847,20 +926,24 @@ parser code {:
         }
     }
 
-    /* Nombre: validarBreak
-       Descripcion: revisa un break.
-       Objetivo: que solo se use dentro de un while o de un for.
-       Salida: ninguna (si esta afuera, guarda un error). */
+    /*
+     * Descripcion: Revisa un break.
+     * Entrada: Posicion del break.
+     * Salida: Ninguna (si esta afuera, guarda un error).
+     * Restricciones: Solo se usa dentro de un while o un for.
+     */
     public void validarBreak(int linea, int columna) {
         if (ciclosAbiertos == 0) {
             reportar("Control", linea, columna, "break solo puede utilizarse dentro de un ciclo");
         }
     }
 
-    /* Nombre: condicion
-       Descripcion: revisa la condicion de un if, elif, while o for.
-       Objetivo: que la condicion sea de tipo bool.
-       Salida: ninguna (si no es bool, guarda un error). */
+    /*
+     * Descripcion: Revisa la condicion de un if, elif, while o for.
+     * Entrada: Tipo de validacion, condicion y posicion.
+     * Salida: Ninguna (si no es bool, guarda un error).
+     * Restricciones: La condicion debe ser bool.
+     */
     public void condicion(String validacion, Atrib condicion, int linea, int columna) {
 
         if (condicion == null || tieneError(condicion)) {
@@ -873,10 +956,12 @@ parser code {:
         }
     }
 
-    /* Nombre: incrementar
-       Descripcion: revisa un ++ o un --.
-       Objetivo: que solo se use con variables int o float.
-       Salida: ninguna (si esta bien, escribe la instruccion). */
+    /*
+     * Descripcion: Revisa un ++ o un -- y escribe su instruccion.
+     * Entrada: Variable, nombre, operador y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Solo con variables int o float.
+     */
     public void incrementar(Simbolo variable, String nombre, String operador, int linea, int columna) {
 
         if (variable == null) {
@@ -896,10 +981,12 @@ parser code {:
        ENTRADA Y SALIDA
        ============================================================ */
 
-    /* Nombre: leer
-       Descripcion: revisa una instruccion read.
-       Objetivo: que se lea en una variable o posicion de tipo int, float o char.
-       Salida: ninguna (si esta bien, escribe la instruccion). */
+    /*
+     * Descripcion: Revisa un read y escribe su instruccion.
+     * Entrada: Destino y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Solo int, float o char.
+     */
     public void leer(Atrib destino, int linea, int columna) {
 
         if (destino == null || tieneError(destino)) {
@@ -915,10 +1002,12 @@ parser code {:
         gen.leer(destino.lugar);
     }
 
-    /* Nombre: escribir
-       Descripcion: revisa una instruccion write.
-       Objetivo: que solo se escriban valores int, float o string.
-       Salida: ninguna (si esta bien, escribe la instruccion). */
+    /*
+     * Descripcion: Revisa un write y escribe su instruccion.
+     * Entrada: Valor y posicion.
+     * Salida: Ninguna.
+     * Restricciones: Solo int, float o string.
+     */
     public void escribir(Atrib valor, int linea, int columna) {
 
         if (valor == null || tieneError(valor)) {
@@ -939,32 +1028,40 @@ parser code {:
        Main reemplaza errorProduccion y tokenFaltante para guardar el aviso.
        ============================================================ */
 
-    /* Nombre: errorProduccion
-       Descripcion: avisa que el programa trae un error comun, con su mensaje.
-       Objetivo: dar un mensaje exacto. Main lo reemplaza para guardarlo.
-       Salida: ninguna (aqui no hace nada). */
+    /*
+     * Descripcion: Avisa un error comun con su mensaje.
+     * Entrada: Linea, columna y mensaje.
+     * Salida: Ninguna (aqui no hace nada).
+     * Restricciones: Main la reemplaza para guardar el aviso.
+     */
     public void errorProduccion(int linea, int columna, String mensaje) {
     }
 
-    /* Nombre: tokenFaltante
-       Descripcion: avisa que falta un simbolo y que el parser lo puso por su cuenta.
-       Objetivo: dar un mensaje exacto. Main lo reemplaza para guardarlo.
-       Salida: ninguna (aqui no hace nada). */
+    /*
+     * Descripcion: Avisa que faltaba un simbolo y el parser lo puso.
+     * Entrada: Simbolo, linea y columna.
+     * Salida: Ninguna (aqui no hace nada).
+     * Restricciones: Main la reemplaza para guardar el aviso.
+     */
     public void tokenFaltante(String token, int linea, int columna) {
     }
 
-    /* Nombre: faltaTerminador
-       Descripcion: avisa que falta el simbolo de fin al final de una sentencia.
-       Objetivo: arreglar el error sin perder codigo.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Avisa que falta el » al final de una sentencia.
+     * Entrada: Ninguna.
+     * Salida: Ninguna.
+     * Restricciones: Se sigue leyendo sin perder codigo.
+     */
     public void faltaTerminador() {
         faltaToken("»");
     }
 
-    /* Nombre: faltaToken
-       Descripcion: calcula donde falta un simbolo (fin de sentencia, parentesis o cierre de bloque) y lo avisa.
-       Objetivo: decir la posicion exacta del simbolo que falta.
-       Salida: ninguna. */
+    /*
+     * Descripcion: Calcula donde falta un simbolo y lo avisa.
+     * Entrada: El simbolo que falta.
+     * Salida: Ninguna.
+     * Restricciones: Falta justo despues del penultimo token leido.
+     */
     public void faltaToken(String token) {
         int cantidadLeidos = tokensLeidos.size();
         if (cantidadLeidos < 2) {
@@ -1180,17 +1277,21 @@ start with programa;
                         VALORES
    ============================================================ */
 
-/* Nombre: bool
-   Descripcion: los valores true y false.
-   Objetivo: crear un valor de tipo bool y copiarlo a un temporal (t1 = true).
-   Salida: un dato de tipo bool con el temporal como lugar. */
+/*
+ * Descripcion: Los valores true y false.
+ * Entrada: TRUE o FALSE.
+ * Salida: Dato bool copiado a un temporal.
+ * Restricciones: Ninguna.
+ */
 bool ::= TRUE   {: RESULT = parser.gen.cargar(new Atrib("bool", "true")); :}
        | FALSE  {: RESULT = parser.gen.cargar(new Atrib("bool", "false")); :} ;
 
-/* Nombre: tipo
-   Descripcion: los tipos del lenguaje (int, float, bool, char, string).
-   Objetivo: saber de que tipo se declara algo.
-   Salida: el nombre del tipo como texto. */
+/*
+ * Descripcion: Los tipos: int, float, bool, char y string.
+ * Entrada: La palabra del tipo.
+ * Salida: El tipo como texto.
+ * Restricciones: void no es un tipo de variable.
+ */
 tipo ::= INT     {: RESULT = "int";    :}
        | FLOAT   {: RESULT = "float";  :}
        | BOOL    {: RESULT = "bool";   :}
@@ -1198,40 +1299,50 @@ tipo ::= INT     {: RESULT = "int";    :}
        | STRING  {: RESULT = "string"; :}
        ;
 
-/* Nombre: valor_numerico
-   Descripcion: un numero entero o decimal.
-   Objetivo: agrupar los dos tipos de numero.
-   Salida: un dato de tipo int o float. */
+/*
+ * Descripcion: Un numero entero o decimal.
+ * Entrada: Un entero o un flotante.
+ * Salida: Dato int o float.
+ * Restricciones: Ninguna.
+ */
 valor_numerico ::= entero:numero    {: RESULT = numero;  :}
                  | flotante:decimal  {: RESULT = decimal;  :} ;
 
-/* Nombre: entero
-   Descripcion: un numero entero escrito en el programa.
-   Objetivo: crear un valor int y guardar su numero.
-   Salida: un dato de tipo int con su valor. */
+/*
+ * Descripcion: Un numero entero escrito en el programa.
+ * Entrada: LITERAL_INT.
+ * Salida: Dato int con su valor.
+ * Restricciones: Ninguna.
+ */
 entero ::= LITERAL_INT:texto
         {: Atrib numero = new Atrib("int", String.valueOf(texto));
            numero.valor = parser.aEntero(numero.lugar);
            RESULT = numero; :} ;
 
-/* Nombre: flotante
-   Descripcion: un numero decimal escrito en el programa.
-   Objetivo: crear un valor float.
-   Salida: un dato de tipo float. */
+/*
+ * Descripcion: Un numero decimal escrito en el programa.
+ * Entrada: LITERAL_FLOAT.
+ * Salida: Dato float.
+ * Restricciones: Ninguna.
+ */
 flotante ::= LITERAL_FLOAT :texto
         {: RESULT = new Atrib("float", String.valueOf(texto)); :} ;
 
-/* Nombre: cadena_texto
-   Descripcion: un texto entre comillas.
-   Objetivo: crear un valor string.
-   Salida: un dato de tipo string. */
+/*
+ * Descripcion: Un texto entre comillas.
+ * Entrada: LITERAL_STRING.
+ * Salida: Dato string.
+ * Restricciones: Ninguna.
+ */
 cadena_texto ::= LITERAL_STRING :texto
         {: RESULT = new Atrib("string", String.valueOf(texto)); :} ;
 
-/* Nombre: caracter_literal
-   Descripcion: una letra o simbolo entre comillas simples.
-   Objetivo: crear un valor char.
-   Salida: un dato de tipo char. */
+/*
+ * Descripcion: Una letra o simbolo entre comillas simples.
+ * Entrada: LITERAL_CHAR.
+ * Salida: Dato char.
+ * Restricciones: Ninguna.
+ */
 caracter_literal ::= LITERAL_CHAR :texto
         {: RESULT = new Atrib("char", String.valueOf(texto)); :} ;
 
@@ -1240,74 +1351,93 @@ caracter_literal ::= LITERAL_CHAR :texto
                  IDENTIFICADORES
    ============================================================ */
 
-/* Nombre: identificador
-   Descripcion: el nombre de una variable, arreglo o funcion.
-   Objetivo: obtener ese nombre.
-   Salida: el nombre como texto. */
+/*
+ * Descripcion: El nombre de una variable, arreglo o funcion.
+ * Entrada: ID.
+ * Salida: El nombre como texto.
+ * Restricciones: Ninguna.
+ */
 identificador ::= ID:nombre  {: RESULT = nombre; :} ;
 
 /* ============================================================
                 DELIMITADORES Y OPERADORES
    ============================================================ */
 
-/* Nombre: abrir_bloque
-   Descripcion: el simbolo que abre un bloque.
-   Objetivo: abrir un bloque nuevo en la tabla de simbolos.
-   Salida: ninguna. */
+/*
+ * Descripcion: El ¿: que abre un bloque.
+ * Entrada: OPBLOCK.
+ * Salida: Ninguna (abre un ambito).
+ * Restricciones: Ninguna.
+ */
 abrir_bloque  ::= OPBLOCK  {: parser.tabla.abrirAmbito();  :} ;
 
-/* Nombre: cerrar_bloque
-   Descripcion: el simbolo que cierra un bloque.
-   Objetivo: cerrar el bloque actual en la tabla de simbolos.
-   Salida: ninguna. */
+/*
+ * Descripcion: El :? que cierra un bloque.
+ * Entrada: CLBLOCK.
+ * Salida: Ninguna (cierra el ambito).
+ * Restricciones: Ninguna.
+ */
 cerrar_bloque ::= CLBLOCK  {: parser.tabla.cerrarAmbito(); :} ;
 
-/* Nombre: abrir y cerrar corchetes
-   Descripcion: los simbolos de corchete usados en arreglos y comparaciones.
-   Objetivo: marcar donde empieza y termina una posicion.
-   Salida: ninguna. */
+/*
+ * Descripcion: Los corchetes ʃ: y :ʅ.
+ * Entrada: OPBRACKET o CLBRACKET.
+ * Salida: Ninguna.
+ * Restricciones: Se usan en arreglos y comparaciones.
+ */
 abrir_corcheteCuadrados ::= OPBRACKET ;
 
 cerrar_corcheteCuadrados ::= CLBRACKET ;
 
-/* Nombre: coma
-   Descripcion: la coma que separa datos.
-   Objetivo: separar valores y parametros.
-   Salida: ninguna. */
+/*
+ * Descripcion: La coma que separa datos.
+ * Entrada: COMA.
+ * Salida: Ninguna.
+ * Restricciones: Ninguna.
+ */
 coma ::= COMA ;
 
-/* Nombre: fin_sentencia
-   Descripcion: el simbolo que termina una sentencia.
-   Objetivo: marcar el final de una sentencia.
-   Salida: ninguna. */
+/*
+ * Descripcion: El » que termina una sentencia.
+ * Entrada: TERMINATOR.
+ * Salida: Ninguna.
+ * Restricciones: Ninguna.
+ */
 fin_sentencia ::= TERMINATOR ;
 
-/* Nombre: fin_o_falta
-   Descripcion: el simbolo de fin de sentencia, o nada si se olvido.
-   Objetivo: si falta, ponerlo por su cuenta, avisar y seguir leyendo sin perder codigo.
-   Salida: ninguna (si falta, avisa). */
+/*
+ * Descripcion: El » del final, o nada si se olvido.
+ * Entrada: TERMINATOR o nada.
+ * Salida: Ninguna (si falta, avisa).
+ * Restricciones: Si falta, lo pone y sigue leyendo.
+ */
 fin_o_falta ::= TERMINATOR
               | /* falta el simbolo */  {: parser.faltaTerminador(); :} ;
 
-/* Nombre: cierra_paren
-   Descripcion: el parentesis que cierra, o nada si se olvido.
-   Objetivo: si falta, ponerlo por su cuenta y avisar. Se usa solo antes de abrir un bloque.
-   Salida: ninguna (si falta, avisa). */
+/*
+ * Descripcion: El :э que cierra, o nada si se olvido.
+ * Entrada: PARENCL o nada.
+ * Salida: Ninguna (si falta, avisa).
+ * Restricciones: Solo se usa antes de abrir un bloque.
+ */
 cierra_paren ::= PARENCL
                | /* falta el parentesis */  {: parser.faltaToken(":э"); :} ;
 
-/* Nombre: cierra_bloque_fn
-   Descripcion: el simbolo que cierra una funcion, o nada si se olvido.
-   Objetivo: si falta, ponerlo por su cuenta, avisar y cerrar el bloque.
-   Salida: ninguna (si falta, avisa). */
+/*
+ * Descripcion: El :? que cierra una funcion, o nada si se olvido.
+ * Entrada: CLBLOCK o nada.
+ * Salida: Ninguna (si falta, avisa).
+ * Restricciones: Si falta, igual cierra el ambito.
+ */
 cierra_bloque_fn ::= cerrar_bloque
                    | /* falta el cierre */  {: parser.faltaToken(":?"); parser.tabla.cerrarAmbito(); :} ;
 
-/* Nombre: asignacion, incremento y decremento
-   Descripcion: los simbolos de asignar, de ++ y de --.
-   Objetivo: reconocer esos simbolos. En el = se marca donde empieza el codigo del valor,
-             para poner ahi el data# de una declaracion con valor.
-   Salida: ninguna. */
+/*
+ * Descripcion: Los simbolos Ͱ, ++ y --.
+ * Entrada: ASIGN, INCREMENT o DECREMENT.
+ * Salida: Ninguna.
+ * Restricciones: En el Ͱ se marca donde empieza el codigo del valor.
+ */
 asignacion ::= ASIGN  {: parser.gen.marcarAsignacion(); :} ;
 
 incremento ::= INCREMENT ;
@@ -1319,62 +1449,73 @@ decremento ::= DECREMENT ;
                 PALABRAS RESERVADAS
    ============================================================ */
 
-/* Nombre: palabraVal, palabraBreak y palabraReturn
-   Descripcion: las palabras val, break y return.
-   Objetivo: reconocerlas dentro de otras reglas.
-   Salida: ninguna. */
+/*
+ * Descripcion: Las palabras val, break y return.
+ * Entrada: VAL, BREAK o RETURN.
+ * Salida: Ninguna.
+ * Restricciones: Ninguna.
+ */
 palabraVal ::= VAL ;
 
 palabraBreak ::= BREAK ;
 
 palabraReturn ::= RETURN ;
 
-/* Nombre: Principal
-   Descripcion: la palabra principal.
-   Objetivo: guardar la funcion principal y escribir su etiqueta (void_principal).
-   Salida: ninguna. */
+/*
+ * Descripcion: La palabra principal.
+ * Entrada: PRINCIPAL.
+ * Salida: Ninguna (guarda la funcion y su etiqueta void$principal).
+ * Restricciones: Ninguna.
+ */
 Principal ::= PRINCIPAL:palabraPrincipal {: parser.declararFuncion("principal", "void", null, palabraPrincipalleft, palabraPrincipalright);
                 parser.gen.etiquetaFuncion("void", "principal"); :} ;
 
-/* Nombre: palabraIf
-   Descripcion: la palabra if.
-   Objetivo: ponerle nombre al bloque que viene despues y empezar el if en el codigo intermedio.
-   Salida: ninguna. */
+/*
+ * Descripcion: La palabra if.
+ * Entrada: IF.
+ * Salida: Ninguna (nombra el bloque y empieza el if en el codigo).
+ * Restricciones: Ninguna.
+ */
 palabraIf   ::= IF         {: parser.tabla.siguienteAmbito("if");
                               parser.gen.iniciarIf(); :} ;
 
-/* Nombre: palabraElif y palabraElse
-   Descripcion: las palabras elif y else.
-   Objetivo: ponerle nombre al bloque que viene despues. En el codigo intermedio, la rama
-             anterior salta al final del if y aqui cae la condicion falsa.
-   Salida: ninguna. */
+/*
+ * Descripcion: Las palabras elif y else.
+ * Entrada: ELIF o ELSE.
+ * Salida: Ninguna (la rama anterior salta al final del if).
+ * Restricciones: Ninguna.
+ */
 palabraElif ::= ELIF       {: parser.tabla.siguienteAmbito("elif");
                               parser.gen.otraRama(); :} ;
 
 palabraElse ::= ELSE       {: parser.tabla.siguienteAmbito("else");
                               parser.gen.otraRama(); :} ;
 
-/* Nombre: palabraWhile
-   Descripcion: la palabra while.
-   Objetivo: ponerle nombre al bloque que viene despues y escribir la etiqueta _cond
-             antes del codigo de la condicion.
-   Salida: ninguna. */
+/*
+ * Descripcion: La palabra while.
+ * Entrada: WHILE.
+ * Salida: Ninguna (escribe la etiqueta $condicion).
+ * Restricciones: La etiqueta va antes del codigo de la condicion.
+ */
 palabraWhile ::= WHILE     {: parser.tabla.siguienteAmbito("while");
                               parser.gen.iniciarWhile(); :} ;
 
-/* Nombre: palabraFor
-   Descripcion: la palabra for.
-   Objetivo: abrir el bloque del for desde el inicio, porque su variable se declara antes del bloque.
-             Tambien escribe la etiqueta _init antes de la inicializacion.
-   Salida: ninguna. */
+/*
+ * Descripcion: La palabra for.
+ * Entrada: FOR.
+ * Salida: Ninguna (abre el ambito y escribe $inicializacion).
+ * Restricciones: El ambito se abre aqui porque la variable del for va antes del bloque.
+ */
 palabraFor  ::= FOR        {: parser.tabla.abrirAmbito("for");
                               parser.tabla.siguienteAmbito("cuerpo for");
                               parser.gen.iniciarFor(); :} ;
 
-/* Nombre: operadorPotencia, leer y escribir
-   Descripcion: las palabras pot, read y write.
-   Objetivo: reconocerlas dentro de otras reglas.
-   Salida: ninguna. */
+/*
+ * Descripcion: Las palabras pot, read y write.
+ * Entrada: POT, READ o WRITE.
+ * Salida: Ninguna.
+ * Restricciones: Ninguna.
+ */
 operadorPotencia ::= POT ;
 
 leer ::= READ ;
@@ -1386,11 +1527,12 @@ escribir ::= WRITE ;
                          VARIABLES
    ============================================================ */
 
-/* Nombre: def_variable
-   Descripcion: crear una variable, con valor inicial o sin el.
-   Objetivo: guardarla en la tabla de simbolos y revisar que el valor sea de su tipo.
-             Tambien reconoce errores comunes (sin tipo o con void) para dar un mensaje exacto.
-   Salida: ninguna (guarda la variable y escribe su asignacion). */
+/*
+ * Descripcion: Declarar una variable, con o sin valor inicial.
+ * Entrada: val, tipo, nombre y, opcional, Ͱ y un valor.
+ * Salida: Ninguna (guarda la variable y escribe su declaracion).
+ * Restricciones: Da un mensaje exacto si falta el tipo o si es void.
+ */
 def_variable ::=
       palabraVal INT    identificador:nombre fin_o_falta
       {: parser.declararVariable(nombre, "int", null, nombreleft, nombreright);
@@ -1441,10 +1583,12 @@ def_variable ::=
          parser.declararVariable(nombre, "error", null, nombreleft, nombreright); :}
     ;
 
-/* Nombre: asignacion_variable
-   Descripcion: guardar un valor en una variable que ya existe.
-   Objetivo: revisar que exista y que el valor sea de su mismo tipo.
-   Salida: ninguna (escribe la asignacion si todo esta bien). */
+/*
+ * Descripcion: Guardar un valor en una variable que ya existe.
+ * Entrada: Nombre, Ͱ y un valor.
+ * Salida: Ninguna (escribe la asignacion).
+ * Restricciones: La variable debe existir y el valor ser de su tipo.
+ */
 asignacion_variable ::=
     identificador:nombre asignacion expresion:valor fin_o_falta
     {:
@@ -1459,10 +1603,12 @@ asignacion_variable ::=
     :}
     ;
 
-/* Nombre: lista_globales
-   Descripcion: las variables y arreglos que se declaran antes de las funciones.
-   Objetivo: permitir datos globales. Si hay un error, salta hasta el fin de la sentencia.
-   Salida: ninguna. */
+/*
+ * Descripcion: Las variables y arreglos antes de las funciones.
+ * Entrada: Declaraciones.
+ * Salida: Ninguna.
+ * Restricciones: Si hay un error, salta hasta el » siguiente.
+ */
 lista_globales ::= /* vacio */
     | def_variable lista_globales
     | creacion_arreglo lista_globales
@@ -1474,10 +1620,12 @@ lista_globales ::= /* vacio */
                      ENTRADA Y SALIDA
    ============================================================ */
 
-/* Nombre: lectura
-   Descripcion: la instruccion read, con una variable o una posicion de arreglo.
-   Objetivo: revisar el destino. Si faltan los parentesis, da un mensaje exacto.
-   Salida: ninguna (escribe el read si todo esta bien). */
+/*
+ * Descripcion: La instruccion read.
+ * Entrada: read y una variable o posicion de arreglo.
+ * Salida: Ninguna (escribe el read).
+ * Restricciones: Da un mensaje exacto si faltan los parentesis.
+ */
 lectura ::= leer PARENOP identificador:nombre PARENCL fin_o_falta
             {: Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
                if (simbolo != null) { parser.leer(new Atrib(simbolo.tipo, nombre), nombreleft, nombreright); } :}
@@ -1489,10 +1637,12 @@ lectura ::= leer PARENOP identificador:nombre PARENCL fin_o_falta
                if (simbolo != null) { parser.leer(new Atrib(simbolo.tipo, nombre), nombreleft, nombreright); } :}
           ;
 
-/* Nombre: escritura
-   Descripcion: la instruccion write, con un solo valor.
-   Objetivo: revisar que el valor sea int, float o string. Si faltan los parentesis, da un mensaje exacto.
-   Salida: ninguna (escribe el write si todo esta bien). */
+/*
+ * Descripcion: La instruccion write.
+ * Entrada: write y un valor.
+ * Salida: Ninguna (escribe el write).
+ * Restricciones: Da un mensaje exacto si faltan los parentesis.
+ */
 escritura ::= escribir PARENOP valor_escritura:valor PARENCL fin_o_falta
               {: parser.escribir(valor, valorleft, valorright); :}
             | escribir identificador:nombre fin_o_falta
@@ -1500,10 +1650,12 @@ escritura ::= escribir PARENOP valor_escritura:valor PARENCL fin_o_falta
                  Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
                  if (simbolo != null) { parser.escribir(new Atrib(simbolo.tipo, nombre), nombreleft, nombreright); } :} ;
 
-/* Nombre: valor_escritura
-   Descripcion: lo que se puede escribir con write: una operacion o un bool.
-   Objetivo: dar el valor a escribir.
-   Salida: un dato con su tipo y lugar. */
+/*
+ * Descripcion: Lo que se puede escribir con write.
+ * Entrada: Una operacion o un bool.
+ * Salida: Dato con su tipo y lugar.
+ * Restricciones: Ninguna.
+ */
 valor_escritura ::= expresion_aritmetica:valor  {: RESULT = valor; :}
                   | bool:valorBool                  {: RESULT = valorBool; :} ;
 
@@ -1511,31 +1663,38 @@ valor_escritura ::= expresion_aritmetica:valor  {: RESULT = valor; :}
                  ARREGLOS
    ============================================================ */
 
-/* Nombre: indice
-   Descripcion: la posicion que se pide en un arreglo.
-   Objetivo: aceptar cualquier operacion con numeros como posicion. Si es un numero o una
-             variable sola, se usa directo (edades[2]) sin copiarla a un temporal.
-   Salida: un dato con su tipo y valor. */
+/*
+ * Descripcion: La posicion que se pide en un arreglo.
+ * Entrada: Una operacion con numeros.
+ * Salida: Dato con su tipo y valor.
+ * Restricciones: Un numero o variable sola se usa directo, sin temporal.
+ */
 indice ::= expresion_aritmetica:valor  {: RESULT = parser.gen.sinCarga(valor); :} ;
 
-/* Nombre: acceso_arreglo
-   Descripcion: usar una posicion de un arreglo, por ejemplo notas[0].
-   Objetivo: revisar que el arreglo exista y que la posicion sea valida.
-   Salida: un dato con el tipo de los elementos. */
+/*
+ * Descripcion: Usar una posicion de un arreglo, por ejemplo notas[0].
+ * Entrada: Nombre, corchetes e indice.
+ * Salida: Dato con el tipo de los elementos.
+ * Restricciones: El arreglo debe existir y el indice ser valido.
+ */
 acceso_arreglo ::= identificador:nombre abrir_corcheteCuadrados indice:posicion cerrar_corcheteCuadrados
                    {: Simbolo simbolo = parser.usarArreglo(nombre, nombreleft, nombreright);
                       RESULT = parser.elemento(simbolo, nombre, posicion, nombreleft, nombreright); :} ;
 
-/* Nombre: creacion_arreglo
-   Descripcion: las tres formas de crear un arreglo.
-   Objetivo: agrupar las formas: con tamano, con tamano y valores, y solo con valores.
-   Salida: ninguna. */
+/*
+ * Descripcion: Las tres formas de crear un arreglo.
+ * Entrada: Una de las tres reglas de arreglo.
+ * Salida: Ninguna.
+ * Restricciones: Ninguna.
+ */
 creacion_arreglo ::= arreglo_con_tamano | arreglo_con_tamano_valores | arreglo_sin_tamano_valores ;
 
-/* Nombre: arreglo_con_tamano
-   Descripcion: crear un arreglo indicando solo su tamano.
-   Objetivo: guardarlo y revisar su tamano. Un arreglo de bool, char o string da un mensaje exacto.
-   Salida: ninguna. */
+/*
+ * Descripcion: Crear un arreglo indicando solo su tamano.
+ * Entrada: val, tipo, nombre y tamano.
+ * Salida: Ninguna (guarda el arreglo y su declaracion).
+ * Restricciones: Solo int o float; bool, char o string dan un mensaje exacto.
+ */
 arreglo_con_tamano ::=
       palabraVal INT   identificador:nombre abrir_corcheteCuadrados:corcheteAbre indice:tamano cerrar_corcheteCuadrados:corcheteCierra fin_o_falta
       {: parser.declararArreglo(nombre, "int", parser.tamanoTexto(tamano, parser.textoEntre(corcheteAbreleft, corcheteAbreright, corcheteCierraleft, corcheteCierraright)), 0, null, nombreleft, nombreright);
@@ -1556,10 +1715,12 @@ arreglo_con_tamano ::=
          parser.declararArreglo(nombre, "error", null, 0, null, nombreleft, nombreright); :}
     ;
 
-/* Nombre: arreglo_con_tamano_valores
-   Descripcion: crear un arreglo con su tamano y sus valores iniciales.
-   Objetivo: guardarlo y revisar el tamano y los valores.
-   Salida: ninguna. */
+/*
+ * Descripcion: Crear un arreglo con tamano y valores.
+ * Entrada: val, tipo, nombre, tamano, Ͱ y la lista de valores.
+ * Salida: Ninguna (guarda el arreglo y escribe sus valores).
+ * Restricciones: Los valores no pueden sobrar.
+ */
 arreglo_con_tamano_valores ::=
       palabraVal INT   identificador:nombre abrir_corcheteCuadrados:corcheteAbre indice:tamano cerrar_corcheteCuadrados:corcheteCierra asignacion OPBLOCK:llaveAbre lista_arreglo:valores CLBLOCK:llaveCierra fin_o_falta
       {: parser.declararArreglo(nombre, "int", parser.tamanoTexto(tamano, parser.textoEntre(corcheteAbreleft, corcheteAbreright, corcheteCierraleft, corcheteCierraright)), valores.size(), "¿: " + parser.textoEntre(llaveAbreleft, llaveAbreright, llaveCierraleft, llaveCierraright) + " :?", nombreleft, nombreright);
@@ -1573,10 +1734,12 @@ arreglo_con_tamano_valores ::=
          parser.generarValoresArreglo(nombre, "float", valores); :}
     ;
 
-/* Nombre: arreglo_sin_tamano_valores
-   Descripcion: crear un arreglo solo con sus valores iniciales.
-   Objetivo: guardarlo y revisar los valores. El tamano es la cantidad de valores.
-   Salida: ninguna. */
+/*
+ * Descripcion: Crear un arreglo solo con sus valores.
+ * Entrada: val, tipo, nombre, Ͱ y la lista de valores.
+ * Salida: Ninguna (guarda el arreglo y escribe sus valores).
+ * Restricciones: El tamano es la cantidad de valores.
+ */
 arreglo_sin_tamano_valores ::=
       palabraVal INT   identificador:nombre abrir_corcheteCuadrados cerrar_corcheteCuadrados asignacion OPBLOCK:llaveAbre lista_arreglo:valores CLBLOCK:llaveCierra fin_o_falta
       {: parser.declararArreglo(nombre, "int", null, valores.size(), "¿: " + parser.textoEntre(llaveAbreleft, llaveAbreright, llaveCierraleft, llaveCierraright) + " :?", nombreleft, nombreright);
@@ -1591,10 +1754,12 @@ arreglo_sin_tamano_valores ::=
     ;
 
 
-/* Nombre: lista_arreglo, inicio_lista_arreglo y continuacion_lista_arreglo
-   Descripcion: la lista de valores de un arreglo, separados por comas.
-   Objetivo: juntar los valores en una lista, cada uno con su tipo.
-   Salida: la lista de valores. */
+/*
+ * Descripcion: Los valores de un arreglo separados por comas.
+ * Entrada: Operaciones con numeros.
+ * Salida: Lista de valores en orden.
+ * Restricciones: Ninguna.
+ */
 lista_arreglo ::= inicio_lista_arreglo:lista  {: RESULT = lista; :} ;
 
 inicio_lista_arreglo ::= expresion_aritmetica:valor continuacion_lista_arreglo:lista
@@ -1604,10 +1769,12 @@ continuacion_lista_arreglo ::= coma expresion_aritmetica:valor continuacion_list
                                {: lista.add(0, valor); RESULT = lista; :}
                              | /* vacio */  {: RESULT = new ArrayList(); :} ;
 
-/* Nombre: modificacion_arreglo
-   Descripcion: guardar un valor en una posicion de un arreglo, por ejemplo notas[0] = 5.
-   Objetivo: revisar que el valor sea del tipo de los elementos y escribir la asignacion.
-   Salida: ninguna. */
+/*
+ * Descripcion: Guardar un valor en una posicion de un arreglo.
+ * Entrada: Posicion del arreglo, Ͱ y un valor.
+ * Salida: Ninguna (escribe la asignacion).
+ * Restricciones: El valor debe ser del tipo de los elementos.
+ */
 modificacion_arreglo ::= acceso_arreglo:elemento asignacion expresion:valor fin_o_falta
                          {: parser.asignar("Arreglos", elemento.lugar, elemento.tipo, valor, elementoleft, elementoright);
                             if (!elemento.tipo.equals("error")) { parser.generarAsignacion(elemento.lugar, elemento.tipo, valor); } :} ;
@@ -1618,10 +1785,12 @@ modificacion_arreglo ::= acceso_arreglo:elemento asignacion expresion:valor fin_
    Orden de importancia (de mayor a menor): pot, + -, * / //, mod
    ============================================================ */
 
-/* Nombre: operador_suma y operador_multiplicacion
-   Descripcion: los simbolos + - y * / //.
-   Objetivo: saber cual operador se uso.
-   Salida: el simbolo como texto. */
+/*
+ * Descripcion: Los simbolos + - y * / //.
+ * Entrada: El simbolo.
+ * Salida: El operador como texto.
+ * Restricciones: Ninguna.
+ */
 operador_suma ::= PLUS   {: RESULT = "+"; :}
                 | MINUS  {: RESULT = "-"; :} ;
 
@@ -1629,10 +1798,12 @@ operador_multiplicacion ::= MULTIPLY   {: RESULT = "*";  :}
                           | FLOATDIV   {: RESULT = "/";  :}
                           | ENTIREDIV  {: RESULT = "//"; :} ;
 
-/* Nombre: expresion_aritmetica y sus niveles (mod, multiplicacion, suma)
-   Descripcion: una operacion con numeros. Cada nivel respeta el orden de importancia.
-   Objetivo: revisar y escribir cada operacion en el orden correcto.
-   Salida: un dato con el tipo y el lugar del resultado. */
+/*
+ * Descripcion: Una operacion con numeros.
+ * Entrada: Valores y operadores.
+ * Salida: Dato con el tipo y el temporal del resultado.
+ * Restricciones: Orden de mayor a menor: pot, + -, * / //, mod.
+ */
 expresion_aritmetica ::= expresion_mod:valor  {: RESULT = valor; :} ;
 
 expresion_mod ::= expresion_mod:izquierda MOD:simboloMod expresion_multiplicacion:derecha
@@ -1647,17 +1818,21 @@ expresion_suma ::= expresion_suma:izquierda operador_suma:operador expresion_una
                    {: RESULT = parser.generarAritmetica(izquierda, operador, derecha, operadorleft, operadorright); :}
                  | expresion_unaria:valor  {: RESULT = valor; :} ;
 
-/* Nombre: expresion_unaria
-   Descripcion: un numero con signo menos, o una potencia.
-   Objetivo: manejar los numeros negativos.
-   Salida: un dato con el tipo y el valor. */
+/*
+ * Descripcion: Un numero con signo menos, o una potencia.
+ * Entrada: MINUS y un numero, o una potencia.
+ * Salida: Dato con su tipo y lugar.
+ * Restricciones: Ninguna.
+ */
 expresion_unaria ::= MINUS valor_numerico:numero  {: RESULT = parser.gen.cargar(parser.negativo(numero)); :}
                    | expresion_potencia:valor    {: RESULT = valor; :} ;
 
-/* Nombre: expresion_potencia y exponente
-   Descripcion: una potencia (pot) y su exponente.
-   Objetivo: revisar y escribir la potencia. El exponente puede ser negativo para dar el error.
-   Salida: un dato con el tipo y el lugar del resultado. */
+/*
+ * Descripcion: Una potencia (pot) y su exponente.
+ * Entrada: Base, pot y exponente.
+ * Salida: Dato con el temporal del resultado.
+ * Restricciones: El exponente puede ser negativo solo para avisar el error.
+ */
 expresion_potencia ::= valor_aritmetico:valor  {: RESULT = valor; :}
                      | valor_aritmetico:izquierda operadorPotencia:simboloPot exponente:derecha
                        {: RESULT = parser.generarAritmetica(izquierda, "pot", derecha, simboloPotleft, simboloPotright); :} ;
@@ -1665,12 +1840,12 @@ expresion_potencia ::= valor_aritmetico:valor  {: RESULT = valor; :}
 exponente ::= valor_aritmetico:valor        {: RESULT = valor; :}
             | MINUS valor_numerico:numero    {: RESULT = parser.negativo(numero); :} ;
 
-/* Nombre: valor_aritmetico
-   Descripcion: lo mas pequeno de una operacion: numero, variable, posicion de arreglo,
-                llamada a funcion, texto, caracter o una operacion entre parentesis.
-   Objetivo: dar el tipo y el lugar de ese valor. Si una variable no existe, queda de tipo error.
-             Los numeros, textos, caracteres y variables se copian a un temporal (t1 = 5, t2 = x).
-   Salida: un dato con su tipo y lugar. */
+/*
+ * Descripcion: Lo mas pequeno de una operacion.
+ * Entrada: Numero, variable, arreglo, llamada, texto, caracter o parentesis.
+ * Salida: Dato con su tipo y lugar.
+ * Restricciones: Numeros, textos y variables se copian a un temporal.
+ */
 valor_aritmetico ::= valor_numerico:numero   {: RESULT = parser.gen.cargar(numero); :}
                    |  identificador:nombre
                     {: Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
@@ -1682,10 +1857,12 @@ valor_aritmetico ::= valor_numerico:numero   {: RESULT = parser.gen.cargar(numer
                    | caracter_literal:caracter   {: RESULT = parser.gen.cargar(caracter); :}
                    | PARENOP expresion_aritmetica:valor PARENCL  {: RESULT = valor; :} ;
 
-/* Nombre: operacion_incremento
-   Descripcion: sumar o restar uno a una variable (x++ o x--).
-   Objetivo: revisar que sea int o float.
-   Salida: ninguna (escribe la instruccion si todo esta bien). */
+/*
+ * Descripcion: Sumar o restar uno a una variable.
+ * Entrada: Nombre y ++ o --.
+ * Salida: Ninguna (escribe las instrucciones).
+ * Restricciones: Solo int o float.
+ */
 operacion_incremento ::= identificador:nombre incremento
                          {: parser.incrementar(parser.usar(nombre, nombreleft, nombreright), nombre, "++", nombreleft, nombreright); :}
                        | identificador:nombre decremento
@@ -1696,10 +1873,12 @@ operacion_incremento ::= identificador:nombre incremento
                 OPERACIONES RELACIONALES
    ============================================================ */
 
-/* Nombre: operadorRelacional
-   Descripcion: los simbolos de comparar: < > <= >= == !=.
-   Objetivo: saber cual comparacion se uso.
-   Salida: el simbolo como texto. */
+/*
+ * Descripcion: Los simbolos < > <= >= == !=.
+ * Entrada: El simbolo.
+ * Salida: El operador como texto.
+ * Restricciones: Ninguna.
+ */
 operadorRelacional ::= LT     {: RESULT = "<";  :}
                      | GT     {: RESULT = ">";  :}
                      | LTE    {: RESULT = "<="; :}
@@ -1707,18 +1886,22 @@ operadorRelacional ::= LT     {: RESULT = "<";  :}
                      | EQUAL  {: RESULT = "=="; :}
                      | NEQ    {: RESULT = "!="; :} ;
 
-/* Nombre: operando_relacional
-   Descripcion: cada lado de una comparacion. Puede ir con o sin corchetes.
-   Objetivo: dar el tipo y el lugar de ese lado.
-   Salida: un dato con su tipo y lugar. */
+/*
+ * Descripcion: Cada lado de una comparacion.
+ * Entrada: Un valor, un bool o una expresion entre corchetes.
+ * Salida: Dato con su tipo y lugar.
+ * Restricciones: Ninguna.
+ */
 operando_relacional ::= valor_aritmetico:valor  {: RESULT = valor; :}
                       | bool:valorBool              {: RESULT = valorBool; :}
                       | abrir_corcheteCuadrados expresion:valor cerrar_corcheteCuadrados  {: RESULT = valor; :} ;
 
-/* Nombre: operacion_relacional
-   Descripcion: una comparacion entre dos valores.
-   Objetivo: revisarla y escribir su instruccion.
-   Salida: un dato de tipo bool. */
+/*
+ * Descripcion: Una comparacion entre dos valores.
+ * Entrada: Lado izquierdo, operador y lado derecho.
+ * Salida: Dato bool.
+ * Restricciones: Ninguna.
+ */
 operacion_relacional ::= operando_relacional:izquierda operadorRelacional:operador operando_relacional:derecha
                          {: RESULT = parser.generarRelacional(izquierda, operador, derecha, operadorleft, operadorright); :} ;
 
@@ -1727,10 +1910,12 @@ operacion_relacional ::= operando_relacional:izquierda operadorRelacional:operad
                  EXPRESIONES LOGICAS
    ============================================================ */
 
-/* Nombre: condicion_basica y operando_logico
-   Descripcion: lo que puede ir a cada lado de un and, un or o un not.
-   Objetivo: dar el tipo y el lugar de esa condicion.
-   Salida: un dato con su tipo y lugar. */
+/*
+ * Descripcion: Lo que va a cada lado de and, or o not.
+ * Entrada: Una comparacion, un bool, una negacion o parentesis.
+ * Salida: Dato con su tipo y lugar.
+ * Restricciones: Ninguna.
+ */
 condicion_basica ::= PARENOP operacion_relacional:comparacion PARENCL  {: RESULT = comparacion; :}
                    | PARENOP bool:valorBool PARENCL                  {: RESULT = valorBool; :}
                    | PARENOP condicion_basica:condicion PARENCL      {: RESULT = condicion; :}
@@ -1740,10 +1925,12 @@ condicion_basica ::= PARENOP operacion_relacional:comparacion PARENCL  {: RESULT
 operando_logico ::= condicion_basica:condicion                       {: RESULT = condicion; :}
                   | PARENOP expresion_aritmetica:valor PARENCL   {: RESULT = valor; :} ;
 
-/* Nombre: condiciones_and y condiciones_or
-   Descripcion: varias condiciones unidas con and o con or.
-   Objetivo: revisar cada union y escribir su instruccion.
-   Salida: un dato de tipo bool. */
+/*
+ * Descripcion: Condiciones unidas con and u or.
+ * Entrada: Dos o mas condiciones.
+ * Salida: Dato bool.
+ * Restricciones: Ninguna.
+ */
 condiciones_and ::= operando_logico:izquierda AND:simboloLogico operando_logico:derecha
                     {: RESULT = parser.generarLogica(izquierda, "and", derecha, simboloLogicoleft, simboloLogicoright); :}
                   | condiciones_and:izquierda AND:simboloLogico operando_logico:derecha
@@ -1762,31 +1949,39 @@ condiciones_or ::= operando_logico:izquierda OR:simboloLogico operando_logico:de
                  | condiciones_or:izquierda OR:simboloLogico condiciones_and:derecha
                    {: RESULT = parser.generarLogica(izquierda, "or", derecha, simboloLogicoleft, simboloLogicoright); :} ;
 
-/* Nombre: condiciones_logicas
-   Descripcion: una union de condiciones entre parentesis.
-   Objetivo: poder agrupar condiciones.
-   Salida: un dato de tipo bool. */
+/*
+ * Descripcion: Condiciones agrupadas entre parentesis.
+ * Entrada: Un and o un or entre parentesis.
+ * Salida: Dato bool.
+ * Restricciones: Ninguna.
+ */
 condiciones_logicas ::= PARENOP condiciones_and:condicion PARENCL  {: RESULT = condicion; :}
                       | PARENOP condiciones_or:condicion PARENCL   {: RESULT = condicion; :} ;
 
-/* Nombre: negacion
-   Descripcion: el operador not aplicado a una condicion.
-   Objetivo: revisarlo y escribir su instruccion.
-   Salida: un dato de tipo bool. */
+/*
+ * Descripcion: El operador not aplicado a una condicion.
+ * Entrada: NOT y una condicion.
+ * Salida: Dato bool.
+ * Restricciones: Ninguna.
+ */
 negacion ::= NOT:simboloNot condicion_basica:condicion  {: RESULT = parser.generarNegacion(condicion, simboloNotleft, simboloNotright); :} ;
 
-/* Nombre: expresion_logica
-   Descripcion: una condicion con and, or o not.
-   Objetivo: agrupar las expresiones logicas.
-   Salida: un dato de tipo bool. */
+/*
+ * Descripcion: Una condicion con and, or o not.
+ * Entrada: Una de esas condiciones.
+ * Salida: Dato bool.
+ * Restricciones: Ninguna.
+ */
 expresion_logica ::= condiciones_and:condicion  {: RESULT = condicion; :}
                    | condiciones_or:condicion   {: RESULT = condicion; :}
                    | negacion:negacion         {: RESULT = negacion; :} ;
 
-/* Nombre: condicion_control
-   Descripcion: lo que se acepta como condicion de un if, elif o while.
-   Objetivo: dar el tipo de la condicion. Luego se revisa que sea bool.
-   Salida: un dato con su tipo y lugar. */
+/*
+ * Descripcion: La condicion de un if, elif o while.
+ * Entrada: Comparacion, condicion, bool o valor.
+ * Salida: Dato con su tipo y lugar.
+ * Restricciones: Despues se revisa que sea bool.
+ */
 condicion_control ::= operacion_relacional:comparacion                   {: RESULT = comparacion; :}
                     | condiciones_and:condicion                        {: RESULT = condicion; :}
                     | condiciones_or:condicion                         {: RESULT = condicion; :}
@@ -1801,19 +1996,23 @@ condicion_control ::= operacion_relacional:comparacion                   {: RESU
                 EXPRESIONES Y FUNCIONES
    ============================================================ */
 
-/* Nombre: expresion
-   Descripcion: cualquier valor que se pueda calcular: operacion, comparacion, condicion o bool.
-   Objetivo: agrupar todas las formas de expresion.
-   Salida: un dato con su tipo y lugar. */
+/*
+ * Descripcion: Cualquier valor que se pueda calcular.
+ * Entrada: Operacion, comparacion, condicion o bool.
+ * Salida: Dato con su tipo y lugar.
+ * Restricciones: Ninguna.
+ */
 expresion ::= expresion_aritmetica:valor  {: RESULT = valor; :}
             | operacion_relacional:comparacion  {: RESULT = comparacion; :}
             | expresion_logica:condicion      {: RESULT = condicion; :}
             | bool:valorBool                  {: RESULT = valorBool; :} ;
 
-/* Nombre: lista_expresiones y expresiones
-   Descripcion: los datos que se dan al llamar una funcion, separados por comas.
-   Objetivo: juntarlos en una lista, cada uno con su tipo.
-   Salida: la lista de datos (puede estar vacia). */
+/*
+ * Descripcion: Los datos de una llamada, separados por comas.
+ * Entrada: Expresiones.
+ * Salida: Lista de datos (puede estar vacia).
+ * Restricciones: Ninguna.
+ */
 lista_expresiones ::= /* vacio */  {: RESULT = new ArrayList(); :}
                     | expresiones:lista  {: RESULT = lista; :} ;
 
@@ -1822,10 +2021,12 @@ expresiones ::= expresion:valor
               | expresion:valor coma expresiones:lista
                 {: lista.add(0, valor); RESULT = lista; :} ;
 
-/* Nombre: llamada_funcion
-   Descripcion: llamar a una funcion con sus datos.
-   Objetivo: revisar que exista y que los datos sean correctos, y escribir la llamada.
-   Salida: un dato con el tipo que devuelve la funcion. */
+/*
+ * Descripcion: Llamar a una funcion con sus datos.
+ * Entrada: Nombre y argumentos entre parentesis.
+ * Salida: Dato con el tipo que devuelve.
+ * Restricciones: La funcion debe existir y los datos ser correctos.
+ */
 llamada_funcion ::= identificador:nombre PARENOP lista_expresiones:argumentos PARENCL
                     {: Simbolo funcion = parser.usarFuncion(nombre, nombreleft, nombreright);
                     RESULT = parser.generarLlamada(funcion, nombre, argumentos, nombreleft, nombreright); :} ;
@@ -1835,27 +2036,31 @@ llamada_funcion ::= identificador:nombre PARENOP lista_expresiones:argumentos PA
                 ESTRUCTURAS DE CONTROL
    ============================================================ */
 
-/* Nombre: condicion_if
-   Descripcion: la condicion de un if o de un elif, entre parentesis.
-   Objetivo: revisar que sea de tipo bool y escribir sus saltos (al bloque si es verdadera,
-             a la siguiente rama si es falsa). Si falta el parentesis final, lo pone y avisa.
-   Salida: ninguna. */
+/*
+ * Descripcion: La condicion de un if o elif.
+ * Entrada: Condicion entre parentesis.
+ * Salida: Ninguna (escribe sus saltos).
+ * Restricciones: Si falta el :э, lo pone y avisa.
+ */
 condicion_if ::= PARENOP condicion_control:condicion cierra_paren
                  {: parser.condicion("Control", condicion, condicionleft, condicionright);
                     parser.gen.condicionIf(condicion.lugar); :} ;
 
-/* Nombre: negacion_if
-   Descripcion: la condicion de un if escrita con not y sin parentesis.
-   Objetivo: escribir sus saltos igual que condicion_if.
-   Salida: ninguna. */
+/*
+ * Descripcion: La condicion de un if escrita con not y sin parentesis.
+ * Entrada: Una negacion.
+ * Salida: Ninguna (escribe sus saltos).
+ * Restricciones: Ninguna.
+ */
 negacion_if ::= negacion:condicion
                 {: parser.gen.condicionIf(condicion.lugar); :} ;
 
-/* Nombre: if, demas_if, fin_if, elif, cadena_elif y else
-   Descripcion: la estructura if con sus elif y su else opcionales.
-   Objetivo: reconocer la estructura. Si la condicion esta mal, salta hasta el bloque y sigue.
-             Al terminar todo el if se escriben sus etiquetas pendientes.
-   Salida: ninguna. */
+/*
+ * Descripcion: El if con sus elif y su else opcionales.
+ * Entrada: if, condicion, bloque y sus ramas.
+ * Salida: Ninguna (escribe las etiquetas pendientes).
+ * Restricciones: Si la condicion esta mal, salta hasta el bloque y sigue.
+ */
 if ::= palabraIf condicion_if abrir_bloque bloque cerrar_bloque demas_if
        {: parser.gen.finIf(); :}
      | palabraIf negacion_if abrir_bloque bloque cerrar_bloque demas_if
@@ -1875,65 +2080,74 @@ cadena_elif ::= elif | elif cadena_elif ;
 else ::= palabraElse abrir_bloque bloque cerrar_bloque
        | palabraElse error abrir_bloque bloque cerrar_bloque ;
 
-/* Nombre: condicion_while
-   Descripcion: la condicion de un while, entre parentesis.
-   Objetivo: revisar que sea bool, avisar que se entro a un ciclo (para el break)
-             y escribir sus saltos (al bloque o al final).
-   Salida: ninguna. */
+/*
+ * Descripcion: La condicion de un while.
+ * Entrada: Condicion entre parentesis.
+ * Salida: Ninguna (escribe sus saltos).
+ * Restricciones: Cuenta el ciclo para revisar los break.
+ */
 condicion_while ::= PARENOP condicion_control:condicion cierra_paren
                     {: parser.condicion("Control", condicion, condicionleft, condicionright); parser.entrarCiclo();
                        parser.gen.saltoSiFalsoCiclo(condicion.lugar); :} ;
 
-/* Nombre: ciclo_con_error
-   Descripcion: una condicion de ciclo mal escrita.
-   Objetivo: saltar el error y aun asi contar el ciclo.
-   Salida: ninguna. */
+/*
+ * Descripcion: Una condicion de ciclo mal escrita.
+ * Entrada: Un error.
+ * Salida: Ninguna.
+ * Restricciones: Igual cuenta el ciclo.
+ */
 ciclo_con_error ::= error {: parser.entrarCiclo(); :} ;
 
-/* Nombre: while
-   Descripcion: el ciclo while.
-   Objetivo: reconocerlo, avisar cuando termina para el conteo de ciclos y escribir
-             la vuelta a la condicion y la etiqueta de salida.
-   Salida: ninguna. */
+/*
+ * Descripcion: El ciclo while.
+ * Entrada: while, condicion y bloque.
+ * Salida: Ninguna (vuelve a la condicion y escribe $final).
+ * Restricciones: Ninguna.
+ */
 while ::= palabraWhile condicion_while abrir_bloque bloque cerrar_bloque
           {: parser.salirCiclo(); parser.gen.finCiclo(); :}
         | palabraWhile ciclo_con_error abrir_bloque bloque cerrar_bloque
           {: parser.salirCiclo(); parser.gen.finCiclo(); :}
         ;
 
-/* Nombre: fin_init_for y fin_cond_for
-   Descripcion: los dos simbolos de fin de sentencia dentro de la cabecera del for.
-   Objetivo: marcar en el codigo intermedio donde termina la inicializacion (aqui va _cond)
-             y donde termina la condicion (aqui empieza el incremento).
-   Salida: ninguna. */
+/*
+ * Descripcion: Los dos » de la cabecera del for.
+ * Entrada: TERMINATOR.
+ * Salida: Ninguna.
+ * Restricciones: El primero escribe $condicion; el segundo marca el incremento.
+ */
 fin_init_for ::= TERMINATOR  {: parser.gen.inicioCondicionFor(); :} ;
 
 fin_cond_for ::= TERMINATOR  {: parser.gen.marcaIncremento(); :} ;
 
-/* Nombre: cabecera_for
-   Descripcion: la parte entre parentesis de un for: inicio, condicion e incremento.
-   Objetivo: revisar que la condicion sea bool, avisar que se entro a un ciclo y escribir
-             los saltos de la condicion, la etiqueta _inc con su incremento y la etiqueta _bloque.
-   Salida: ninguna. */
+/*
+ * Descripcion: Lo que va entre parentesis en un for.
+ * Entrada: Inicio, condicion e incremento.
+ * Salida: Ninguna (escribe saltos, $inc y $bloque).
+ * Restricciones: La condicion debe ser bool.
+ */
 cabecera_for ::= PARENOP inicio_for fin_init_for condicion_for:condicion fin_cond_for incremento_for cierra_paren
                  {: parser.condicion("Control", condicion, condicionleft, condicionright); parser.entrarCiclo();
                     parser.gen.cabeceraFor(condicion == null ? null : condicion.lugar); :} ;
 
-/* Nombre: for
-   Descripcion: el ciclo for.
-   Objetivo: reconocerlo y, al terminar, cerrar el bloque que abrio palabraFor.
-             Tambien escribe la vuelta al incremento y la etiqueta de salida.
-   Salida: ninguna. */
+/*
+ * Descripcion: El ciclo for.
+ * Entrada: for, cabecera y bloque.
+ * Salida: Ninguna (vuelve al incremento y escribe $final).
+ * Restricciones: Cierra el ambito que abrio palabraFor.
+ */
 for ::= palabraFor cabecera_for abrir_bloque bloque cerrar_bloque
         {: parser.salirCiclo(); parser.tabla.cerrarAmbito(); parser.gen.finCiclo(); :}
       | palabraFor ciclo_con_error abrir_bloque bloque cerrar_bloque
         {: parser.salirCiclo(); parser.tabla.cerrarAmbito(); parser.gen.finCiclo(); :}
       ;
 
-/* Nombre: inicio_for
-   Descripcion: la primera parte del for: puede crear una variable o asignar una existente.
-   Objetivo: revisar que el valor sea del tipo de la variable y escribir la asignacion.
-   Salida: ninguna. */
+/*
+ * Descripcion: La primera parte del for.
+ * Entrada: Nada, una asignacion o una declaracion.
+ * Salida: Ninguna (escribe la asignacion).
+ * Restricciones: El valor debe ser del tipo de la variable.
+ */
 inicio_for ::= /* vacio */
              | identificador:nombre asignacion expresion:valor
                {: Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
@@ -1946,10 +2160,12 @@ inicio_for ::= /* vacio */
                   parser.gen.declararAntesDelValor(tipo, nombre); :}
              ;
 
-/* Nombre: condicion_for
-   Descripcion: la parte del medio del for: la condicion (puede ir vacia).
-   Objetivo: dar su tipo para revisar que sea bool.
-   Salida: un dato con su tipo, o null si va vacia. */
+/*
+ * Descripcion: La parte del medio del for.
+ * Entrada: Una condicion o nada.
+ * Salida: Dato con su tipo, o null si va vacia.
+ * Restricciones: Ninguna.
+ */
 condicion_for ::= operacion_relacional:comparacion                  {: RESULT = comparacion; :}
                 | expresion_logica:condicion                      {: RESULT = condicion; :}
                 | bool:valorBool                                  {: RESULT = valorBool; :}
@@ -1959,10 +2175,12 @@ condicion_for ::= operacion_relacional:comparacion                  {: RESULT = 
                 | /* Vacio */                             {: RESULT = null; :}
                 ;
 
-/* Nombre: incremento_for
-   Descripcion: la ultima parte del for: lo que se hace en cada vuelta.
-   Objetivo: revisar que el valor sea del tipo de la variable y escribir la asignacion.
-   Salida: ninguna. */
+/*
+ * Descripcion: La ultima parte del for.
+ * Entrada: Nada, ++, --, operacion o asignacion.
+ * Salida: Ninguna (escribe la instruccion).
+ * Restricciones: El valor debe ser del tipo de la variable.
+ */
 incremento_for ::= /* vacio */
                  | operacion_incremento
                  | expresion_aritmetica
@@ -1972,10 +2190,12 @@ incremento_for ::= /* vacio */
                                              parser.generarAsignacion(nombre, simbolo.tipo, valor); } :}
                  ;
 
-/* Nombre: estructura_control
-   Descripcion: un if, un while o un for.
-   Objetivo: agrupar las estructuras de control.
-   Salida: ninguna. */
+/*
+ * Descripcion: Un if, un while o un for.
+ * Entrada: Una de esas estructuras.
+ * Salida: Ninguna.
+ * Restricciones: Ninguna.
+ */
 estructura_control ::= if | while | for ;
 
 
@@ -1983,27 +2203,32 @@ estructura_control ::= if | while | for ;
                  SENTENCIAS Y BLOQUES
    ============================================================ */
 
-/* Nombre: break
-   Descripcion: la instruccion break.
-   Objetivo: revisar que este dentro de un ciclo y escribir el salto a la salida del ciclo.
-   Salida: ninguna. */
+/*
+ * Descripcion: La instruccion break.
+ * Entrada: BREAK.
+ * Salida: Ninguna (salta al final del ciclo).
+ * Restricciones: Solo dentro de un ciclo.
+ */
 break ::= palabraBreak:palabra {: parser.validarBreak(palabraleft, palabraright);
                                   parser.gen.saltoBreak(); :} ;
 
-/* Nombre: return
-   Descripcion: la instruccion return, con valor o sin valor.
-   Objetivo: revisar que el valor sea del tipo de la funcion.
-   Salida: ninguna (escribe el return si todo esta bien). */
+/*
+ * Descripcion: La instruccion return.
+ * Entrada: return con o sin valor.
+ * Salida: Ninguna (escribe el return).
+ * Restricciones: El valor debe ser del tipo de la funcion.
+ */
 return ::= palabraReturn:palabraReturn fin_sentencia
            {: parser.retorno(null, palabraReturnleft, palabraReturnright); :}
          | palabraReturn:palabraReturn expresion:valor fin_o_falta
            {: parser.retorno(valor, palabraReturnleft, palabraReturnright); :} ;
 
-/* Nombre: instruccion y sentencia_simple
-   Descripcion: lo que puede ir dentro de un bloque: asignaciones, variables, arreglos,
-                read, write, ++, --, llamadas, break, return o una estructura de control.
-   Objetivo: agrupar todas las instrucciones. Si hay un error, salta hasta el fin de la sentencia.
-   Salida: ninguna. */
+/*
+ * Descripcion: Lo que puede ir dentro de un bloque.
+ * Entrada: Una sentencia o una estructura de control.
+ * Salida: Ninguna.
+ * Restricciones: Si hay un error, salta hasta el » siguiente.
+ */
 instruccion ::= sentencia_simple | estructura_control ;
 
 sentencia_simple ::=
@@ -2020,10 +2245,12 @@ sentencia_simple ::=
     | error fin_sentencia
     ;
 
-/* Nombre: lista_instrucciones y bloque
-   Descripcion: una o varias instrucciones, y el contenido de un bloque (puede estar vacio).
-   Objetivo: armar el cuerpo de un bloque.
-   Salida: ninguna. */
+/*
+ * Descripcion: El contenido de un bloque.
+ * Entrada: Una o varias instrucciones, o nada.
+ * Salida: Ninguna.
+ * Restricciones: Ninguna.
+ */
 lista_instrucciones ::= instruccion | instruccion lista_instrucciones ;
 
 bloque ::= /* vacio */ | lista_instrucciones ;
@@ -2033,10 +2260,12 @@ bloque ::= /* vacio */ | lista_instrucciones ;
                        PARAMETROS
    ============================================================ */
 
-/* Nombre: parametro
-   Descripcion: un parametro de una funcion, con su tipo y su nombre.
-   Objetivo: crear el simbolo del parametro. Si falta el tipo o es void, da un mensaje exacto.
-   Salida: el simbolo del parametro. */
+/*
+ * Descripcion: Un parametro de una funcion.
+ * Entrada: Tipo y nombre.
+ * Salida: El simbolo del parametro.
+ * Restricciones: Da un mensaje exacto si falta el tipo o es void.
+ */
 parametro ::= tipo:tipo identificador:nombre
               {: RESULT = new Simbolo(nombre, tipo, Simbolo.PARAMETRO, nombreleft, nombreright); :}
             | identificador:nombre
@@ -2046,10 +2275,12 @@ parametro ::= tipo:tipo identificador:nombre
               {: parser.errorProduccion(nombreleft, nombreright, "un parámetro no puede ser de tipo void ('" + nombre + "')");
                  RESULT = new Simbolo(nombre, "error", Simbolo.PARAMETRO, nombreleft, nombreright); :} ;
 
-/* Nombre: lista_parametros y parametros
-   Descripcion: todos los parametros de una funcion, separados por comas (puede no haber ninguno).
-   Objetivo: juntarlos en una lista.
-   Salida: la lista de parametros. */
+/*
+ * Descripcion: Los parametros separados por comas.
+ * Entrada: Parametros, o nada.
+ * Salida: Lista de parametros.
+ * Restricciones: Ninguna.
+ */
 lista_parametros ::= /* vacio */      {: RESULT = new ArrayList(); :}
                    | parametros:lista     {: RESULT = lista; :} ;
 
@@ -2063,11 +2294,12 @@ parametros ::= parametro:parametro
                         FUNCIONES
    ============================================================ */
 
-/* Nombre: encabezado_funcion
-   Descripcion: la primera linea de una funcion: tipo, nombre y parametros.
-   Objetivo: guardar la funcion antes de leer su cuerpo (asi puede llamarse a si misma)
-             y escribir su etiqueta (tipo_nombre) y sus parametros (param_int x).
-   Salida: ninguna. */
+/*
+ * Descripcion: La primera linea de una funcion.
+ * Entrada: Tipo, nombre y parametros.
+ * Salida: Ninguna (escribe tipo$nombre: y sus param_).
+ * Restricciones: Se guarda antes del cuerpo, asi puede llamarse a si misma.
+ */
 encabezado_funcion ::= tipo:tipo identificador:nombre PARENOP lista_parametros:listaParametros cierra_paren
                         {: parser.declararFuncion(nombre, tipo, listaParametros, nombreleft, nombreright);
                            parser.gen.etiquetaFuncion(tipo, nombre);
@@ -2076,19 +2308,22 @@ encabezado_funcion ::= tipo:tipo identificador:nombre PARENOP lista_parametros:l
                                parser.gen.parametro(parametro.tipo, parametro.nombre);
                            } :} ;
 
-/* Nombre: funcion_no_void
-   Descripcion: una funcion que devuelve int, float, char o bool.
-   Objetivo: leer su cuerpo, revisar que tenga al menos un return y escribir su
-             etiqueta de fin (tipo_nombre_end).
-   Salida: ninguna. */
+/*
+ * Descripcion: Una funcion que devuelve int, float, char o bool.
+ * Entrada: Encabezado y cuerpo.
+ * Salida: Ninguna (escribe tipo$nombre$final).
+ * Restricciones: Debe tener al menos un return.
+ */
 funcion_no_void ::= encabezado_funcion abrir_bloque bloque cierra_bloque_fn
                     {: parser.finFuncion(); parser.gen.finFuncion(); :}
                   | tipo error abrir_bloque bloque cerrar_bloque ;
 
-/* Nombre: funcion_void_invalida
-   Descripcion: una funcion void con un nombre que no es principal.
-   Objetivo: void solo es para principal, asi que es un error. Salta hasta el bloque y sigue.
-   Salida: ninguna. */
+/*
+ * Descripcion: Una funcion void que no es principal.
+ * Entrada: void y lo demas.
+ * Salida: Ninguna.
+ * Restricciones: void solo se usa en principal: es un error.
+ */
 funcion_void_invalida ::= VOID error abrir_bloque bloque cerrar_bloque ;
 
 
@@ -2096,10 +2331,12 @@ funcion_void_invalida ::= VOID error abrir_bloque bloque cerrar_bloque ;
                         PRINCIPAL
    ============================================================ */
 
-/* Nombre: principal
-   Descripcion: la funcion principal, por donde empieza el programa.
-   Objetivo: reconocerla y escribir su return y su etiqueta de fin (void_principal_end).
-   Salida: ninguna. */
+/*
+ * Descripcion: La funcion principal.
+ * Entrada: void principal y su cuerpo.
+ * Salida: Ninguna (escribe return y void$principal$final).
+ * Restricciones: Por aqui empieza el programa.
+ */
 principal ::= VOID Principal PARENOP cierra_paren abrir_bloque bloque cierra_bloque_fn
                 {: parser.gen.retorno(null); parser.gen.finFuncion(); :} ;
 
@@ -2108,10 +2345,12 @@ principal ::= VOID Principal PARENOP cierra_paren abrir_bloque bloque cierra_blo
                   UNIDADES DEL PROGRAMA
    ============================================================ */
 
-/* Nombre: unidades_programa y unidad
-   Descripcion: las funciones y la principal, en cualquier orden.
-   Objetivo: leer todas las partes del programa. Que exista una sola principal se revisa al final.
-   Salida: ninguna. */
+/*
+ * Descripcion: Las funciones y la principal.
+ * Entrada: Funciones en cualquier orden.
+ * Salida: Ninguna.
+ * Restricciones: Que exista principal se revisa al final.
+ */
 unidades_programa ::= /* vacio */
                     | unidad unidades_programa ;
 
@@ -2122,9 +2361,11 @@ unidad ::= funcion_no_void | principal | funcion_void_invalida ;
                         PROGRAMA
    ============================================================ */
 
-/* Nombre: programa
-   Descripcion: el programa completo: datos globales y luego funciones.
-   Objetivo: al terminar, revisar que exista la funcion principal.
-   Salida: ninguna. */
+/*
+ * Descripcion: El programa completo.
+ * Entrada: Datos globales y luego funciones.
+ * Salida: Ninguna.
+ * Restricciones: Al final revisa que exista principal.
+ */
 programa ::= lista_globales unidades_programa
             {: parser.finPrograma(); :} ;

@@ -28,14 +28,14 @@ activo = bool10
 declaracionPrevia# string saludo
 string11 = "hola"
 saludo = string11
-goto void_principal
+goto void$principal
 
-int_f:
+int$f:
 int12 = 1
 return int12
-int_f_final
+int$f$final
 
-int_suma:
+int$suma:
 param_int a
 param_int b
 declaracionPrevia# int r
@@ -63,9 +63,9 @@ int30 = int26 + int29
 r = int30
 int31 = r
 return int31
-int_suma_final
+int$suma$final
 
-float_promedio:
+float$promedio:
 param_float x
 param_float y
 declaracionPrevia# float total
@@ -77,36 +77,36 @@ float35 = total
 float36 = 2.0
 float37 = float35 / float36
 return float37
-float_promedio_final
+float$promedio$final
 
-char_inicial:
+char$inicial:
 param_char c
 param_bool mayus
 bool38 = mayus
-if bool38 goto inicial#if#1_bloque1
-goto inicial#if#1_sig1
+if bool38 goto inicial$if$1$bloque1
+goto inicial$if$1$sig1
 
-inicial#if#1_bloque1:
+inicial$if$1$bloque1:
 char39 = 'A'
 return char39
 
-inicial#if#1_sig1:
+inicial$if$1$sig1:
 
-inicial#if#1_final:
+inicial$if$1$final:
 char40 = c
 return char40
-char_inicial_final
+char$inicial$final
 
-bool_distintos:
+bool$distintos:
 param_int a
 param_int b
 int41 = a
 int42 = b
 bool43 = int41 != int42
 return bool43
-bool_distintos_final
+bool$distintos$final
 
-bool__funcionInt_:
+bool$_funcionInt_:
 declaracionPrevia# bool result
 bool44 = true
 int45 = 12
@@ -118,23 +118,23 @@ bool50 = not bool49
 bool51 = bool44 and bool50
 result = bool51
 
-_funcionInt_#while#2_condicion:
+_funcionInt_$while$2$condicion:
 bool52 = true
-if bool52 goto _funcionInt_#while#2_bloque
-goto _funcionInt_#while#2_final
+if bool52 goto _funcionInt_$while$2$bloque
+goto _funcionInt_$while$2$final
 
-_funcionInt_#while#2_bloque:
+_funcionInt_$while$2$bloque:
 int53 = _i_
 write int53
-goto _funcionInt_#while#2_final
-goto _funcionInt_#while#2_condicion
+goto _funcionInt_$while$2$final
+goto _funcionInt_$while$2$condicion
 
-_funcionInt_#while#2_final:
+_funcionInt_$while$2$final:
 bool54 = true
 return bool54
-bool__funcionInt__final
+bool$_funcionInt_$final
 
-void_principal:
+void$principal:
 declaracionPrevia# int var
 int55 = 10
 var = int55
@@ -147,36 +147,36 @@ int61 = 6
 int62 = int60 // int61
 bool63 = int59 > int62
 bool64 = bool58 and bool63
-if bool64 goto principal#if#3_bloque1
-goto principal#if#3_sig1
+if bool64 goto principal$if$3$bloque1
+goto principal$if$3$sig1
 
-principal#if#3_bloque1:
+principal$if$3$bloque1:
 declaracion# int y
 declaracionPrevia# char ch33
 char65 = 'a'
 ch33 = char65
-goto principal#if#3_final
+goto principal$if$3$final
 
-principal#if#3_sig1:
+principal$if$3$sig1:
 bool66 = true
 bool67 = false
 bool68 = bool66 and bool67
 bool69 = true
 bool70 = bool68 or bool69
-if bool70 goto principal#if#3_bloque2
-goto principal#if#3_sig2
+if bool70 goto principal$if$3$bloque2
+goto principal$if$3$sig2
 
-principal#if#3_bloque2:
+principal$if$3$bloque2:
 declaracion# int y
-goto principal#if#3_final
+goto principal$if$3$final
 
-principal#if#3_sig2:
+principal$if$3$sig2:
 declaracion# int y
 declaracionPrevia# string str2
 string71 = "sdff"
 str2 = string71
 
-principal#if#3_final:
+principal$if$3$final:
 declaracion# int x
 declaracionPrevia# int edades[3]
 int72 = 22
@@ -186,79 +186,79 @@ edades[0] = int72
 edades[1] = int73
 edades[2] = int74
 
-principal#for#4_inicializacion:
+principal$for$4$inicializacion:
 int75 = 0
 x = int75
 
-principal#for#4_condicion:
-goto principal#for#4_bloque
+principal$for$4$condicion:
+goto principal$for$4$bloque
 
-principal#for#4_inc:
+principal$for$4$inc:
 int76 = x
 int77 = int76 + 1
 x = int77
-goto principal#for#4_condicion
+goto principal$for$4$condicion
 
-principal#for#4_bloque:
+principal$for$4$bloque:
 string78 = "Hola mundo"
 write string78
 int79 = x
 int80 = 10
 bool81 = int79 > int80
-if bool81 goto principal#if#5_bloque1
-goto principal#if#5_sig1
+if bool81 goto principal$if$5$bloque1
+goto principal$if$5$sig1
 
-principal#if#5_bloque1:
+principal$if$5$bloque1:
 int82 = edades[2]
 int83 = 1
 int84 = int82 + int83
 edades[2] = int84
-goto principal#for#4_final
+goto principal$for$4$final
 
-principal#if#5_sig1:
+principal$if$5$sig1:
 
-principal#if#5_final:
-goto principal#for#4_inc
+principal$if$5$final:
+goto principal$for$4$inc
 
-principal#for#4_final:
+principal$for$4$final:
 declaracionPrevia# int uno
-int85 = call int_f, 0
+int85 = call int$f, 0
 uno = int85
 declaracionPrevia# int s
 int86 = 3
 int87 = 4
 param int86
 param int87
-int88 = call int_suma, 2
+int88 = call int$suma, 2
 s = int88
 int89 = _i_
 int90 = 2
 param int89
 param int90
-int91 = call int_suma, 2
+int91 = call int$suma, 2
 declaracionPrevia# float prom
 float92 = 7.5
 float93 = pi
 param float92
 param float93
-float94 = call float_promedio, 2
+float94 = call float$promedio, 2
 prom = float94
 declaracionPrevia# char c
 char95 = letrica
 bool96 = activo
 param char95
 param bool96
-char97 = call char_inicial, 2
+char97 = call char$inicial, 2
 c = char97
 declaracionPrevia# bool dif
 int98 = s
 int99 = 7
 param int98
 param int99
-bool100 = call bool_distintos, 2
+bool100 = call bool$distintos, 2
 dif = bool100
 declaracionPrevia# bool resultadoBool
-bool101 = call bool__funcionInt_, 0
+bool101 = call bool$_funcionInt_, 0
 resultadoBool = bool101
 read var
 read c
@@ -275,92 +275,92 @@ declaracionPrevia# int contador
 int106 = 3
 contador = int106
 
-principal#while#6_condicion:
+principal$while$6$condicion:
 int107 = contador
 int108 = 0
 bool109 = int107 > int108
-if bool109 goto principal#while#6_bloque
-goto principal#while#6_final
+if bool109 goto principal$while$6$bloque
+goto principal$while$6$final
 
-principal#while#6_bloque:
+principal$while$6$bloque:
 int110 = contador
 int111 = 3
 bool112 = int110 == int111
-if bool112 goto principal#if#7_bloque1
-goto principal#if#7_sig1
+if bool112 goto principal$if$7$bloque1
+goto principal$if$7$sig1
 
-principal#if#7_bloque1:
+principal$if$7$bloque1:
 string113 = "tres"
 write string113
-goto principal#if#7_final
+goto principal$if$7$final
 
-principal#if#7_sig1:
+principal$if$7$sig1:
 int114 = contador
 int115 = 2
 bool116 = int114 == int115
-if bool116 goto principal#if#7_bloque2
-goto principal#if#7_sig2
+if bool116 goto principal$if$7$bloque2
+goto principal$if$7$sig2
 
-principal#if#7_bloque2:
+principal$if$7$bloque2:
 string117 = "dos"
 write string117
-goto principal#if#7_final
+goto principal$if$7$final
 
-principal#if#7_sig2:
+principal$if$7$sig2:
 int118 = contador
 int119 = 1
 bool120 = int118 <= int119
-if bool120 goto principal#if#7_bloque3
-goto principal#if#7_sig3
+if bool120 goto principal$if$7$bloque3
+goto principal$if$7$sig3
 
-principal#if#7_bloque3:
+principal$if$7$bloque3:
 string121 = "uno"
 write string121
 
-principal#if#7_sig3:
+principal$if$7$sig3:
 
-principal#if#7_final:
+principal$if$7$final:
 int122 = contador
 int123 = 1
 int124 = int122 - int123
 contador = int124
-goto principal#while#6_condicion
+goto principal$while$6$condicion
 
-principal#while#6_final:
+principal$while$6$final:
 char125 = c
 char126 = 'A'
 bool127 = char125 == char126
 bool128 = not bool127
-if bool128 goto principal#if#8_bloque1
-goto principal#if#8_sig1
+if bool128 goto principal$if$8$bloque1
+goto principal$if$8$sig1
 
-principal#if#8_bloque1:
+principal$if$8$bloque1:
 string129 = "no es A"
 write string129
 
-principal#if#8_sig1:
+principal$if$8$sig1:
 
-principal#if#8_final:
+principal$if$8$final:
 
-principal#for#9_inicializacion:
+principal$for$9$inicializacion:
 declaracionPrevia# int i
 int130 = 0
 i = int130
 
-principal#for#9_condicion:
+principal$for$9$condicion:
 int131 = i
 int132 = 3
 bool133 = int131 < int132
-if bool133 goto principal#for#9_bloque
-goto principal#for#9_final
+if bool133 goto principal$for$9$bloque
+goto principal$for$9$final
 
-principal#for#9_inc:
+principal$for$9$inc:
 int134 = i
 int135 = int134 + 1
 i = int135
-goto principal#for#9_condicion
+goto principal$for$9$condicion
 
-principal#for#9_bloque:
+principal$for$9$bloque:
 int136 = arr[i]
 int137 = 2
 int138 = int136 * int137
@@ -374,62 +374,62 @@ int143 = 1
 int144 = int142 + int143
 int145 = arr[i]
 _arr_[int144] = int145
-goto principal#for#9_inc
+goto principal$for$9$inc
 
-principal#for#9_final:
+principal$for$9$final:
 declaracion# int j
 
-principal#for#10_inicializacion:
+principal$for$10$inicializacion:
 int146 = 10
 j = int146
 
-principal#for#10_condicion:
+principal$for$10$condicion:
 int147 = j
 int148 = 0
 bool149 = int147 >= int148
-if bool149 goto principal#for#10_bloque
-goto principal#for#10_final
+if bool149 goto principal$for$10$bloque
+goto principal$for$10$final
 
-principal#for#10_inc:
+principal$for$10$inc:
 int150 = j
 int151 = int150 - 1
 j = int151
-goto principal#for#10_condicion
+goto principal$for$10$condicion
 
-principal#for#10_bloque:
+principal$for$10$bloque:
 int152 = j
 int153 = 5
 bool154 = int152 < int153
 bool155 = activo
 bool156 = bool154 or bool155
-if bool156 goto principal#if#11_bloque1
-goto principal#if#11_sig1
+if bool156 goto principal$if$11$bloque1
+goto principal$if$11$sig1
 
-principal#if#11_bloque1:
+principal$if$11$bloque1:
 
-principal#while#12_condicion:
+principal$while$12$condicion:
 int157 = j
 int158 = 2
 bool159 = int157 > int158
-if bool159 goto principal#while#12_bloque
-goto principal#while#12_final
+if bool159 goto principal$while$12$bloque
+goto principal$while$12$final
 
-principal#while#12_bloque:
+principal$while$12$bloque:
 int160 = j
 int161 = 1
 int162 = int160 - int161
 j = int162
-goto principal#while#12_final
-goto principal#while#12_condicion
+goto principal$while$12$final
+goto principal$while$12$condicion
 
-principal#while#12_final:
-goto principal#for#10_final
+principal$while$12$final:
+goto principal$for$10$final
 
-principal#if#11_sig1:
+principal$if$11$sig1:
 
-principal#if#11_final:
-goto principal#for#10_inc
+principal$if$11$final:
+goto principal$for$10$inc
 
-principal#for#10_final:
+principal$for$10$final:
 return
-void_principal_final
+void$principal$final
