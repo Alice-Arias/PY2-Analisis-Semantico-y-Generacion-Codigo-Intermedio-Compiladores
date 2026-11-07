@@ -92,13 +92,13 @@ public class Generador {
         marcaAsignacion = 0;
     }
 
-    /* Nombre de la carpeta donde se guarda el código intermedio */
-    public static final String CARPETA = "codigo_intermedio";
+    /* Carpeta donde se guarda el código intermedio, dentro de Programa */
+    public static final String CARPETA = "salida" + java.io.File.separator + "codigo_intermedio";
 
     /*
      * Descripcion:
-     * Ubico la carpeta codigo_intermedio dentro de la carpeta Programa
-     * al lado de bin y de tabla_simbolos.
+     * Ubico la carpeta salida/codigo_intermedio dentro de la carpeta Programa
+     * (al lado de bin).
      *
      * Restricciones:
      * Se calcula a partir de la ubicación de los .class, así funciona
@@ -519,4 +519,4 @@ public class Generador {
             emitir("goto " + c.base + PARTE_FINAL);
         }
     }
-}
+}

@@ -226,7 +226,7 @@ public class Main {
         }
 
         File archivoFuente = new File(args[0]);
-        File archivoTokens = new File(args.length > 1 ? args[1] : "tokens.txt");
+        File archivoTokens = args.length > 1 ? new File(args[1]) : archivoTokensPorDefecto(archivoFuente);
 
         mostrarTitulo("ANALIZADOR LÉXICO, SINTÁCTICO Y SEMÁNTICO");
         System.out.println();
@@ -575,7 +575,33 @@ public class Main {
         }
     }
 
-    /* Las dos ultimas carpetas donde esta un archivo: "Programa/codigo_intermedio" */
+    /* Carpeta donde se guardan los tokens, dentro de Programa */
+    private static final String CARPETA_TOKENS = "salida" + File.separator + "tokens";
+
+    /* "pruebasX.cmm"  ->  Programa/salida/tokens/pruebasX_tokens.txt */
+    private static File archivoTokensPorDefecto(File fuente) {
+
+        String nombre = fuente.getName();
+        int punto = nombre.lastIndexOf('.');
+
+        if (punto > 0) {
+            nombre = nombre.substring(0, punto);
+        }
+
+        return new File(carpetaPrograma(), CARPETA_TOKENS + File.separator + nombre + "_tokens.txt");
+    }
+
+    /* La carpeta Programa: la que contiene a bin, donde estan los .class */
+    private static File carpetaPrograma() {
+        try {
+            File carpetaBin = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            return carpetaBin.getParentFile();
+        } catch (Exception e) {
+            return new File(".");
+        }
+    }
+
+    /* Las dos ultimas carpetas donde esta un archivo: "salida/codigo_intermedio" */
     private static String carpetaCorta(File archivo) {
 
         File carpeta = archivo.getParentFile();
@@ -650,6 +676,12 @@ public class Main {
      * Salida : la cantidad de tokens y los errores lexicos.
      */
     private static ResultadoLexico analisisLexico(File fuente, File archivoTokens) throws Exception {
+
+        File carpetaTokens = archivoTokens.getAbsoluteFile().getParentFile();
+
+        if (carpetaTokens != null) {
+            carpetaTokens.mkdirs();
+        }
 
         PrintStream consola = silenciarConsola();
 
@@ -2083,4 +2115,4 @@ public class Main {
             return lista;
         }
     }
-}
+}

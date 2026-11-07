@@ -276,52 +276,50 @@ La estructura actual del proyecto es la siguiente:
 ```text
 PY2-Analisis-Semantico-y-Generacion-Codigo-Intermedio-Compiladores/
 │
+├── README.md                          ← cómo compilar y ejecutar
+├── info.txt                           ← datos del curso y estudiantes
+├── .gitignore                         ← no sube bin/ (lo genera build.bat)
 ├── .vscode/
 │
 ├── Documentacion/
-│   └── Documentación.docx
+│   ├── Documentación_Externa_Proyecto2.pdf
+│   ├── Reglas_Semanticas_Proyecto2.pdf
+│   └── Diagramas/                     ← diagramas de clases, entidad-relación, flujo y secuencia
+│       └── fuentes_plantuml/
 │
-├── Programa/
-│   │
-│   ├── bin/
-│   │
-│   ├── codigo_intermedio/
-│   │   └── (archivos .tac generados)
-│   │
-│   ├── librerias/
-│   │   ├── java-cup-11b.jar
-│   │   └── jflex-full-1.9.1.jar
-│   │
-│   ├── pruebas/
-│   │   ├── ejemplo1.cmm
-│   │   ├── ejemplo2.cmm
-│   │   ├── prueba_semantica.cmm
-│   │   ├── prueba_valida_p2.cmm
-│   │   ├── prueba_recuperacion.cmm
-│   │   ├── prueba_correccion_global.cmm
-│   │   ├── prueba_sin_principal.cmm
-│   │   ├── prueba_generador.cmm
-│   │   ├── prueba_tac.cmm
-│   │   └── tokens.txt
-│   │
-│   ├── src/
-│   │   ├── ejecutables/
-│   │   │   ├── build.bat
-│   │   │   └── run.bat
-│   │   │
-│   │   ├── Atrib.java
-│   │   ├── Generador.java
-│   │   ├── Main.java
-│   │   └── TablaSimbolos.java
-│   │
-│   ├── tabla_simbolos/
-│   │   └── (reportes de la tabla de símbolos)
-│   │
-│   ├── Lexer.flex
-│   └── Parser.cup
-│
-├── info.txt
-└── README.md
+└── Programa/
+    │
+    ├── build.bat                      ← compila el proyecto
+    ├── run.bat                        ← ejecuta el analizador
+    │
+    ├── gramatica/                     ← lo que se escribe para JFlex y CUP
+    │   ├── Lexer.flex
+    │   └── Parser.cup
+    │
+    ├── src/                           ← el código Java escrito por nosotras
+    │   ├── Main.java
+    │   ├── Atrib.java
+    │   ├── Generador.java
+    │   ├── TablaSimbolos.java
+    │   ├── Simbolo.java
+    │   ├── Ambito.java
+    │   ├── ReporteTablaSimbolos.java
+    │   └── CuadroTexto.java
+    │
+    ├── librerias/
+    │   ├── java-cup-11b.jar
+    │   └── jflex-full-1.9.1.jar
+    │
+    ├── pruebas/                       ← solo archivos .cmm de entrada
+    │   ├── correctas/                 ← no tienen errores: generan código intermedio
+    │   └── con_errores/               ← prueban la detección y recuperación de errores
+    │
+    ├── salida/                        ← todo lo que genera el programa al ejecutarse
+    │   ├── tokens/                    ← <nombre>_tokens.txt
+    │   ├── tabla_simbolos/            ← <nombre>_tabla_simbolos.txt
+    │   └── codigo_intermedio/         ← <nombre>.tac
+    │
+    └── bin/                           ← lo genera build.bat (Lexer.java, parser.java, sym.java y .class)
 ```
 
 ## Descripción de los principales archivos
@@ -344,9 +342,9 @@ Es el punto de entrada del programa.
 
 Se encarga de coordinar las cuatro fases, procesar el archivo fuente, generar el archivo de tokens, mostrar los errores y el resultado del análisis, aplicar la corrección global de errores y guardar los reportes.
 
-### `TablaSimbolos.java`
+### `TablaSimbolos.java`, `Simbolo.java`, `Ambito.java`, `ReporteTablaSimbolos.java` y `CuadroTexto.java`
 
-Contiene la tabla de símbolos, los ámbitos y los símbolos.
+Forman la tabla de símbolos, una clase por archivo: `TablaSimbolos` administra la cadena de ámbitos, `Simbolo` es una entrada de la tabla, `Ambito` es una tabla por ámbito, `ReporteTablaSimbolos` arma el reporte y `CuadroTexto` dibuja tablas con bordes.
 
 Es un almacén:  **guarda y busca** , pero no decide qué es un error. Esas decisiones se toman en `Parser.cup`.
 
@@ -376,27 +374,31 @@ Se encarga de:
 
 Automatiza la ejecución del proyecto.
 
-Solicita el nombre del archivo `.cmm`, ejecuta el analizador y genera el archivo:
+Muestra las pruebas disponibles, solicita el nombre del archivo `.cmm` (lo busca en `pruebas/correctas` y en `pruebas/con_errores`), ejecuta el analizador y genera el archivo:
 
 ```text
-pruebas/tokens.txt
+salida/tokens/<nombre>_tokens.txt
 ```
+
+### `gramatica/`
+
+Contiene `Lexer.flex` y `Parser.cup`, los archivos a partir de los cuales JFlex y CUP generan el analizador.
 
 ### `pruebas/`
 
-Contiene los archivos utilizados para comprobar el funcionamiento del analizador.
+Contiene los archivos utilizados para comprobar el funcionamiento del analizador, separados en `correctas/` (sin errores) y `con_errores/`.
 
 ### `bin/`
 
 Contiene los archivos generados y compilados necesarios para ejecutar el proyecto.
 
-### `tabla_simbolos/`
+### `salida/`
 
-Contiene los reportes de la tabla de símbolos que se generan en cada ejecución.
+Contiene todo lo que genera el programa, en tres carpetas:
 
-### `codigo_intermedio/`
-
-Contiene los archivos `.tac` con el código intermedio, generados únicamente cuando el programa no tiene errores.
+* `tokens/`: los tokens reconocidos de cada archivo.
+* `tabla_simbolos/`: los reportes de la tabla de símbolos.
+* `codigo_intermedio/`: los archivos `.tac`, generados únicamente cuando el programa no tiene errores.
 
 ### `Documentacion/`
 
@@ -1113,16 +1115,10 @@ Por ejemplo:
 cd "C:\Users\arias\OneDrive\Desktop\PY2-Analisis-Semantico-y-Generacion-Codigo-Intermedio-Compiladores\Programa"
 ```
 
-Luego se ejecuta el archivo:
-
-```text
-src\ejecutables\build.bat
-```
-
-mediante:
+Luego se ejecuta el archivo `build.bat`:
 
 ```powershell
-.\src\ejecutables\build.bat
+.\build.bat
 ```
 
 El proceso realiza automáticamente las siguientes acciones:
@@ -1133,7 +1129,7 @@ El proceso realiza automáticamente las siguientes acciones:
 4. Genera `parser.java`.
 5. Genera `sym.java`.
 6. Genera `Lexer.java`.
-7. Compila los archivos Java (`Main`, `TablaSimbolos`, `Atrib`, `Generador`, `Lexer`, `parser` y `sym`).
+7. Compila los archivos Java (`Main`, `TablaSimbolos`, `Simbolo`, `Ambito`, `ReporteTablaSimbolos`, `CuadroTexto`, `Atrib`, `Generador`, `Lexer`, `parser` y `sym`).
 8. Almacena los archivos generados y compilados en `bin`.
 
 El proceso debe terminar con el mensaje **«COMPILACION COMPLETADA»** y CUP debe informar  **`0 conflicts detected`** .
@@ -1145,8 +1141,8 @@ El proceso debe terminar con el mensaje **«COMPILACION COMPLETADA»** y CUP deb
 ```bash
 cd Programa
 mkdir -p bin
-java -cp librerias/java-cup-11b.jar java_cup.Main -destdir bin -parser parser -symbols sym Parser.cup
-java -jar librerias/jflex-full-1.9.1.jar --encoding utf-8 -d bin Lexer.flex
+java -cp librerias/java-cup-11b.jar java_cup.Main -destdir bin -parser parser -symbols sym gramatica/Parser.cup
+java -jar librerias/jflex-full-1.9.1.jar --encoding utf-8 -d bin gramatica/Lexer.flex
 javac -encoding UTF-8 -cp "librerias/java-cup-11b.jar:bin" -d bin src/*.java bin/Lexer.java bin/parser.java bin/sym.java
 ```
 
@@ -1157,15 +1153,16 @@ javac -encoding UTF-8 -cp "librerias/java-cup-11b.jar:bin" -d bin src/*.java bin
 Una vez compilado correctamente, se puede ejecutar:
 
 ```powershell
-.\src\ejecutables\run.bat
+.\run.bat
 ```
 
-El programa solicita el nombre del archivo fuente.
+El programa muestra las pruebas disponibles y solicita el nombre del archivo fuente.
 
 Los archivos fuente utilizados para las pruebas se encuentran en:
 
 ```text
-Programa/pruebas/
+Programa/pruebas/correctas/
+Programa/pruebas/con_errores/
 ```
 
 Por ejemplo:
@@ -1191,16 +1188,16 @@ También es posible ejecutar el programa directamente desde la carpeta `Programa
 La estructura general del comando es:
 
 ```powershell
-java -cp "bin;librerias\java-cup-11b.jar" Main pruebas\archivo.cmm pruebas\tokens.txt
+java -cp "bin;librerias\java-cup-11b.jar" Main pruebas\correctas\archivo.cmm
 ```
 
 Por ejemplo:
 
 ```powershell
-java -cp "bin;librerias\java-cup-11b.jar" Main pruebas\prueba_generador.cmm pruebas\tokens.txt
+java -cp "bin;librerias\java-cup-11b.jar" Main pruebas\correctas\prueba_generador.cmm
 ```
 
-El primer argumento corresponde al archivo fuente y el segundo al archivo donde se almacenan los tokens.
+El argumento es el archivo fuente. Los tokens se guardan en `salida/tokens/<nombre>_tokens.txt`; si se quiere otro archivo, se puede indicar como segundo argumento.
 
 Al terminar el análisis, el programa hace dos preguntas interactivas (`s` o `n`):
 
@@ -1214,7 +1211,8 @@ Al terminar el análisis, el programa hace dos preguntas interactivas (`s` o `n`
 Los archivos de prueba se encuentran en:
 
 ```text
-Programa/pruebas/
+Programa/pruebas/correctas/      ← sin errores
+Programa/pruebas/con_errores/    ← con errores a propósito
 ```
 
 La siguiente tabla indica cuántos errores debe reportar cada archivo:
@@ -1241,10 +1239,10 @@ Después de cualquier cambio se deben ejecutar los archivos anteriores y verific
 
 # Archivo de tokens
 
-Durante la ejecución se genera:
+Durante la ejecución se genera, uno por cada archivo analizado:
 
 ```text
-Programa/pruebas/tokens.txt
+Programa/salida/tokens/<nombre>_tokens.txt
 ```
 
 Este archivo contiene los tokens reconocidos durante el análisis léxico, con su línea, columna y lexema.
@@ -1271,7 +1269,7 @@ El funcionamiento general del proyecto puede representarse de la siguiente maner
                 └──────┬──────┘
                        │
                        ▼
-                TOKENS + LEXEMAS ─────────────► tokens.txt
+                TOKENS + LEXEMAS ─────────────► salida/tokens/
                        │
                        ▼
                 ┌─────────────┐
@@ -1281,7 +1279,7 @@ El funcionamiento general del proyecto puede representarse de la siguiente maner
                        │
           ┌────────────┴────────────┐
           │  Análisis sintáctico    │
-          │  Análisis semántico     │──────────► tabla_simbolos/
+          │  Análisis semántico     │──────────► salida/tabla_simbolos/
           │  (tipado fuerte)        │
           └────────────┬────────────┘
                        │
@@ -1297,7 +1295,7 @@ El funcionamiento general del proyecto puede representarse de la siguiente maner
     └───────┬────────┘            │
             │                     ▼
             ▼              "NO puede ser generado
-   codigo_intermedio/        por la gramática"
+   salida/codigo_intermedio/ por la gramática"
    <nombre>.tac
    "SÍ puede ser generado
     por la gramática"
@@ -1430,7 +1428,11 @@ Los archivos que se generan en cada ejecución son:
 | `Lexer.flex`                  | Definición del analizador léxico                           |
 | `Parser.cup`                  | Gramática, reglas semánticas y llamadas al generador       |
 | `Main.java`                   | Punto de entrada, coordinación de las fases y recuperación |
-| `TablaSimbolos.java`          | Tabla de símbolos, ámbitos y reporte                       |
+| `TablaSimbolos.java`          | Tabla de símbolos: administra los ámbitos                  |
+| `Simbolo.java`                | Una entrada de la tabla de símbolos                         |
+| `Ambito.java`                 | Una tabla por ámbito                                        |
+| `ReporteTablaSimbolos.java`   | Arma el reporte de la tabla de símbolos                     |
+| `CuadroTexto.java`            | Dibuja tablas con bordes para el reporte                    |
 | `Atrib.java`                  | Tipo, lugar y valor de cada expresión                       |
 | `Generador.java`              | Generación y almacenamiento del código intermedio          |
 | `build.bat`                   | Compilación automática                                     |
@@ -1440,7 +1442,7 @@ Los archivos que se generan en cada ejecución son:
 | `prueba_semantica.cmm`        | Prueba de todas las reglas semánticas                       |
 | `prueba_recuperacion.cmm`     | Prueba de la recuperación de errores                        |
 | `prueba_generador.cmm`        | Prueba del código intermedio                                |
-| `tokens.txt`                  | Archivo generado con los tokens                              |
+| `<nombre>_tokens.txt`         | Archivo generado con los tokens                              |
 | `<nombre>_tabla_simbolos.txt` | Archivo generado con la tabla de símbolos                   |
 | `<nombre>.tac`                | Archivo generado con el código intermedio                   |
 

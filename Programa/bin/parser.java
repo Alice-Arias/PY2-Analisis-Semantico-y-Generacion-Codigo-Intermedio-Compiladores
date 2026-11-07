@@ -1641,11 +1641,12 @@ public class parser extends java_cup.runtime.lr_parser {
     }
 
     /* Nombre: reportar
-       Descripcion: guarda un error semantico con el codigo de su regla.
-       Objetivo: que Main pueda clasificar y mostrar cada error.
+       Descripcion: guarda un error semantico con el tipo de validacion que lo detecto,
+                    por ejemplo "[Aritmética] no se pueden mezclar...".
+       Objetivo: que Main pueda agrupar los errores por tipo de validacion.
        Salida: ninguna. */
-    private void reportar(String regla, int linea, int columna, String mensaje) {
-        tabla.errorSemantico(linea, columna, "[" + regla + "] " + mensaje);
+    private void reportar(String validacion, int linea, int columna, String mensaje) {
+        tabla.errorSemantico(linea, columna, "[" + validacion + "] " + mensaje);
     }
 
 
@@ -1669,28 +1670,28 @@ public class parser extends java_cup.runtime.lr_parser {
 
         /* Regla 2: los dos deben ser int o float */
         if (!esNumerico(tipoIzquierda) || !esNumerico(tipoDerecha)) {
-            reportar("ARI-2", linea, columna, "el operador '" + operador + "' no se puede aplicar a '"
+            reportar("Aritmética", linea, columna, "el operador '" + operador + "' no se puede aplicar a '"
                     + tipoIzquierda + "' y '" + tipoDerecha + "' (se requieren int o float)");
             return new Atrib("error", "?");
         }
 
         /* Regla 3: no se mezclan int y float */
         if (!tipoIzquierda.equals(tipoDerecha)) {
-            reportar("ARI-3", linea, columna, "no se pueden mezclar '" + tipoIzquierda + "' y '"
+            reportar("Aritmética", linea, columna, "no se pueden mezclar '" + tipoIzquierda + "' y '"
                     + tipoDerecha + "' con el operador '" + operador + "' (tipado fuerte)");
             return new Atrib("error", "?");
         }
 
         /* Regla 4: la division entera solo trabaja con int */
         if (operador.equals("//") && !tipoIzquierda.equals("int")) {
-            reportar("ARI-4", linea, columna, "el operador '//' requiere operandos int y recibió '"
+            reportar("Aritmética", linea, columna, "el operador '//' requiere operandos int y recibió '"
                     + tipoIzquierda + "'");
             return new Atrib("error", "?");
         }
 
         /* Regla 5: la division decimal solo trabaja con float */
         if (operador.equals("/") && !tipoIzquierda.equals("float")) {
-            reportar("ARI-5", linea, columna, "el operador '/' requiere operandos float y recibió '"
+            reportar("Aritmética", linea, columna, "el operador '/' requiere operandos float y recibió '"
                     + tipoIzquierda + "'");
             return new Atrib("error", "?");
         }
@@ -1698,7 +1699,7 @@ public class parser extends java_cup.runtime.lr_parser {
         /* Regla 6: la potencia solo acepta exponente positivo */
         boolean exponenteNegativo = derecha.lugar.startsWith("-") || (derecha.valor != null && derecha.valor < 0);
         if (operador.equals("pot") && exponenteNegativo) {
-            reportar("ARI-7", linea, columna, "el operador 'pot' requiere un exponente positivo");
+            reportar("Aritmética", linea, columna, "el operador 'pot' requiere un exponente positivo");
             return new Atrib("error", "?");
         }
 
@@ -1784,18 +1785,6 @@ public class parser extends java_cup.runtime.lr_parser {
        COMPARACIONES Y OPERACIONES LOGICAS
        ============================================================ */
 
-    /* Nombre: codigoComparacion
-       Descripcion: elige el codigo de una comparacion fallida.
-       Objetivo: separar los errores de igualdad, de orden y de textos.
-       Salida: REL-1, REL-2 o REL-3. */
-    private String codigoComparacion(String operador, Atrib izquierda, Atrib derecha) {
-        if (izquierda.tipo.equals("string") || derecha.tipo.equals("string")) {
-            return "REL-3";
-        }
-        boolean esIgualdad = operador.equals("==") || operador.equals("!=");
-        return esIgualdad ? "REL-1" : "REL-2";
-    }
-
     /* Nombre: relacional
        Descripcion: revisa una comparacion (< > <= >= == !=).
        Objetivo: que los dos lados sean del mismo tipo y que no sean texto.
@@ -1822,7 +1811,7 @@ public class parser extends java_cup.runtime.lr_parser {
         }
 
         if (!comparacionValida) {
-            reportar(codigoComparacion(operador, izquierda, derecha), linea, columna, "no se puede comparar '"
+            reportar("Comparación", linea, columna, "no se puede comparar '"
                     + izquierda.tipo + "' con '" + derecha.tipo + "' usando '" + operador + "'");
         }
 
@@ -1855,7 +1844,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
         /* Regla 2: los dos lados deben ser bool */
         if (!izquierda.tipo.equals("bool") || !derecha.tipo.equals("bool")) {
-            reportar("LOG-1", linea, columna, "el operador lógico '" + operador
+            reportar("Lógica", linea, columna, "el operador lógico '" + operador
                     + "' requiere operandos bool y recibió '" + izquierda.tipo + "' y '" + derecha.tipo + "'");
         }
 
@@ -1886,7 +1875,7 @@ public class parser extends java_cup.runtime.lr_parser {
         }
 
         if (!valor.tipo.equals("bool")) {
-            reportar("LOG-2", linea, columna, "el operador 'not' requiere un operando bool y recibió '"
+            reportar("Lógica", linea, columna, "el operador 'not' requiere un operando bool y recibió '"
                     + valor.tipo + "'");
         }
 
@@ -1914,7 +1903,7 @@ public class parser extends java_cup.runtime.lr_parser {
        Descripcion: revisa que el valor tenga el mismo tipo que la variable.
        Objetivo: no guardar un valor de un tipo en una variable de otro tipo.
        Salida: ninguna (si no coinciden, guarda un error). */
-    public void asignar(String regla, String nombre, String tipoVariable, Atrib valor, int linea, int columna) {
+    public void asignar(String validacion, String nombre, String tipoVariable, Atrib valor, int linea, int columna) {
 
         /* Regla 1: si el valor o la variable ya fallaron, no repetir el mensaje */
         if (tieneError(valor) || tipoVariable.equals("error")) {
@@ -1923,7 +1912,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
         /* Regla 2: el tipo del valor debe ser igual al de la variable */
         if (!tipoVariable.equals(valor.tipo)) {
-            reportar(regla, linea, columna, "la variable '" + nombre + "' es de tipo '"
+            reportar(validacion, linea, columna, "la variable '" + nombre + "' es de tipo '"
                     + tipoVariable + "' y se le da un valor de tipo '" + valor.tipo + "'");
         }
     }
@@ -1963,12 +1952,12 @@ public class parser extends java_cup.runtime.lr_parser {
         Integer tamanoConocido = null;
         if (tamano != null && !tieneError(tamano)) {
             if (!tamano.tipo.equals("int")) {
-                reportar("ARR-1", linea, columna, "el tamaño del arreglo '" + nombre
+                reportar("Arreglos", linea, columna, "el tamaño del arreglo '" + nombre
                         + "' debe ser int y se encontró '" + tamano.tipo + "'");
             } else if (tamano.valor != null) {
                 tamanoConocido = tamano.valor;
                 if (tamanoConocido <= 0) {
-                    reportar("ARR-2", linea, columna, "el tamaño del arreglo '" + nombre
+                    reportar("Arreglos", linea, columna, "el tamaño del arreglo '" + nombre
                             + "' debe ser mayor que 0 y es " + tamanoConocido);
                     tamanoConocido = null;
                 }
@@ -1994,14 +1983,14 @@ public class parser extends java_cup.runtime.lr_parser {
             }
         }
         if (cantidadIncorrectos > 0) {
-            reportar("ARR-3", linea, columna, "el arreglo '" + nombre + "' es de tipo '" + tipoElementos + "' pero "
+            reportar("Arreglos", linea, columna, "el arreglo '" + nombre + "' es de tipo '" + tipoElementos + "' pero "
                     + cantidadIncorrectos + " de sus " + valores.size() + " valores no lo son (el primero es el elemento "
                     + posicionPrimerIncorrecto + ", de tipo '" + tipoPrimerIncorrecto + "')");
         }
 
         /* Regla 3: no pueden sobrar valores si el tamano se conoce */
         if (tamanoConocido != null && valores.size() > tamanoConocido) {
-            reportar("ARR-4", linea, columna, "el arreglo '" + nombre + "' tiene tamaño " + tamanoConocido
+            reportar("Arreglos", linea, columna, "el arreglo '" + nombre + "' tiene tamaño " + tamanoConocido
                     + " pero se dieron " + valores.size() + " valores");
         }
     }
@@ -2019,7 +2008,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
         /* Regla 2: la posicion debe ser int (si ya fallo, no repetir el mensaje) */
         if (!tieneError(posicion) && !posicion.tipo.equals("int")) {
-            reportar("ARR-5", linea, columna, "el índice del arreglo '" + nombre
+            reportar("Arreglos", linea, columna, "el índice del arreglo '" + nombre
                     + "' debe ser int y se encontró '" + posicion.tipo + "'");
         }
 
@@ -2027,10 +2016,10 @@ public class parser extends java_cup.runtime.lr_parser {
         if (posicion.valor != null) {
             int numeroPosicion = posicion.valor;
             if (numeroPosicion < 0) {
-                reportar("ARR-7", linea, columna, "el índice " + numeroPosicion + " del arreglo '" + nombre
+                reportar("Arreglos", linea, columna, "el índice " + numeroPosicion + " del arreglo '" + nombre
                         + "' no puede ser negativo");
             } else if (arreglo.elementos > 0 && numeroPosicion >= arreglo.elementos) {
-                reportar("ARR-6", linea, columna, "el índice " + numeroPosicion + " está fuera del arreglo '" + nombre
+                reportar("Arreglos", linea, columna, "el índice " + numeroPosicion + " está fuera del arreglo '" + nombre
                         + "' (índices válidos: 0 a " + (arreglo.elementos - 1) + ")");
             }
         }
@@ -2082,7 +2071,7 @@ public class parser extends java_cup.runtime.lr_parser {
         /* Regla 2: la cantidad de datos debe ser la misma que la de parametros */
         int cantidadEsperada = funcion.parametros.size();
         if (argumentos.size() != cantidadEsperada) {
-            reportar("FUN-1", linea, columna, "la función '" + nombre + "' espera " + cantidadEsperada
+            reportar("Funciones", linea, columna, "la función '" + nombre + "' espera " + cantidadEsperada
                     + " argumento(s) y recibió " + argumentos.size());
         } else {
             /* Regla 3: cada dato debe tener el tipo de su parametro */
@@ -2092,7 +2081,7 @@ public class parser extends java_cup.runtime.lr_parser {
                 boolean tipoIncorrecto = !tieneError(argumento) && !parametro.tipo.equals("error")
                         && !argumento.tipo.equals(parametro.tipo);
                 if (tipoIncorrecto) {
-                    reportar("FUN-2", linea, columna, "el argumento " + (posicion + 1) + " de '" + nombre
+                    reportar("Funciones", linea, columna, "el argumento " + (posicion + 1) + " de '" + nombre
                             + "' debe ser '" + parametro.tipo + "' y se encontró '" + argumento.tipo + "'");
                 }
             }
@@ -2138,7 +2127,7 @@ public class parser extends java_cup.runtime.lr_parser {
     public void declararFuncion(String nombre, String tipo, ArrayList parametros, int linea, int columna) {
 
         if (tipo.equals("string")) {
-            reportar("FUN-3", linea, columna, "la función '" + nombre
+            reportar("Funciones", linea, columna, "la función '" + nombre
                     + "' no puede retornar string (solo int, float, char o bool)");
         }
 
@@ -2148,14 +2137,14 @@ public class parser extends java_cup.runtime.lr_parser {
                 for (int anterior = 0; anterior < posicion; anterior++) {
                     Simbolo parametroAnterior = (Simbolo) parametros.get(anterior);
                     if (parametroAnterior.nombre.equals(parametro.nombre)) {
-                        avisarRepetido("FUN-4", parametroAnterior, parametro.nombre, parametro.linea, parametro.columna);
+                        avisarRepetido("Funciones", parametroAnterior, parametro.nombre, parametro.linea, parametro.columna);
                         break;
                     }
                 }
             }
         }
 
-        avisarRepetido("TS-1", tabla.declararFuncion(nombre, tipo, parametros, linea, columna), nombre, linea, columna);
+        avisarRepetido("Nombres", tabla.declararFuncion(nombre, tipo, parametros, linea, columna), nombre, linea, columna);
 
         tipoFuncionActual = tipo;
         nombreFuncionActual = nombre;
@@ -2171,7 +2160,7 @@ public class parser extends java_cup.runtime.lr_parser {
     public void finFuncion() {
         boolean tieneTipo = tipoFuncionActual != null && !tipoFuncionActual.equals("void");
         if (tieneTipo && !funcionTieneReturn) {
-            reportar("FUN-7", lineaFuncionActual, columnaFuncionActual, "la función '" + nombreFuncionActual
+            reportar("Funciones", lineaFuncionActual, columnaFuncionActual, "la función '" + nombreFuncionActual
                     + "' debe tener al menos un return");
         }
     }
@@ -2194,7 +2183,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
         /* Regla 1: un procedimiento void no devuelve nada */
         if (tipoFuncionActual.equals("void")) {
-            reportar("RET-1", linea, columna, "el procedimiento '" + nombreFuncionActual
+            reportar("Return", linea, columna, "el procedimiento '" + nombreFuncionActual
                     + "' no puede retornar un valor");
             return;
         }
@@ -2206,7 +2195,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
         /* Regla 3: el valor debe tener el tipo de la funcion */
         if (!valor.tipo.equals(tipoFuncionActual)) {
-            reportar("RET-2", linea, columna, "la función '" + nombreFuncionActual
+            reportar("Return", linea, columna, "la función '" + nombreFuncionActual
                     + "' debe retornar un valor de tipo " + tipoFuncionActual
                     + ", pero se recibió " + valor.tipo);
             return;
@@ -2224,9 +2213,9 @@ public class parser extends java_cup.runtime.lr_parser {
        Descripcion: avisa si un nombre ya estaba declarado en el mismo bloque.
        Objetivo: no permitir dos declaraciones iguales en un bloque.
        Salida: ninguna (si estaba repetido, guarda un error). */
-    private void avisarRepetido(String regla, Simbolo simboloPrevio, String nombre, int linea, int columna) {
+    private void avisarRepetido(String validacion, Simbolo simboloPrevio, String nombre, int linea, int columna) {
         if (simboloPrevio != null) {
-            reportar(regla, linea, columna, "'" + nombre
+            reportar(validacion, linea, columna, "'" + nombre
                     + "' ya fue declarado en este ámbito (línea " + simboloPrevio.linea + ")");
         }
     }
@@ -2237,7 +2226,7 @@ public class parser extends java_cup.runtime.lr_parser {
        Salida: ninguna. */
     public void declararVariable(String nombre, String tipo, String valorInicial, int linea, int columna) {
         Simbolo simboloPrevio = tabla.declararVariable(nombre, tipo, valorInicial, linea, columna);
-        avisarRepetido("TS-1", simboloPrevio, nombre, linea, columna);
+        avisarRepetido("Nombres", simboloPrevio, nombre, linea, columna);
     }
 
     /* Nombre: declararArreglo
@@ -2247,7 +2236,7 @@ public class parser extends java_cup.runtime.lr_parser {
     public void declararArreglo(String nombre, String tipo, String tamano, int elementos,
                                 String valores, int linea, int columna) {
         Simbolo simboloPrevio = tabla.declararArreglo(nombre, tipo, tamano, elementos, valores, linea, columna);
-        avisarRepetido("TS-1", simboloPrevio, nombre, linea, columna);
+        avisarRepetido("Nombres", simboloPrevio, nombre, linea, columna);
     }
 
     /* Nombre: usar
@@ -2258,15 +2247,15 @@ public class parser extends java_cup.runtime.lr_parser {
         Simbolo simbolo = tabla.buscar(nombre);
 
         if (simbolo == null) {
-            reportar("TS-2", linea, columna, "'" + nombre + "' no ha sido declarado");
+            reportar("Nombres", linea, columna, "'" + nombre + "' no ha sido declarado");
             return null;
         }
         if (simbolo.esFuncion()) {
-            reportar("TS-6", linea, columna, "'" + nombre + "' es una función y se usa como variable");
+            reportar("Nombres", linea, columna, "'" + nombre + "' es una función y se usa como variable");
             return null;
         }
         if (simbolo.categoria.equals(Simbolo.ARREGLO)) {
-            reportar("TS-7", linea, columna, "'" + nombre + "' es un arreglo y debe usarse con un índice");
+            reportar("Nombres", linea, columna, "'" + nombre + "' es un arreglo y debe usarse con un índice");
             return null;
         }
         return simbolo;
@@ -2280,9 +2269,9 @@ public class parser extends java_cup.runtime.lr_parser {
         Simbolo simbolo = tabla.buscar(nombre);
 
         if (simbolo == null) {
-            reportar("TS-4", linea, columna, "el arreglo '" + nombre + "' no ha sido declarado");
+            reportar("Nombres", linea, columna, "el arreglo '" + nombre + "' no ha sido declarado");
         } else if (!simbolo.categoria.equals(Simbolo.ARREGLO)) {
-            reportar("TS-5", linea, columna, "'" + nombre + "' no es un arreglo");
+            reportar("Nombres", linea, columna, "'" + nombre + "' no es un arreglo");
         }
         return simbolo;
     }
@@ -2295,9 +2284,9 @@ public class parser extends java_cup.runtime.lr_parser {
         Simbolo simbolo = tabla.buscar(nombre);
 
         if (simbolo == null) {
-            reportar("TS-3", linea, columna, "la función '" + nombre + "' no ha sido declarada");
+            reportar("Nombres", linea, columna, "la función '" + nombre + "' no ha sido declarada");
         } else if (!simbolo.esFuncion()) {
-            reportar("TS-3", linea, columna, "'" + nombre + "' no es una función");
+            reportar("Nombres", linea, columna, "'" + nombre + "' no es una función");
         }
         return simbolo;
     }
@@ -2322,7 +2311,7 @@ public class parser extends java_cup.runtime.lr_parser {
                 break;
             }
         }
-        reportar("PRG-1", linea, columna, "el programa debe tener una función principal");
+        reportar("Programa", linea, columna, "el programa debe tener una función principal");
     }
 
 
@@ -2350,7 +2339,7 @@ public class parser extends java_cup.runtime.lr_parser {
        Salida: ninguna (si esta afuera, guarda un error). */
     public void validarBreak(int linea, int columna) {
         if (ciclosAbiertos == 0) {
-            reportar("CON-5", linea, columna, "break solo puede utilizarse dentro de un ciclo");
+            reportar("Control", linea, columna, "break solo puede utilizarse dentro de un ciclo");
         }
     }
 
@@ -2358,14 +2347,14 @@ public class parser extends java_cup.runtime.lr_parser {
        Descripcion: revisa la condicion de un if, elif, while o for.
        Objetivo: que la condicion sea de tipo bool.
        Salida: ninguna (si no es bool, guarda un error). */
-    public void condicion(String regla, Atrib condicion, int linea, int columna) {
+    public void condicion(String validacion, Atrib condicion, int linea, int columna) {
 
         if (condicion == null || tieneError(condicion)) {
             return;
         }
 
         if (!condicion.tipo.equals("bool")) {
-            reportar(regla, linea, columna, "la condición debe ser de tipo bool, pero se recibió "
+            reportar(validacion, linea, columna, "la condición debe ser de tipo bool, pero se recibió "
                     + condicion.tipo);
         }
     }
@@ -2381,7 +2370,7 @@ public class parser extends java_cup.runtime.lr_parser {
         }
 
         if (!esNumerico(variable.tipo)) {
-            reportar("INC-1", linea, columna, "el operador '" + operador
+            reportar("Incremento", linea, columna, "el operador '" + operador
                     + "' solo se aplica a variables int o float y '" + nombre + "' es de tipo " + variable.tipo);
             return;
         }
@@ -2405,7 +2394,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
         boolean tipoPermitido = esNumerico(destino.tipo) || destino.tipo.equals("char");
         if (!tipoPermitido) {
-            reportar("ES-1", linea, columna,
+            reportar("Entrada/Salida", linea, columna,
                     "read solo permite valores de tipo int, float o char; se recibió " + destino.tipo);
             return;
         }
@@ -2424,7 +2413,7 @@ public class parser extends java_cup.runtime.lr_parser {
 
         boolean tipoPermitido = esNumerico(valor.tipo) || valor.tipo.equals("string");
         if (!tipoPermitido) {
-            reportar("ES-2", linea, columna, "write no permite valores de tipo " + valor.tipo);
+            reportar("Entrada/Salida", linea, columna, "write no permite valores de tipo " + valor.tipo);
             return;
         }
         gen.escribir(valor.lugar);
@@ -2996,7 +2985,7 @@ class CUP$parser$actions {
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(nombre, "int", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
          parser.gen.declararAntesDelValor("int", nombre);
-         parser.asignar("ASG-1", nombre, "int", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "int", valor); 
+         parser.asignar("Asignación", nombre, "int", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "int", valor); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3016,7 +3005,7 @@ class CUP$parser$actions {
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(nombre, "float", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
          parser.gen.declararAntesDelValor("float", nombre);
-         parser.asignar("ASG-1", nombre, "float", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "float", valor); 
+         parser.asignar("Asignación", nombre, "float", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "float", valor); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3036,7 +3025,7 @@ class CUP$parser$actions {
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(nombre, "bool", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
          parser.gen.declararAntesDelValor("bool", nombre);
-         parser.asignar("ASG-1", nombre, "bool", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "bool", valor); 
+         parser.asignar("Asignación", nombre, "bool", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "bool", valor); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3056,7 +3045,7 @@ class CUP$parser$actions {
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(nombre, "char", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
          parser.gen.declararAntesDelValor("char", nombre);
-         parser.asignar("ASG-1", nombre, "char", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "char", valor); 
+         parser.asignar("Asignación", nombre, "char", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "char", valor); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3076,7 +3065,7 @@ class CUP$parser$actions {
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
 		 parser.declararVariable(nombre, "string", parser.textoValor(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
          parser.gen.declararAntesDelValor("string", nombre);
-         parser.asignar("ASG-1", nombre, "string", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "string", valor); 
+         parser.asignar("Asignación", nombre, "string", valor, nombreleft, nombreright); parser.generarAsignacion(nombre, "string", valor); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("def_variable",37, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-5)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
           return CUP$parser$result;
@@ -3147,7 +3136,7 @@ class CUP$parser$actions {
         Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
 
         if (simbolo != null) {
-            parser.asignar("ASG-2", nombre, simbolo.tipo, valor,
+            parser.asignar("Asignación", nombre, simbolo.tipo, valor,
                         nombreleft, nombreright);
 
             parser.generarAsignacion(nombre, simbolo.tipo, valor);
@@ -3597,7 +3586,7 @@ class CUP$parser$actions {
 		int valorleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
 		int valorright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
-		 parser.asignar("ARR-8", elemento.lugar, elemento.tipo, valor, elementoleft, elementoright);
+		 parser.asignar("Arreglos", elemento.lugar, elemento.tipo, valor, elementoleft, elementoright);
                             if (!elemento.tipo.equals("error")) { parser.generarAsignacion(elemento.lugar, elemento.tipo, valor); } 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("modificacion_arreglo",51, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
@@ -4564,7 +4553,7 @@ class CUP$parser$actions {
 		int condicionleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
 		int condicionright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib condicion = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
-		 parser.condicion("CON-1", condicion, condicionleft, condicionright);
+		 parser.condicion("Control", condicion, condicionleft, condicionright);
                     parser.gen.condicionIf(condicion.lugar); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_if",89, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
@@ -4706,7 +4695,7 @@ class CUP$parser$actions {
 		int condicionleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).left;
 		int condicionright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-1)).right;
 		Atrib condicion = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-1)).value;
-		 parser.condicion("CON-2", condicion, condicionleft, condicionright); parser.entrarCiclo();
+		 parser.condicion("Control", condicion, condicionleft, condicionright); parser.entrarCiclo();
                        parser.gen.saltoSiFalsoCiclo(condicion.lugar); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("condicion_while",91, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
@@ -4764,7 +4753,7 @@ class CUP$parser$actions {
 		int condicionleft = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)).left;
 		int condicionright = ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-3)).right;
 		Atrib condicion = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.elementAt(CUP$parser$top-3)).value;
-		 parser.condicion("CON-3", condicion, condicionleft, condicionright); parser.entrarCiclo();
+		 parser.condicion("Control", condicion, condicionleft, condicionright); parser.entrarCiclo();
                     parser.gen.cabeceraFor(condicion == null ? null : condicion.lugar); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("cabecera_for",92, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-6)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
@@ -4808,7 +4797,7 @@ class CUP$parser$actions {
 		int valorright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
-                  if (simbolo != null) { parser.asignar("CON-4", nombre, simbolo.tipo, valor, nombreleft, nombreright);
+                  if (simbolo != null) { parser.asignar("Control", nombre, simbolo.tipo, valor, nombreleft, nombreright);
                                          parser.generarAsignacion(nombre, simbolo.tipo, valor); } 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("inicio_for",85, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }
@@ -4831,7 +4820,7 @@ class CUP$parser$actions {
 		int valorright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 parser.declararVariable(nombre, tipo, parser.textoDesde(signoAsignaleft, signoAsignaright), nombreleft, nombreright);
-                  parser.asignar("CON-4", nombre, tipo, valor, nombreleft, nombreright);
+                  parser.asignar("Control", nombre, tipo, valor, nombreleft, nombreright);
                   parser.generarAsignacion(nombre, tipo, valor);
                   parser.gen.declararAntesDelValor(tipo, nombre); 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("inicio_for",85, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-4)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
@@ -4957,7 +4946,7 @@ class CUP$parser$actions {
 		int valorright = ((java_cup.runtime.Symbol)CUP$parser$stack.peek()).right;
 		Atrib valor = (Atrib)((java_cup.runtime.Symbol) CUP$parser$stack.peek()).value;
 		 Simbolo simbolo = parser.usar(nombre, nombreleft, nombreright);
-                      if (simbolo != null) { parser.asignar("CON-4", nombre, simbolo.tipo, valor, nombreleft, nombreright);
+                      if (simbolo != null) { parser.asignar("Control", nombre, simbolo.tipo, valor, nombreleft, nombreright);
                                              parser.generarAsignacion(nombre, simbolo.tipo, valor); } 
               CUP$parser$result = parser.getSymbolFactory().newSymbol("incremento_for",87, ((java_cup.runtime.Symbol)CUP$parser$stack.elementAt(CUP$parser$top-2)), ((java_cup.runtime.Symbol)CUP$parser$stack.peek()), RESULT);
             }

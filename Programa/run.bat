@@ -23,7 +23,7 @@ REM
 REM Objetivo:
 REM Tener las rutas necesarias para ejecutar el programa.
 
-for %%I in ("%~dp0..\..") do set "PROJECT=%%~fI"
+for %%I in ("%~dp0.") do set "PROJECT=%%~fI"
 
 set "LIB=%PROJECT%\librerias"
 
@@ -45,14 +45,22 @@ REM Salida:
 REM La ruta del archivo que se va a analizar.
 REM
 REM Restricciones:
-REM El archivo debe existir dentro de la carpeta pruebas.
+REM El archivo debe existir en pruebas\correctas o en pruebas\con_errores.
 REM
 REM Objetivo:
 REM Permitir seleccionar facilmente el archivo de prueba.
 
 echo.
 
-echo   Carpeta de pruebas : pruebas\
+echo   Pruebas correctas:
+
+for %%f in ("%PRUEBAS%\correctas\*.cmm") do echo     %%~nxf
+
+echo.
+
+echo   Pruebas con errores:
+
+for %%f in ("%PRUEBAS%\con_errores\*.cmm") do echo     %%~nxf
 
 echo.
 
@@ -74,9 +82,14 @@ if /i not "%ARCHIVO:~-4%"==".cmm" (
 
 )
 
-set "FUENTE=%PRUEBAS%\%ARCHIVO%"
+REM El archivo se busca en las dos carpetas de pruebas.
+REM Los tokens se guardan solos en salida\tokens\<nombre>_tokens.txt
 
-set "TOKENS=%PRUEBAS%\tokens.txt"
+set "FUENTE="
+
+if exist "%PRUEBAS%\correctas\%ARCHIVO%" set "FUENTE=%PRUEBAS%\correctas\%ARCHIVO%"
+
+if exist "%PRUEBAS%\con_errores\%ARCHIVO%" set "FUENTE=%PRUEBAS%\con_errores\%ARCHIVO%"
 
 
 REM ============================================================
@@ -92,16 +105,16 @@ REM Salida:
 REM El programa continua si el archivo existe.
 REM
 REM Restricciones:
-REM El archivo debe estar dentro de la carpeta pruebas.
+REM El archivo debe estar en pruebas\correctas o en pruebas\con_errores.
 REM
 REM Objetivo:
 REM Evitar ejecutar el analizador con un archivo inexistente.
 
-if not exist "%FUENTE%" (
+if not defined FUENTE (
 
     echo.
 
-    echo   ERROR: No se encontro el archivo: pruebas\%ARCHIVO%
+    echo   ERROR: No se encontro %ARCHIVO% en pruebas\correctas ni en pruebas\con_errores
 
     echo.
 
@@ -117,7 +130,7 @@ REM Descripcion:
 REM Ejecuto el programa Java con el archivo seleccionado.
 REM
 REM Entrada:
-REM El archivo .cmm y la ruta donde se guardaran los tokens.
+REM El archivo .cmm (Main guarda los tokens en salida\tokens).
 REM
 REM Salida:
 REM El analisis lexico y sintactico mostrado por Main.
@@ -132,7 +145,7 @@ cls
 
 cd /d "%PROJECT%"
 
-java -cp "%BIN%;%LIB%\java-cup-11b.jar" Main "%FUENTE%" "%TOKENS%"
+java -cp "%BIN%;%LIB%\java-cup-11b.jar" Main "%FUENTE%"
 
 
 REM ============================================================
