@@ -1,8 +1,0 @@
-a = 1
-b = 2
-c = 0
-t1 = a + b
-t2 = t1 * 2
-c = t2
-t3 = a mod b
-c = t3

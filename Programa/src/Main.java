@@ -56,8 +56,8 @@ public class Main {
     /* Errores de la forma "Error léxico en línea 3, columna 5: detalle" (sirve para léxicos y semánticos) */
     private static final Pattern PATRON_ERROR = Pattern.compile("Error \\S+ en línea (\\d+), columna (\\d+): (.*)");
 
-    /* Los errores semánticos empiezan con su regla: "[ARI-3] detalle" (grupo 1 = ARI, grupo 3 = detalle) */
-    private static final Pattern PATRON_REGLA = Pattern.compile("^\\[([A-Z]+)-(\\d+)\\]\\s*(.*)$");
+    /* Los errores semánticos empiezan con su validación: "[Aritmética] detalle" (grupo 1 = validación, grupo 2 = detalle) */
+    private static final Pattern PATRON_VALIDACION = Pattern.compile("^\\[([^\\]]+)\\]\\s*(.*)$");
 
     /* Las etiquetas de if, while y for tienen "_if_N_", "_while_N_" o "_for_N_" en el nombre */
     private static final Pattern PATRON_ETIQUETA_ESTRUCTURA = Pattern.compile("_(if|while|for)_\\d+_");
@@ -73,8 +73,8 @@ public class Main {
        COLORES
        ============================================================ */
 
-    private static final String SIN_COLOR = "0";
     private static final String NEGRITA = "1";
+    private static final String SIN_COLOR = "0";
     private static final String GRIS = "90";
     private static final String BLANCO = "1;37";
     private static final String ROJO = "1;31";
@@ -334,7 +334,7 @@ public class Main {
 
         mostrarSeccion("FASE 3 · ANÁLISIS SEMÁNTICO");
 
-        File reporte = tabla.guardarReporte(fuente);
+        File reporte = tabla.guardarReporte(fuente, tablaSimbolosParaArchivo(tabla));
 
         List<String> errores = tabla.getErrores();
 
@@ -1298,24 +1298,6 @@ public class Main {
     /* Largo del inicio de cada linea: Nº, LÍNEA, COL y VALIDACIÓN */
     private static final int ANCHO_PREFIJO_SEMANTICO = 37;
 
-    /* Familia de la regla -> nombre de la validacion ("ARI" -> "Aritmética") */
-    private static final Map<String, String> NOMBRE_VALIDACION = new HashMap<>();
-
-    static {
-        NOMBRE_VALIDACION.put("TS", "Nombres");
-        NOMBRE_VALIDACION.put("ARI", "Aritmética");
-        NOMBRE_VALIDACION.put("REL", "Comparación");
-        NOMBRE_VALIDACION.put("LOG", "Lógica");
-        NOMBRE_VALIDACION.put("ASG", "Asignación");
-        NOMBRE_VALIDACION.put("ARR", "Arreglos");
-        NOMBRE_VALIDACION.put("FUN", "Funciones");
-        NOMBRE_VALIDACION.put("RET", "Return");
-        NOMBRE_VALIDACION.put("CON", "Control");
-        NOMBRE_VALIDACION.put("INC", "Incremento");
-        NOMBRE_VALIDACION.put("ES", "Entrada/Salida");
-        NOMBRE_VALIDACION.put("PRG", "Programa");
-    }
-
     /* Un error semantico listo para mostrar */
     private static class FilaSemantica {
         String linea;
@@ -1329,7 +1311,7 @@ public class Main {
      * Muestro los errores semanticos, uno por linea: numero, linea y columna del codigo,
      * tipo de validacion y descripcion. Al final, cuantos errores hay de cada tipo.
      *
-     * Entrada: la lista de errores ("Error ... en línea L, columna C: [REGLA] detalle").
+     * Entrada: la lista de errores ("Error ... en línea L, columna C: [Validación] detalle").
      */
     private static void mostrarErroresSemanticos(List<String> errores) {
 
@@ -1346,12 +1328,12 @@ public class Main {
             fila.validacion = "Semántico";
             fila.detalle = partes.detalle;
 
-            /* La regla dice el tipo de validacion: [ARI-3] -> Aritmética */
-            Matcher regla = PATRON_REGLA.matcher(partes.detalle);
+            /* El error empieza con su tipo de validacion: [Aritmética] detalle */
+            Matcher validacion = PATRON_VALIDACION.matcher(partes.detalle);
 
-            if (regla.matches()) {
-                fila.detalle = regla.group(3);
-                fila.validacion = NOMBRE_VALIDACION.getOrDefault(regla.group(1), fila.validacion);
+            if (validacion.matches()) {
+                fila.validacion = validacion.group(1);
+                fila.detalle = validacion.group(2);
             }
 
             filas.add(fila);
@@ -1426,7 +1408,7 @@ public class Main {
        Colores (solo tres, mas gris):
          amarillo : inicio y fin de cada funcion, y la funcion de un call
          cian     : etiquetas de if, while y for, y el destino de cada salto
-         verde    : declaraciones (data#, param_)
+         verde    : declaraciones (data#, DeclVal#, param_)
          rojo     : operadores (+ - * // / mod pot < > <= >= == != and or not)
          gris     : numeros de linea y separadores
          negrita  : palabras de control (goto, if, call, return, param, read, write)
@@ -1450,9 +1432,14 @@ public class Main {
         return esEtiqueta(linea) && !PATRON_ETIQUETA_ESTRUCTURA.matcher(linea).find();
     }
 
-    /* Fin de una funcion: int_suma_end (sin dos puntos) */
+    /* Fin de una funcion: int_suma_final (sin dos puntos, a diferencia de las etiquetas) */
     private static boolean esFinDeFuncion(String linea) {
-        return linea.endsWith("_end") && !linea.contains(" ") && !linea.endsWith(":");
+        return linea.endsWith("_final") && !linea.contains(" ") && !linea.endsWith(":");
+    }
+
+    /* Declaracion sin valor (data#), con valor (DeclVal#) o parametro (param_) */
+    private static boolean esDeclaracion(String linea) {
+        return linea.startsWith("data#") || linea.startsWith("DeclVal#") || linea.startsWith("param_");
     }
 
     /* Instrucciones reales: sin contar lineas vacias, etiquetas ni fines de funcion */
@@ -1489,15 +1476,37 @@ public class Main {
             return;
         }
 
-        String[] lineas = codigo.split("\n");
-        int anchoNumero = String.valueOf(lineas.length).length();
-        String margen = "  " + " ".repeat(anchoNumero);
-
         System.out.println("  " + pintar(AMARILLO, "funciones") + pintar(GRIS, "  ·  ")
                 + pintar(CIAN, "etiquetas y saltos") + pintar(GRIS, "  ·  ")
                 + pintar(VERDE_SUAVE, "declaraciones") + pintar(GRIS, "  ·  ")
                 + pintar(ROJO_SUAVE, "operadores"));
         System.out.println();
+
+        for (String linea : formatearCodigoIntermedio(codigo)) {
+            System.out.println(linea);
+        }
+
+        System.out.println();
+    }
+
+    /*
+     * Descripcion:
+     * Armo el codigo intermedio linea por linea, con numero de linea, sangria y una
+     * linea separadora antes de cada funcion. Lo usan la consola y el archivo .tac.
+     *
+     * Salida: las lineas ya formateadas (con colores si la consola los usa).
+     */
+    private static List<String> formatearCodigoIntermedio(String codigo) {
+
+        List<String> resultado = new ArrayList<>();
+
+        if (codigo.isEmpty()) {
+            return resultado;
+        }
+
+        String[] lineas = codigo.split("\n");
+        int anchoNumero = String.valueOf(lineas.length).length();
+        String margen = "  " + " ".repeat(anchoNumero);
 
         boolean dentroDeFuncion = false;
 
@@ -1507,7 +1516,7 @@ public class Main {
             String texto;
 
             if (esInicioDeFuncion(linea)) {
-                System.out.println(pintar(GRIS, margen + " ├" + "─".repeat(50)));
+                resultado.add(pintar(GRIS, margen + " ├" + "─".repeat(50)));
                 texto = pintar(AMARILLO, linea);
                 dentroDeFuncion = true;
 
@@ -1527,17 +1536,25 @@ public class Main {
 
             String numero = pintar(GRIS, String.format("  %" + anchoNumero + "d │", i + 1));
 
-            System.out.println(texto.isEmpty() ? numero : numero + " " + texto);
+            resultado.add(texto.isEmpty() ? numero : numero + " " + texto);
         }
 
-        System.out.println();
+        return resultado;
+    }
+
+    /* Los codigos ANSI de color: ESC[36m, ESC[0m... */
+    private static final Pattern PATRON_COLOR = Pattern.compile("\u001B\\[[0-9;]*m");
+
+    /* El mismo texto sin colores (un archivo de texto no los puede mostrar) */
+    private static String quitarColores(String texto) {
+        return PATRON_COLOR.matcher(texto).replaceAll("");
     }
 
     /* Le pone color a una instruccion segun su forma */
     private static String colorearInstruccion(String linea) {
 
-        /* data#int x   y   param_int x */
-        if (linea.startsWith("data#") || linea.startsWith("param_")) {
+        /* data#int x,  DeclVal#int x  y  param_int x */
+        if (esDeclaracion(linea)) {
             return pintar(VERDE_SUAVE, linea);
         }
 
@@ -1703,33 +1720,55 @@ public class Main {
      */
     private static void mostrarTablaSimbolos(TablaSimbolos tabla) {
 
-        System.out.println(pintar(NEGRITA, "  Árbol de ámbitos (cada ámbito es una tabla; los de abajo son sus hijos)"));
-        System.out.println();
+        for (String linea : formatearTablaSimbolos(tabla)) {
+            System.out.println(linea);
+        }
+    }
 
-        for (String linea : tabla.arbolDeAmbitos().split("\n")) {
-            System.out.println(pintar(CIAN_SUAVE, linea));
+    /* La tabla de simbolos para guardarla en el archivo: igual que en consola, sin colores */
+    private static String tablaSimbolosParaArchivo(TablaSimbolos tabla) {
+
+        StringBuilder texto = new StringBuilder();
+
+        for (String linea : formatearTablaSimbolos(tabla)) {
+            texto.append(quitarColores(linea)).append("\n");
         }
 
-        System.out.println();
+        return texto.toString();
+    }
 
-        System.out.println("  " + pintar(NEGRITA, "Categorías: ")
+    /* Arma la tabla linea por linea. La usan la consola y el archivo, asi se ven iguales. */
+    private static List<String> formatearTablaSimbolos(TablaSimbolos tabla) {
+
+        List<String> lineas = new ArrayList<>();
+
+        lineas.add(pintar(NEGRITA, "  Árbol de ámbitos"));
+        lineas.add("");
+
+        for (String linea : tabla.arbolDeAmbitos().split("\n")) {
+            lineas.add(pintar(CIAN_SUAVE, linea));
+        }
+
+        lineas.add("");
+
+        lineas.add("  " + pintar(NEGRITA, "Categorías: ")
                 + pintar(colorCategoria("variable"), "variable") + "  "
                 + pintar(colorCategoria("arreglo"), "arreglo") + "  "
                 + pintar(colorCategoria("parámetro"), "parámetro") + "  "
                 + pintar(colorCategoria("función"), "función") + "  "
                 + pintar(colorCategoria("procedimiento"), "procedimiento"));
 
-        System.out.println(pintar(GRIS, "  Dirección: global+n = zona estática · pila+n = registro de activación"));
-        System.out.println(pintar(GRIS, "  Acceso:    público = declarado en el ámbito global · privado = dentro de una función o bloque"));
-        System.out.println();
+        lineas.add(pintar(GRIS, "  Dirección:   global+n = zona estática                 ----   pila+n = registro de activación"));
+        lineas.add(pintar(GRIS, "  Acceso:      público = declarado en el ámbito global ------- privado = dentro de una función o bloque"));
+        lineas.add("");
 
-        System.out.println(pintar(GRIS, "  " + bordeTabla('┌', '┬', '┐')));
+        lineas.add(pintar(GRIS, "  " + bordeTabla('┌', '┬', '┐')));
 
         String[] coloresTitulos = new String[TITULOS_TABLA.length];
         java.util.Arrays.fill(coloresTitulos, CIAN);
-        filaTabla(TITULOS_TABLA, coloresTitulos);
+        filaTabla(lineas, TITULOS_TABLA, coloresTitulos);
 
-        System.out.println(pintar(GRIS, "  " + bordeTabla('├', '┼', '┤')));
+        lineas.add(pintar(GRIS, "  " + bordeTabla('├', '┼', '┤')));
 
         int numero = 1;
         boolean esPrimerAmbito = true;
@@ -1742,19 +1781,21 @@ public class Main {
             }
 
             if (!esPrimerAmbito) {
-                System.out.println(pintar(GRIS, "  " + bordeTabla('├', '┼', '┤')));
+                lineas.add(pintar(GRIS, "  " + bordeTabla('├', '┼', '┤')));
             }
             esPrimerAmbito = false;
 
             String nombreAmbito = nombreCortoAmbito(ambito);
 
             for (Simbolo simbolo : ambito.simbolos()) {
-                filaTabla(celdasDelSimbolo(numero++, simbolo, nombreAmbito), coloresDelSimbolo(simbolo));
+                filaTabla(lineas, celdasDelSimbolo(numero++, simbolo, nombreAmbito), coloresDelSimbolo(simbolo));
             }
         }
 
-        System.out.println(pintar(GRIS, "  " + bordeTabla('└', '┴', '┘')));
-        System.out.println();
+        lineas.add(pintar(GRIS, "  " + bordeTabla('└', '┴', '┘')));
+        lineas.add("");
+
+        return lineas;
     }
 
     private static String[] celdasDelSimbolo(int numero, Simbolo simbolo, String nombreAmbito) {
@@ -1820,7 +1861,7 @@ public class Main {
     }
 
     /* Una fila de la tabla; si una celda es larga, la fila ocupa varias lineas */
-    private static void filaTabla(String[] celdas, String[] colores) {
+    private static void filaTabla(List<String> salida, String[] celdas, String[] colores) {
 
         List<List<String>> lineasPorCelda = new ArrayList<>();
         int alto = 1;
@@ -1847,7 +1888,7 @@ public class Main {
                      .append(pintar(GRIS, "│"));
             }
 
-            System.out.println(linea);
+            salida.add(linea.toString());
         }
     }
 

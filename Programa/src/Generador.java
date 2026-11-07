@@ -1,8 +1,8 @@
 /*
  * Descripcion:
- * Genero el código intermedio (código de tres direcciones) del programa.
- * Cada instrucción tiene como máximo tres direcciones: "t1 = a + b".
- *
+ * Genero el código intermedio código de tres direcciones del programa.
+ * Cada instrucción tiene como máximo tres direcciones
+ * 
  * Entrada:
  * Las instrucciones que le pide el parser (Parser.cup), una por una, mientras
  * analiza el archivo fuente.
@@ -19,8 +19,8 @@
  * todo lo del código intermedio viva en un solo lugar.
  *
  * Formato de las etiquetas:
- * funcion_estructura_numero_parte, por ejemplo funExc_for_2_cond.
- * Las funciones usan tipo_nombre: y terminan con tipo_nombre_end.
+ * funcion_estructura_numero_parte
+ * Las funciones usan tipo_nombre: y terminan con tipo_nombre_final.
  */
 public class Generador {
 
@@ -28,31 +28,36 @@ public class Generador {
 
     private int contadorTemporales = 0;
 
-    /* Numera las estructuras de control: for_1, while_2, if_3... */
     private int contadorEtiquetas = 0;
 
-    /* Función que se está generando: es el prefijo de las etiquetas */
     private String funcionActual = "global";
 
     private String tipoFuncionActual = "";
 
-    /* Tipo de la función principal, para el salto inicial (cambiarlo si no es void) */
     private static final String TIPO_PRINCIPAL = "void";
 
-    /* Un temporal nuevo con el tipo del dato que guarda: int1, float2, bool3...
+    /* Partes del nombre de las etiquetas. Cada etiqueta y cada salto hacia ella usan la
+    misma constante, así nunca puede quedar un goto hacia una etiqueta que no existe. */
+    private static final String PARTE_INICIALIZACION = "_inicializacion";
+    private static final String PARTE_CONDICION = "_condicion";
+    private static final String PARTE_INCREMENTO = "_inc";
+    private static final String PARTE_BLOQUE = "_bloque";
+    private static final String PARTE_SIGUIENTE = "_sig";
+    private static final String PARTE_FINAL = "_final";
+
+    /* Un temporal nuevo con el tipo del dato que guarda int1, float2, bool3
     El numero es uno solo para todos los tipos, asi nunca se repite un nombre. */
     public String nuevoTemporal(String tipo) {
         contadorTemporales++;
         return tipo + contadorTemporales;
     }
 
-    /* Prefijo de una estructura nueva: funExc_for_2 */
+    /* Prefijo de una estructura nueva funExc_for_2 */
     private String prefijo(String estructura) {
         contadorEtiquetas++;
         return funcionActual + "_" + estructura + "_" + contadorEtiquetas;
     }
 
-    /* Escribe una etiqueta, con una línea en blanco antes para que se lea mejor */
     private void etiqueta(String nombre) {
         emitir("");
         emitir(nombre + ":");
@@ -93,7 +98,7 @@ public class Generador {
     /*
      * Descripcion:
      * Ubico la carpeta codigo_intermedio dentro de la carpeta Programa
-     * (al lado de bin y de tabla_simbolos).
+     * al lado de bin y de tabla_simbolos.
      *
      * Restricciones:
      * Se calcula a partir de la ubicación de los .class, así funciona
@@ -191,9 +196,7 @@ public class Generador {
         return temporal;
     }
 
-    /* ---------- cargas y declaraciones (formato del profesor) ---------- */
 
-    /* Datos de la última carga escrita (t5 = 2), para poder deshacerla */
     private String ultimaCarga = null;
     private String valorUltimaCarga = null;
     private int inicioUltimaCarga = -1;
@@ -221,9 +224,6 @@ public class Generador {
         return cargado;
     }
 
-    /* Deshace la carga que se acaba de escribir (t5 = 2) y devuelve el valor directo.
-    Se usa en tamaños e índices de arreglos: edades[2] en vez de t5 = 2 y edades[t5].
-    Si después de la carga ya se escribió otra cosa (por ejemplo i + 1), no cambia nada. */
     public Atrib sinCarga(Atrib dato) {
         boolean esLaUltima = dato != null && dato.lugar.equals(ultimaCarga)
                 && codigo.length() == finUltimaCarga;
@@ -254,7 +254,7 @@ public class Generador {
     /* Declaración con valor: el data# debe ir ANTES del código del valor,
     pero el parser lo pide al final de la regla. Se inserta en la marca del =. */
     public void declararAntesDelValor(String tipo, String nombre) {
-        codigo.insert(marcaAsignacion, "data#" + tipo + " " + nombre + "\n");
+        codigo.insert(marcaAsignacion, "DeclVal#" + tipo + " " + nombre + "\n");
         ultimaCarga = null;
     }
 
@@ -306,9 +306,9 @@ public class Generador {
         emitir(tipo + "_" + nombre + ":");
     }
 
-    /* Fin de la función: int_funExc_end */
+    /* Fin de la función: int_funExc_final */
     public void finFuncion() {
-        emitir(tipoFuncionActual + "_" + funcionActual + "_end");
+        emitir(tipoFuncionActual + "_" + funcionActual + PARTE_FINAL);
         funcionActual = "global";
         tipoFuncionActual = "";
     }
@@ -336,7 +336,7 @@ public class Generador {
     }
 
     /* ---------- if / elif / else ----------
-       funExc_if_3_bloque1, funExc_if_3_sig1, ..., funExc_if_3_end */
+       funExc_if_3_bloque1, funExc_if_3_sig1, ..., funExc_if_3_final */
     private static class Condicional {
         String base;      /* prefijo: funExc_if_3 */
         int rama = 0;     /* número de la rama con condición (if = 1, primer elif = 2...) */
@@ -365,8 +365,8 @@ public class Generador {
         }
 
         c.rama++;
-        String bloque = c.base + "_bloque" + c.rama;
-        c.siguiente = c.base + "_sig" + c.rama;
+        String bloque = c.base + PARTE_BLOQUE + c.rama;
+        c.siguiente = c.base + PARTE_SIGUIENTE + c.rama;
 
         emitir("if " + lugar + " goto " + bloque);
         emitir("goto " + c.siguiente);
@@ -381,7 +381,7 @@ public class Generador {
             return;
         }
 
-        emitir("goto " + c.base + "_end");
+        emitir("goto " + c.base + PARTE_FINAL);
 
         if (c.siguiente != null) {
             etiqueta(c.siguiente);
@@ -401,12 +401,12 @@ public class Generador {
             etiqueta(c.siguiente);
         }
 
-        etiqueta(c.base + "_end");
+        etiqueta(c.base + PARTE_FINAL);
     }
 
     /* ---------- while y for ----------
-       for:   funExc_for_2_init / _cond / _inc / _bloque / _end
-       while: funExc_while_4_cond / _bloque / _end */
+       for:   funExc_for_2_inicializacion / _condicion / _inc / _bloque / _final
+       while: funExc_while_4_condicion / _bloque / _final */
     private static class Ciclo {
         String base;    /* prefijo: funExc_for_2 */
         boolean esFor;
@@ -427,9 +427,9 @@ public class Generador {
         return ciclos.isEmpty() ? null : ciclos.get(ciclos.size() - 1);
     }
 
-    /* while: la etiqueta _cond va ANTES del código de la condición */
+    /* while: la etiqueta _condicion va ANTES del código de la condición */
     public void iniciarWhile() {
-        etiqueta(nuevoCiclo("while").base + "_cond");
+        etiqueta(nuevoCiclo("while").base + PARTE_CONDICION);
     }
 
     /* while: ya está el código de la condición */
@@ -440,14 +440,14 @@ public class Generador {
             return;
         }
 
-        emitir("if " + lugar + " goto " + c.base + "_bloque");
-        emitir("goto " + c.base + "_end");
-        etiqueta(c.base + "_bloque");
+        emitir("if " + lugar + " goto " + c.base + PARTE_BLOQUE);
+        emitir("goto " + c.base + PARTE_FINAL);
+        etiqueta(c.base + PARTE_BLOQUE);
     }
 
-    /* for: se apila el ciclo y se escribe _init (antes de la inicialización) */
+    /* for: se apila el ciclo y se escribe _inicializacion (antes de la inicialización) */
     public void iniciarFor() {
-        etiqueta(nuevoCiclo("for").base + "_init");
+        etiqueta(nuevoCiclo("for").base + PARTE_INICIALIZACION);
     }
 
     /* for: terminó la inicialización, aquí empieza la condición */
@@ -455,7 +455,7 @@ public class Generador {
         Ciclo c = cicloActual();
 
         if (c != null) {
-            etiqueta(c.base + "_cond");
+            etiqueta(c.base + PARTE_CONDICION);
         }
     }
 
@@ -486,20 +486,20 @@ public class Generador {
         }
 
         if (lugarCondicion != null) {
-            emitir("if " + lugarCondicion + " goto " + c.base + "_bloque");
-            emitir("goto " + c.base + "_end");
+            emitir("if " + lugarCondicion + " goto " + c.base + PARTE_BLOQUE);
+            emitir("goto " + c.base + PARTE_FINAL);
         } else {
-            emitir("goto " + c.base + "_bloque");
+            emitir("goto " + c.base + PARTE_BLOQUE);
         }
 
-        etiqueta(c.base + "_inc");
+        etiqueta(c.base + PARTE_INCREMENTO);
         codigo.append(incremento);
-        emitir("goto " + c.base + "_cond");
+        emitir("goto " + c.base + PARTE_CONDICION);
 
-        etiqueta(c.base + "_bloque");
+        etiqueta(c.base + PARTE_BLOQUE);
     }
 
-    /* Termina un while o un for: el for vuelve a _inc, el while a _cond */
+    /* Termina un while o un for: el for vuelve a _inc, el while a _condicion */
     public void finCiclo() {
         if (ciclos.isEmpty()) {
             return;
@@ -507,8 +507,8 @@ public class Generador {
 
         Ciclo c = ciclos.remove(ciclos.size() - 1);
 
-        emitir("goto " + c.base + (c.esFor ? "_inc" : "_cond"));
-        etiqueta(c.base + "_end");
+        emitir("goto " + c.base + (c.esFor ? PARTE_INCREMENTO : PARTE_CONDICION));
+        etiqueta(c.base + PARTE_FINAL);
     }
 
     /* break: salta a la salida del ciclo más interno */
@@ -516,7 +516,7 @@ public class Generador {
         Ciclo c = cicloActual();
 
         if (c != null) {
-            emitir("goto " + c.base + "_end");
+            emitir("goto " + c.base + PARTE_FINAL);
         }
     }
 }
