@@ -2042,7 +2042,7 @@ public class Main {
         lineas.add("");
 
         for (String linea : tabla.arbolDeAmbitos().split("\n")) {
-            lineas.add(pintar(CIAN_SUAVE, linea));
+            lineas.add(colorearLineaArbol(linea));
         }
 
         lineas.add("");
@@ -2100,6 +2100,55 @@ public class Main {
      * Salida: Textos de cada columna.
      * Restricciones: Ninguna.
      */
+    /* Una linea del arbol: "  ├── funcion suma  (3 símbolos)" */
+    private static final Pattern PATRON_LINEA_ARBOL = Pattern.compile("^([\\s│├└─]*)(.*?)  \\((\\d+) (símbolos?)\\)$");
+
+    /*
+     * Descripcion: Le pone color a una linea del arbol de ambitos.
+     * Entrada: Linea del arbol.
+     * Salida: La linea con colores.
+     * Restricciones: Usa los mismos colores de las categorias de la tabla:
+     *                funciones en azul, el procedimiento en cian, las ramas en gris y
+     *                la cantidad en verde si el bloque tiene simbolos.
+     */
+    private static String colorearLineaArbol(String linea) {
+
+        Matcher partes = PATRON_LINEA_ARBOL.matcher(linea);
+
+        if (!partes.matches()) {
+            return linea;
+        }
+
+        String ramas = partes.group(1);
+        String nombre = partes.group(2);
+        int cantidad = Integer.parseInt(partes.group(3));
+        String cantidadTexto = "(" + cantidad + " " + partes.group(4) + ")";
+
+        return pintar(GRIS, ramas)
+                + pintar(colorDelAmbito(nombre), nombre) + "  "
+                + pintar(cantidad > 0 ? VERDE_SUAVE : GRIS, cantidadTexto);
+    }
+
+    /*
+     * Descripcion: Elige el color del nombre de un ambito.
+     * Entrada: Nombre del ambito.
+     * Salida: Color.
+     * Restricciones: Los bloques (if, while, for...) quedan sin color.
+     */
+    private static String colorDelAmbito(String nombre) {
+
+        if (nombre.equals("global")) {
+            return NEGRITA;
+        }
+        if (nombre.startsWith("funcion ")) {
+            return colorCategoria("función");
+        }
+        if (nombre.startsWith("procedimiento ")) {
+            return colorCategoria("procedimiento");
+        }
+        return SIN_COLOR;
+    }
+
     private static String[] celdasDelSimbolo(int numero, Simbolo simbolo, String nombreAmbito) {
 
         boolean esFuncion = simbolo.esFuncion();
