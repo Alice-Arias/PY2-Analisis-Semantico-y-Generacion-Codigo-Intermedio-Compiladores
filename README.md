@@ -50,7 +50,7 @@ flowchart LR
 
 ---
 
-## ✅ Estado
+##  Estado
 
 - [x] Análisis léxico y sintáctico del Proyecto #1, corregidos
 - [x] Análisis semántico con **tipado explícito y fuerte** (52 reglas)
@@ -60,7 +60,7 @@ flowchart LR
 
 ---
 
-## 🚀 Compilar y ejecutar
+##  Compilar y ejecutar
 
 > [!IMPORTANT]
 > Se necesita **Java JDK 21** (mínimo 11). JFlex y Java CUP ya vienen en `Programa/librerias`.
@@ -160,7 +160,7 @@ Cada error dice qué **validación** falló. Las 52 reglas, con ejemplos, están
 
 ---
 
-## 🛟 Recuperación de errores
+##  Recuperación de errores
 
 | Técnica | Qué hace |
 | :-- | :-- |
