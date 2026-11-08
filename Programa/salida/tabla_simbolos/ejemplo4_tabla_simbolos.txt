@@ -1,0 +1,58 @@
+  Árbol de ámbitos
+
+  global  (6 símbolos)
+  ├── funcion func1  (5 símbolos)
+  │   ├── if  (2 símbolos)
+  │   ├── elif  (1 símbolo)
+  │   ├── else  (2 símbolos)
+  │   └── while  (0 símbolos)
+  ├── funcion _func2_  (2 símbolos)
+  ├── funcion _func3_  (1 símbolo)
+  └── procedimiento principal  (6 símbolos)
+
+  Categorías: variable  arreglo  parámetro  función  procedimiento
+  Dirección:   global+n = zona estática                 ----   pila+n = registro de activación
+  Acceso:      público = declarado en el ámbito global ------- privado = dentro de una función o bloque
+
+  ┌─────┬────────────────────┬───────────────┬─────────┬──────────────────────────┬───────┬────────────┬─────────────┬────────────────────────┬──────────┬───────┬─────┐
+  │ Nº  │ NOMBRE             │ CATEGORÍA     │ TIPO    │ ÁMBITO                   │ BYTES │ DIMENSIÓN  │ DIRECCIÓN   │ VALOR INICIAL          │ ACCESO   │ LÍNEA │ COL │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 1   │ _x22_              │ variable      │ char    │ global                   │ 1     │ —          │ global+0    │ 'b'                    │ público  │ 2     │ 10  │
+  │ 2   │ _x50_              │ arreglo       │ int     │ global                   │ 268   │ [0..66]    │ global+1    │ —                      │ público  │ 3     │ 9   │
+  │ 3   │ func1              │ función       │ float   │ global                   │ —     │ —          │ código      │ —                      │ público  │ 7     │ 8   │
+  │ 4   │ _func2_            │ función       │ bool    │ global                   │ —     │ —          │ código      │ —                      │ público  │ 41    │ 7   │
+  │ 5   │ _func3_            │ función       │ string  │ global                   │ —     │ —          │ código      │ —                      │ público  │ 46    │ 8   │
+  │ 6   │ principal          │ procedimiento │ void    │ global                   │ —     │ —          │ código      │ —                      │ público  │ 51    │ 6   │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 7   │ x22                │ parámetro     │ char    │ función func1            │ 1     │ —          │ pila+0      │ —                      │ privado  │ 7     │ 22  │
+  │ 8   │ _x22_              │ variable      │ char    │ función func1            │ 1     │ —          │ pila+1      │ 'a'                    │ privado  │ 10    │ 11  │
+  │ 9   │ _miChar_           │ variable      │ char    │ función func1            │ 1     │ —          │ pila+2      │ '!'                    │ privado  │ 11    │ 11  │
+  │ 10  │ _x40_              │ variable      │ bool    │ función func1            │ 1     │ —          │ pila+3      │ false                  │ privado  │ 14    │ 11  │
+  │ 11  │ _x50_              │ arreglo       │ float   │ función func1            │ 4000  │ [0..999]   │ pila+4      │ ¿: 4, 5, 4, 5, 4, 5 :? │ privado  │ 15    │ 12  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 12  │ y                  │ variable      │ int     │ función func1 › if       │ 4     │ —          │ pila+4004   │ —                      │ privado  │ 21    │ 11  │
+  │ 13  │ ch33               │ variable      │ char    │ función func1 › if       │ 1     │ —          │ pila+4008   │ 'a'                    │ privado  │ 23    │ 12  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 14  │ y                  │ variable      │ int     │ función func1 › elif     │ 4     │ —          │ pila+4009   │ —                      │ privado  │ 26    │ 11  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 15  │ y                  │ variable      │ int     │ función func1 › else     │ 4     │ —          │ pila+4013   │ —                      │ privado  │ 29    │ 11  │
+  │ 16  │ str2               │ variable      │ string  │ función func1 › else     │ 4     │ —          │ pila+4017   │ "sdff"                 │ privado  │ 30    │ 14  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 17  │ _b1_               │ parámetro     │ bool    │ función _func2_          │ 1     │ —          │ pila+0      │ —                      │ privado  │ 41    │ 24  │
+  │ 18  │ _i1_               │ parámetro     │ int     │ función _func2_          │ 4     │ —          │ pila+1      │ —                      │ privado  │ 41    │ 34  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 19  │ _b1_               │ variable      │ string  │ función _func3_          │ 4     │ —          │ pila+0      │ —                      │ privado  │ 47    │ 13  │
+  ├─────┼────────────────────┼───────────────┼─────────┼──────────────────────────┼───────┼────────────┼─────────────┼────────────────────────┼──────────┼───────┼─────┤
+  │ 20  │ miChar             │ variable      │ char    │ procedimiento principal  │ 1     │ —          │ pila+0      │ '!'                    │ privado  │ 55    │ 11  │
+  │ 21  │ str1               │ variable      │ string  │ procedimiento principal  │ 4     │ —          │ pila+1      │ "Mi string 1"          │ privado  │ 57    │ 13  │
+  │ 22  │ fl1                │ variable      │ float   │ procedimiento principal  │ 4     │ —          │ pila+5      │ —                      │ privado  │ 58    │ 12  │
+  │ 23  │ fl2                │ variable      │ float   │ procedimiento principal  │ 4     │ —          │ pila+9      │ 3.7 pot fl1 + є: 45.6  │ privado  │ 61    │ 12  │
+  │     │                    │               │         │                          │       │            │             │ mod 76 :э              │          │       │     │
+  │ 24  │ bl0                │ variable      │ bool    │ procedimiento principal  │ 1     │ —          │ pila+13     │ ʃ: 6.7 :ʅ != ʃ: 8 // 9 │ privado  │ 68    │ 11  │
+  │     │                    │               │         │                          │       │            │             │ :ʅ                     │          │       │     │
+  │ 25  │ bl1                │ variable      │ bool    │ procedimiento principal  │ 1     │ —          │ pila+14     │ є: ʃ: in1 :ʅ > ʃ: fl1  │ privado  │ 70    │ 11  │
+  │     │                    │               │         │                          │       │            │             │ :ʅ :э θ Σ є: є: ʃ:     │          │       │     │
+  │     │                    │               │         │                          │       │            │             │ func2 є: 3, in1 :э :ʅ  │          │       │     │
+  │     │                    │               │         │                          │       │            │             │ >= ʃ: 56 :ʅ :э :э      │          │       │     │
+  └─────┴────────────────────┴───────────────┴─────────┴──────────────────────────┴───────┴────────────┴─────────────┴────────────────────────┴──────────┴───────┴─────┘
+

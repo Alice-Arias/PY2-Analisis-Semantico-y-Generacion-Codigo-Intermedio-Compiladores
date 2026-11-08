@@ -1,0 +1,62 @@
+val char gch  Ͱ '&'»
+void principal є:  :э  ¿:
+    _arr_ʃ:67+_i_:ʅ  Ͱ -0.01 + 1010 * "sd"»
+    val bool _b1_»
+    val string _s1_»
+    read є: _s1_ :э »
+    read є: gch :э »
+    write є: _b1_ :э »
+    write є: true :э »
+    write є: -6//7 :э »
+    return» 
+    return 1+_f_ є:  :э
+:?
+
+float _mi_ є: int _dif_, char _otra_ :э ¿:
+    val int _otra_»
+    val string _str_ Ͱ "Hola $~&|:?$& :э  mundo"»
+
+    while є: Σ є:false:э :э
+    ¿:
+        while є: є:1:э λ Σ є: є:ʃ:12:ʅ >= ʃ:34+35:ʅ :э :э
+        ¿:
+            _var_  Ͱ _var_ - 1»
+        :?
+
+        read є: _var2_ :э »
+        break»
+
+        if є: ʃ:_var_:ʅ == ʃ:0:ʅ :э
+        ¿:
+            write є: "entra al if" :э »
+        :?
+
+        if є: true :э
+        ¿:
+            val int x»
+            for є: val int x Ͱ 9 » ʃ:_var_:ʅ > ʃ:0:ʅ » a+b :э
+            ¿:
+                write є: _var_ :э »
+            :?
+
+            for є: x Ͱ 9 » ʃ:_var_:ʅ > ʃ:0:ʅ » a+b :э
+            ¿:
+                write є: _var_ :э »
+            :?
+        :?
+        else
+        ¿:
+            ¿:
+                write є: "!|" :э »
+                _otra_ Ͱ -10.5 * -1.9»
+                write є: "un case" :э »
+            :?
+        :?
+    :?
+
+    return 1.1»
+:?
+
+bool _miOtraFun_ є: :э ¿:
+    return 5.6»
+:?
